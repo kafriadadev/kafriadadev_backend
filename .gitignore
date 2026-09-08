@@ -1,0 +1,102 @@
+# ---------------------------------------------------------------------------
+# Secrets. Nothing in this block may ever be committed.
+# If you think you need an exception, you do not. Use .env.example instead.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+secrets/
+credentials.json
+service-account*.json
+*.secret
+*_rsa
+*_ed25519
+.htpasswd
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.hypothesis/
+
+# ---------------------------------------------------------------------------
+# Node / Next.js
+# ---------------------------------------------------------------------------
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+.pnpm-store/
+.npm/
+.yarn/
+
+# ---------------------------------------------------------------------------
+# Local data and uploads — never commit user data, not even test data that
+# came from a real person.
+# ---------------------------------------------------------------------------
+*.sqlite
+*.sqlite3
+*.db
+local-data/
+uploads/
+minio-data/
+postgres-data/
+redis-data/
+
+# ---------------------------------------------------------------------------
+# Logs and dumps. A stack trace or a database dump can contain personal data
+# and access tokens.
+# ---------------------------------------------------------------------------
+*.log
+logs/
+*.dump
+*.sql.gz
+npm-debug.log*
+pnpm-debug.log*
+
+# ---------------------------------------------------------------------------
+# Editor and OS
+# ---------------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------------
+# Build and scratch output
+# ---------------------------------------------------------------------------
+scratch/
+tmp/
+.cache/

@@ -1,0 +1,76 @@
+# gitleaks configuration.
+#
+# Extends the default ruleset rather than replacing it, then adds the credentials
+# specific to this system. A secret that reaches a remote is compromised whether
+# or not a later commit removes it — it stays in the git objects and in every
+# clone that was ever taken. So this runs pre-commit and again in CI over full
+# history.
+
+title = "KAFRIADA CORE"
+
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# Provider credentials we actually hold
+# ---------------------------------------------------------------------------
+[[rules]]
+id = "paystack-secret-key"
+description = "Paystack secret key"
+regex = '''sk_(live|test)_[0-9a-zA-Z]{20,}'''
+tags = ["paystack", "payment"]
+
+[[rules]]
+id = "paystack-public-key"
+description = "Paystack public key"
+regex = '''pk_(live|test)_[0-9a-zA-Z]{20,}'''
+tags = ["paystack", "payment"]
+
+[[rules]]
+id = "termii-api-key"
+description = "Termii API key"
+regex = '''(?i)termii[_-]?(api[_-]?)?key['"\s:=]+[0-9a-zA-Z]{20,}'''
+tags = ["termii", "sms"]
+
+# ---------------------------------------------------------------------------
+# Our own signing keys. QR_SECRET is the one that would hurt most: with it, an
+# attacker can mint a valid "Issued by KAFRIADA" mark for any KUID, and every
+# card already printed in Jigawa keeps verifying until the key version is rotated.
+# ---------------------------------------------------------------------------
+[[rules]]
+id = "kafriada-signing-key"
+description = "KAFRIADA signing key assigned a literal value"
+regex = '''(?i)(SECRET_KEY|QR_SECRET)\s*[:=]\s*['"][^'"\s${}]{16,}['"]'''
+tags = ["kafriada"]
+
+[[rules]]
+id = "postgres-connection-with-password"
+description = "PostgreSQL URL with an inline password"
+regex = '''postgres(ql)?(\+\w+)?://[^:/\s]+:(?!CHANGE_ME|pw@|password@|local_dev)[^@\s]{6,}@'''
+tags = ["database"]
+
+# ---------------------------------------------------------------------------
+# Allowlist — documented example values only.
+#
+# Every entry here is a value that is deliberately fake. Adding a real secret to
+# this list to silence a finding defeats the entire control; if a scan fires on
+# something real, rotate the credential rather than allowlisting it.
+# ---------------------------------------------------------------------------
+[allowlist]
+description = "Documentation, examples and local-only container credentials"
+paths = [
+  '''\.env\.example$''',
+  '''infra/docker-compose\.yml$''',
+  '''infra/bootstrap-roles\.sql$''',
+  '''scripts/bootstrap-local-db\.sh$''',
+  '''\.gitleaks\.toml$''',
+  '''^docs/''',
+  '''tests/.*\.py$''',
+]
+regexes = [
+  '''CHANGE_ME''',
+  '''local_dev_only''',
+  '''ci_admin_password''',
+  '''sk_test_not_a_real_key''',
+  '''not_a_real_secret''',
+]

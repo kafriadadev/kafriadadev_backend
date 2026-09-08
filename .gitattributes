@@ -1,0 +1,19 @@
+# Normalise line endings. Development happens on Windows; CI runs on Linux.
+* text=auto eol=lf
+
+# Shell scripts must be LF even on a Windows checkout. A CRLF shebang line makes
+# Linux report "bad interpreter: /usr/bin/env bash^M", which is a confusing way
+# to discover that the security gates never ran.
+*.sh text eol=lf
+*.sql text eol=lf
+
+# Binary — never diffed, never line-ending converted.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
+
+# Keep generated artefacts out of pull request diffs. They are still reviewed by
+# the CI contract gate, which compares them against the source of truth.
+contracts/openapi.json linguist-generated=true diff=json
