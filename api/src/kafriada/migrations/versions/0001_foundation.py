@@ -188,8 +188,11 @@ def _audit_log() -> None:
         CREATE FUNCTION ops.deny_mutation() RETURNS trigger
         LANGUAGE plpgsql AS $$
         BEGIN
+            -- Reused by every append-only table in the system, in any schema,
+            -- so the message names the table it actually fired on.
             RAISE EXCEPTION
-                'ops.% is append-only; % is not permitted', TG_TABLE_NAME, TG_OP
+                '%.% is append-only; % is not permitted',
+                TG_TABLE_SCHEMA, TG_TABLE_NAME, TG_OP
                 USING ERRCODE = 'insufficient_privilege';
         END;
         $$

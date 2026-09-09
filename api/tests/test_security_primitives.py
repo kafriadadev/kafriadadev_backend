@@ -42,7 +42,9 @@ def _settings(**overrides: object) -> Settings:
         "argon2_time_cost": 2,
     }
     base.update(overrides)
-    return Settings(**base)  # type: ignore[arg-type]
+    # See the note in test_settings_refuses_insecure_config: tests must not read
+    # the developer's local .env.
+    return Settings(_env_file=None, **base)  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------

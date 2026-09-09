@@ -25,7 +25,10 @@ def build(**overrides: object) -> Settings:
         "qr_secret": "q" * 40,
     }
     values.update(overrides)
-    return Settings(**values)  # type: ignore[arg-type]
+    # _env_file=None keeps the developer's local .env out of the test run. A test
+    # whose result depends on an untracked file on one machine is not a test —
+    # it passes locally, fails in CI, and tells you nothing either way.
+    return Settings(_env_file=None, **values)  # type: ignore[arg-type]
 
 
 def production(**overrides: object) -> Settings:
