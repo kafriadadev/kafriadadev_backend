@@ -83,6 +83,12 @@ class Settings(BaseSettings):
     db_pool_size: int = Field(default=10, ge=1, le=50)
     db_max_overflow: int = Field(default=5, ge=0, le=50)
     db_statement_timeout_ms: int = Field(default=10_000, ge=1_000, le=60_000)
+    # In production the application and the database share an availability zone
+    # and connect in milliseconds. A developer working against a managed database
+    # over the public internet — especially an IPv6-only host — routinely needs
+    # several seconds for the first connection, so this is configurable rather
+    # than a constant tuned for one of the two situations.
+    db_connect_timeout_seconds: int = Field(default=15, ge=2, le=60)
 
     # -- Signing keys -----------------------------------------------------
     # Session cookies carry an opaque random token; the value below signs

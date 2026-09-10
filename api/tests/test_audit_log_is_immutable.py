@@ -22,6 +22,12 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError
 
+# A managed database reached over the public internet — an IPv6-only host in
+# particular — can take several seconds to accept a first connection. Without an
+# explicit budget the first fixture errors out, which reads like a failed
+# security assertion when it is really a slow handshake.
+_ENGINE_KWARGS = {"connect_args": {"connect_timeout": 30}, "pool_pre_ping": True}
+
 APP_URL = os.environ.get("DATABASE_URL_APP")
 MIGRATE_URL = os.environ.get("DATABASE_URL_MIGRATE")
 
@@ -37,7 +43,7 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def app_engine():  # type: ignore[no-untyped-def]
     """A connection as kaf_app — the role a running process actually holds."""
-    engine = create_engine(APP_URL or "", future=True)
+    engine = create_engine(APP_URL or "", future=True, **_ENGINE_KWARGS)
     yield engine
     engine.dispose()
 
@@ -45,7 +51,7 @@ def app_engine():  # type: ignore[no-untyped-def]
 @pytest.fixture(scope="module")
 def migrate_engine():  # type: ignore[no-untyped-def]
     """A connection as kaf_migrate — the object owner, used only by releases."""
-    engine = create_engine(MIGRATE_URL or "", future=True)
+    engine = create_engine(MIGRATE_URL or "", future=True, **_ENGINE_KWARGS)
     yield engine
     engine.dispose()
 
@@ -154,13 +160,12 @@ class TestLedgerPrivilegeBoundary:
             grants = conn.execute(
                 text(
                     """
-                    SELECT DISTINCT unnest(
-                        (aclexplode(defaclacl)).privilege_type
-                    ) AS privilege
-                    FROM pg_default_acl d
-                    JOIN pg_namespace n ON n.oid = d.defaclnamespace
-                    WHERE n.nspname = 'money'
-                      AND (aclexplode(defaclacl)).grantee = 'kaf_app'::regrole
+                    SELECT DISTINCT a.privilege_type AS privilege
+                      FROM pg_default_acl d
+                      JOIN pg_namespace n ON n.oid = d.defaclnamespace
+                      CROSS JOIN LATERAL aclexplode(d.defaclacl) AS a
+                     WHERE n.nspname = 'money'
+                       AND a.grantee = 'kaf_app'::regrole
                     """
                 )
             ).scalars().all()

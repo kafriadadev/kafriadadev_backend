@@ -58,8 +58,10 @@ def _build_engine(url: str, settings: Settings, *, role: Role, readonly: bool) -
         future=True,
         connect_args={
             "application_name": f"kafriada-{role.value}",
-            # Fail fast rather than hanging a worker thread on a dead host.
-            "connect_timeout": 5,
+            # Fail rather than hang a worker thread on a dead host. Generous
+            # enough for a developer on a remote managed database; production
+            # connects in milliseconds and never approaches it.
+            "connect_timeout": settings.db_connect_timeout_seconds,
         },
     )
 

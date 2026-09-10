@@ -12,6 +12,8 @@
 *.jks
 *.keystore
 secrets/
+.secrets/
+**/.secrets/
 credentials.json
 service-account*.json
 *.secret

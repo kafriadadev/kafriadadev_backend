@@ -55,6 +55,13 @@ def run_migrations_online() -> None:
         section,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        # A managed database reached over the public internet — an IPv6-only
+        # host in particular — can take several seconds to accept the first
+        # connection. A migration failing on that is a confusing way to start.
+        connect_args={
+            "connect_timeout": int(os.environ.get("DB_CONNECT_TIMEOUT_SECONDS", "20")),
+            "application_name": "kafriada-migrate",
+        },
     )
 
     with connectable.connect() as connection:
