@@ -1,0 +1,416 @@
+/* ===========================================================================
+   KAFRIADA CORE — design system
+   ---------------------------------------------------------------------------
+   Direction: SECURITY DOCUMENT. The visual language of passports, banknotes and
+   official certificates — engine-turned guilloche, an MRZ-style identifier
+   strip, a letterpress seal, perforated card edges. The product IS a document,
+   so the interface should look like one being issued.
+
+   THE CONSTRAINT THAT SHAPED EVERYTHING
+   Every screen must work with JavaScript switched off. Opera Mini in proxy mode
+   is common in northern Nigeria and runs almost none, and the first-load budget
+   is 150KB on 2G. So there is no animation library, no WebGL, no custom cursor
+   and no scroll choreography. Every effect below is CSS a 2016 Android phone
+   renders without effort.
+
+   ACCESSIBILITY IS THE STYLE, NOT A CHECKLIST
+   Style profile "Accessible & Ethical": high contrast, 16px+ body, visible
+   focus, 44x44 targets. Every colour pair below was measured, not eyeballed:
+
+     ink on paper          16.45:1      green on paper      10.26:1
+     white on green        11.18:1      muted on paper       5.86:1
+     ochre-text on paper    6.78:1      red on paper         8.21:1
+     seal on paper          3.50:1  <-- decorative ONLY, never type
+
+   The seal gold (#A67C00) fails 4.5:1 as text, so it is reserved for the seal,
+   the guilloche and rules. Anything a person must READ uses #6E5100.
+   =========================================================================== */
+
+/* Atkinson Hyperlegible was designed by the Braille Institute for low vision:
+   unambiguous b/d/p/q, distinct I/l/1. That matters more than taste here —
+   people read KUIDs off printed cards, in sunlight, on small screens.
+   Instrument Serif carries the engraved-certificate character.
+   JetBrains Mono is for identifiers, where a 0 must never look like an O. */
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+  /* -- Ink and ground ---------------------------------------------------- */
+  --paper:        #F7F5EF;   /* warm document stock, not white */
+  --card:         #FFFDF7;   /* the document itself sits brighter than the desk */
+  --sunk:         #EFEBE0;
+  --ink:          #141815;   /* near-black with a green cast, never pure #000 */
+  --muted:        #5A6158;
+  --faint:        #8A9086;
+  --rule:         #DCD7C8;
+  --rule-strong:  #C2BBA6;
+
+  /* -- Institutional green ----------------------------------------------- */
+  --green:        #0E4429;
+  --green-deep:   #0A3320;
+  --green-soft:   #E3ECE5;
+
+  /* -- Gold: two values, deliberately -------------------------------------
+     --seal is the decorative gold of an embossed stamp. It does not pass
+     contrast as text and must never be used for any.
+     --ochre is its readable sibling. */
+  --seal:         #A67C00;
+  --ochre:        #6E5100;
+  --ochre-soft:   #F5EEDC;
+
+  --red:          #8C2118;
+  --red-soft:     #F8E9E6;
+
+  /* -- Type ---------------------------------------------------------------- */
+  --font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+  --font-body:    'Atkinson Hyperlegible', 'Segoe UI', Tahoma, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+
+  /* Density 4/10 — standard. Generous enough to read on a phone held at
+     arm's length, tight enough that a form fits without endless scrolling. */
+  --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
+  --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+
+  --radius:    3px;   /* documents have crisp corners, not app-store roundness */
+  --radius-lg: 5px;
+  --tap:       44px;  /* minimum touch target */
+
+  --shadow-lift:  0 1px 2px rgba(20, 24, 21, .06), 0 6px 18px -12px rgba(20, 24, 21, .30);
+  --shadow-press: inset 0 1px 2px rgba(20, 24, 21, .18);
+}
+
+/* Dark mode: the chrome adapts, the DOCUMENT does not. A passport does not
+   invert when the lights go out, and neither should the card — it stays paper
+   so a photograph of it is always the same object. Only the surrounding
+   surface, which is furniture rather than content, follows the viewer. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper:       #12150F;
+    --sunk:        #1A1E17;
+    --ink:         #ECEBE2;
+    --muted:       #A5AB9D;
+    --faint:       #7B8177;
+    --rule:        #2B3027;
+    --rule-strong: #3D4338;
+    --green:       #7CC49A;
+    --green-deep:  #9BD9B4;
+    --green-soft:  #17251C;
+    --ochre:       #D6AC57;
+    --ochre-soft:  #241D0F;
+    --red:         #E38A7F;
+    --red-soft:    #2A1512;
+    --shadow-lift: 0 1px 2px rgba(0,0,0,.5), 0 8px 24px -14px rgba(0,0,0,.9);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reset and base
+   --------------------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 17px;            /* above the 16px floor: this is read outdoors */
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  /* The guilloche. Two crossed hairline grids at very low opacity — the
+     engine-turned pattern on a banknote, rendered by the compositor for free.
+     Fixed attachment is deliberately avoided: it janks badly on Android. */
+  background-image:
+    repeating-linear-gradient(45deg,
+      color-mix(in srgb, var(--seal) 7%, transparent) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(-45deg,
+      color-mix(in srgb, var(--green) 5%, transparent) 0 1px, transparent 1px 9px);
+}
+
+/* color-mix is recent. Older Android browsers ignore the whole declaration and
+   simply get a plain background, which is the correct fallback: the pattern is
+   decoration and its absence costs nothing. */
+
+img, svg { max-width: 100%; height: auto; display: block; }
+
+/* ---------------------------------------------------------------------------
+   Typography
+   --------------------------------------------------------------------------- */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 400;           /* Instrument Serif has one weight; faux-bold ruins it */
+  letter-spacing: -0.01em;
+  line-height: 1.08;
+  color: var(--ink);
+  margin: 0 0 var(--s3);
+  text-wrap: balance;
+}
+h1 { font-size: clamp(2.1rem, 7vw, 3.4rem); }
+h2 { font-size: clamp(1.5rem, 4.5vw, 2.1rem); }
+h3 { font-size: 1.25rem; }
+
+p { margin: 0 0 var(--s4); max-width: 62ch; }
+
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ochre);
+  margin: 0 0 var(--s3);
+}
+
+.lede { font-size: 1.14rem; color: var(--muted); }
+
+/* The identifier itself. Set like the machine-readable zone of a passport:
+   monospace, widely tracked, on its own rule. A KUID is read aloud down a
+   phone line and typed into a form by someone else — the tracking is what
+   stops 000123 being misread as 00123. */
+.kuid {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: .06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  word-break: break-all;      /* never overflow a 320px screen */
+}
+
+/* ---------------------------------------------------------------------------
+   Layout
+   --------------------------------------------------------------------------- */
+.shell { max-width: 660px; margin: 0 auto; padding: 0 var(--s4) var(--s8); }
+.shell--wide { max-width: 900px; }
+.stack > * + * { margin-top: var(--s4); }
+
+.skip-link {
+  position: absolute; left: -9999px;
+  background: var(--green); color: #fff;
+  padding: var(--s3) var(--s4); border-radius: var(--radius); z-index: 100;
+}
+.skip-link:focus { left: var(--s4); top: var(--s4); }
+
+/* ---------------------------------------------------------------------------
+   Masthead — the issuing authority, stated like one
+   --------------------------------------------------------------------------- */
+.masthead {
+  border-bottom: 2px solid var(--ink);
+  padding: var(--s5) 0 var(--s4);
+  margin-bottom: var(--s6);
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--s4); flex-wrap: wrap;
+}
+.wordmark {
+  font-family: var(--font-body);
+  font-weight: 700; font-size: 1.02rem;
+  letter-spacing: .2em; text-transform: uppercase;
+  color: var(--ink); text-decoration: none;
+}
+.wordmark span { color: var(--green); }
+.masthead__meta {
+  font-size: .74rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------------------------
+   The document card — the hero object of the whole product
+   --------------------------------------------------------------------------- */
+.doc {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift);
+  overflow: hidden;
+}
+/* A gold rule across the head of the document, as on a certificate. */
+.doc::before {
+  content: '';
+  position: absolute; inset: 0 0 auto 0; height: 4px;
+  background: linear-gradient(90deg,
+    var(--green) 0 32%, var(--seal) 32% 68%, var(--green) 68% 100%);
+}
+.doc__body { padding: var(--s6) var(--s5) var(--s5); }
+
+/* Perforation, as though the card were torn from a book of them. Pure
+   radial-gradient dots — no images, no extra requests. */
+.doc__perf {
+  height: 14px;
+  background:
+    radial-gradient(circle at 7px 50%, var(--paper) 5px, transparent 5.5px) 0 0 / 14px 14px repeat-x;
+  border-top: 1px dashed var(--rule-strong);
+}
+
+/* The identifier strip: reversed out, like the MRZ band on a passport. */
+.mrz {
+  background: var(--green-deep);
+  color: #F4F1E6;
+  padding: var(--s3) var(--s4);
+  font-family: var(--font-mono);
+  font-size: clamp(.82rem, 3.4vw, 1.02rem);
+  letter-spacing: .1em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+.mrz small {
+  display: block; font-family: var(--font-body);
+  font-size: .62rem; letter-spacing: .18em; text-transform: uppercase;
+  opacity: .72; margin-bottom: 2px;
+}
+
+/* The seal. An embossed stamp drawn with two gradients and a border —
+   no image, no font icon, and it scales to any screen. */
+.seal {
+  width: 82px; height: 82px; border-radius: 50%; flex: none;
+  border: 2px solid var(--seal);
+  background:
+    repeating-conic-gradient(from 0deg,
+      color-mix(in srgb, var(--seal) 16%, transparent) 0deg 6deg,
+      transparent 6deg 12deg),
+    radial-gradient(circle, var(--ochre-soft) 55%, transparent 56%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; line-height: 1.1;
+  font-family: var(--font-body); font-weight: 700;
+  font-size: .52rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ochre);
+}
+.seal strong { font-size: .82rem; display: block; letter-spacing: .04em; }
+
+/* Silhouette — what an unverified athlete shows instead of a photograph.
+   The absence IS the paywall, so it must look deliberate rather than broken. */
+.portrait {
+  width: 96px; height: 116px; flex: none;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  background: var(--sunk);
+  display: flex; align-items: flex-end; justify-content: center;
+  overflow: hidden;
+}
+.portrait svg { width: 66%; opacity: .34; }
+
+/* ---------------------------------------------------------------------------
+   Data rows — a document lists facts, it does not decorate them
+   --------------------------------------------------------------------------- */
+.facts { border-top: 1px solid var(--rule); margin: var(--s5) 0 0; }
+.fact {
+  display: flex; gap: var(--s4); justify-content: space-between;
+  padding: var(--s3) 0; border-bottom: 1px solid var(--rule);
+  font-size: .96rem;
+}
+.fact dt {
+  color: var(--muted); font-size: .72rem; letter-spacing: .12em;
+  text-transform: uppercase; padding-top: 3px; flex: none;
+}
+.fact dd { margin: 0; text-align: right; font-weight: 700; }
+
+/* ---------------------------------------------------------------------------
+   Forms
+   --------------------------------------------------------------------------- */
+.field { margin-bottom: var(--s5); }
+.field > label {
+  display: block; font-weight: 700; font-size: .92rem; margin-bottom: var(--s2);
+}
+.field .hint {
+  display: block; font-size: .84rem; color: var(--muted); margin: var(--s1) 0 var(--s2);
+}
+.field input, .field select {
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--s3);
+  font-family: inherit; font-size: 1rem; color: var(--ink);
+  background: var(--card);
+  border: 1.5px solid var(--rule-strong);
+  border-radius: var(--radius);
+  /* Native select, native date input. A custom widget would need JavaScript
+     and would fail on the exact phones this has to work on. */
+}
+.field input:focus-visible, .field select:focus-visible,
+a:focus-visible, button:focus-visible {
+  outline: 3px solid var(--green);
+  outline-offset: 2px;
+}
+.field--error input, .field--error select { border-color: var(--red); border-width: 2px; }
+
+/* Errors sit next to the field that caused them, never only in a summary at
+   the top — the person has to know which box to fix. */
+.field .error {
+  display: block; margin-top: var(--s2);
+  color: var(--red); font-weight: 700; font-size: .88rem;
+}
+
+.consent {
+  display: flex; gap: var(--s3); align-items: flex-start;
+  background: var(--sunk); border: 1px solid var(--rule);
+  border-radius: var(--radius); padding: var(--s4);
+}
+.consent input { width: 22px; height: 22px; flex: none; margin-top: 2px; }
+.consent label { font-size: .92rem; }
+
+/* ---------------------------------------------------------------------------
+   Buttons
+   --------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
+  min-height: var(--tap); padding: var(--s3) var(--s5);
+  font-family: var(--font-body); font-size: 1rem; font-weight: 700;
+  border-radius: var(--radius); border: 1.5px solid transparent;
+  cursor: pointer; text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+.btn--primary { background: var(--green); color: #fff; box-shadow: var(--shadow-lift); }
+.btn--primary:hover { background: var(--green-deep); transform: translateY(-1px); }
+.btn--primary:active { transform: translateY(0); box-shadow: var(--shadow-press); }
+.btn--ghost { background: transparent; color: var(--green); border-color: var(--green); }
+.btn--ghost:hover { background: var(--green-soft); }
+.btn--block { width: 100%; }
+
+/* ---------------------------------------------------------------------------
+   Notices
+   --------------------------------------------------------------------------- */
+.notice {
+  border: 1px solid var(--rule); border-left: 4px solid var(--muted);
+  background: var(--card); padding: var(--s4);
+  border-radius: 0 var(--radius) var(--radius) 0; font-size: .95rem;
+}
+.notice > :last-child { margin-bottom: 0; }
+.notice--good { border-left-color: var(--green); background: var(--green-soft); }
+.notice--warn { border-left-color: var(--seal); background: var(--ochre-soft); }
+.notice--bad  { border-left-color: var(--red);  background: var(--red-soft); }
+.notice__title {
+  font-weight: 700; font-size: .72rem; letter-spacing: .14em;
+  text-transform: uppercase; margin: 0 0 var(--s2); color: var(--muted);
+}
+.notice--good .notice__title { color: var(--green); }
+.notice--warn .notice__title { color: var(--ochre); }
+.notice--bad  .notice__title { color: var(--red); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 100px; border: 1.5px solid currentColor;
+}
+.pill--issued { color: var(--green); background: var(--green-soft); }
+.pill--pending { color: var(--ochre); background: var(--ochre-soft); }
+
+/* ---------------------------------------------------------------------------
+   Print — the card is meant to be printed and cut out
+   --------------------------------------------------------------------------- */
+@media print {
+  body { background: #fff; }
+  .masthead, .no-print, .btn { display: none !important; }
+  .doc { box-shadow: none; border: 1.5px solid #000; page-break-inside: avoid; }
+  .shell { max-width: none; padding: 0; }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion. The only motion here is a 160ms button lift, and even that
+   goes — someone who asked for stillness should get it.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
