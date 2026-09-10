@@ -120,7 +120,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     _install_error_handlers(app)
     _install_health(app)
+    _install_routes(app)
     return app
+
+
+def _install_routes(app: FastAPI) -> None:
+    """Mount the versioned contract.
+
+    Everything lives under /v1. The version is in the path because this API is a
+    product surface that federations and a future native app will depend on, and
+    a breaking change to something other people build against needs a new
+    address rather than a quiet redefinition of the old one.
+    """
+    from kafriada.api.v1 import athletes
+
+    app.include_router(athletes.router, prefix="/v1")
 
 
 def _install_error_handlers(app: FastAPI) -> None:

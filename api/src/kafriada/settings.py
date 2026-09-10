@@ -99,6 +99,12 @@ class Settings(BaseSettings):
     qr_secret: SecretStr
     qr_key_version: int = Field(default=1, ge=1, le=99)
 
+    # -- Public addresses --------------------------------------------------
+    # The address printed inside every QR code. Absolute, because a phone camera
+    # scanning a card has no idea what site it came from — and it cannot change
+    # afterwards without every card already issued pointing at nothing.
+    public_base_url: str = "http://localhost:3000"
+
     # -- Sessions ---------------------------------------------------------
     # Staff share phones in the field, so their sessions expire on idle far
     # sooner than an athlete's. See the architecture, session policy.
