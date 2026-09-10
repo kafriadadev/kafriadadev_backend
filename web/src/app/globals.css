@@ -76,6 +76,32 @@
 
   --shadow-lift:  0 1px 2px rgba(20, 24, 21, .06), 0 6px 18px -12px rgba(20, 24, 21, .30);
   --shadow-press: inset 0 1px 2px rgba(20, 24, 21, .18);
+
+  /* -- PLATE TOKENS -------------------------------------------------------
+     The document is an object, not chrome. A passport does not invert when the
+     lights go out, and a photograph of a KAFRIADA card should be the same
+     object whatever the viewer's phone is set to.
+
+     These are deliberately NOT redefined in the dark block below. That is the
+     point -- and it is where this went wrong the first time: pinning only the
+     background while letting the ink follow the theme produced near-white text
+     on near-white paper. Everything inside .doc, .mrz, .notice and .seal draws
+     from this set, so the document cannot half-invert.
+     ---------------------------------------------------------------------- */
+  --plate-bg:      #FFFDF7;
+  --plate-ink:     #141815;
+  --plate-muted:   #5A6158;
+  --plate-rule:    #DCD7C8;
+  --plate-strong:  #C2BBA6;
+  --plate-sunk:    #EFEBE0;
+  --plate-green:   #0E4429;
+  --plate-deep:    #0A3320;
+  --plate-soft:    #E3ECE5;
+  --plate-ochre:   #6E5100;
+  --plate-seal:    #A67C00;
+  --plate-gold:    #F5EEDC;
+  --plate-red:     #8C2118;
+  --plate-redsoft: #F8E9E6;
 }
 
 /* Dark mode: the chrome adapts, the DOCUMENT does not. A passport does not
@@ -108,6 +134,11 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 html { -webkit-text-size-adjust: 100%; }
+
+/* Nothing may push the page sideways. The identifier is a long unbroken string
+   and the smallest target screen is 320px. Horizontal scroll on a form is
+   miserable on a phone and easy to introduce by accident. */
+html, body { overflow-x: hidden; max-width: 100%; }
 
 body {
   margin: 0;
@@ -217,8 +248,9 @@ p { margin: 0 0 var(--s4); max-width: 62ch; }
    --------------------------------------------------------------------------- */
 .doc {
   position: relative;
-  background: var(--card);
-  border: 1px solid var(--rule-strong);
+  background: var(--plate-bg);
+  color: var(--plate-ink);
+  border: 1px solid var(--plate-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lift);
   overflow: hidden;
@@ -228,9 +260,9 @@ p { margin: 0 0 var(--s4); max-width: 62ch; }
   content: '';
   position: absolute; inset: 0 0 auto 0; height: 4px;
   background: linear-gradient(90deg,
-    var(--green) 0 32%, var(--seal) 32% 68%, var(--green) 68% 100%);
+    var(--plate-green) 0 32%, var(--plate-seal) 32% 68%, var(--plate-green) 68% 100%);
 }
-.doc__body { padding: var(--s6) var(--s5) var(--s5); }
+.doc__body { padding: var(--s6) var(--s5) var(--s5); overflow-wrap: anywhere; }
 
 /* Perforation, as though the card were torn from a book of them. Pure
    radial-gradient dots — no images, no extra requests. */
@@ -238,12 +270,12 @@ p { margin: 0 0 var(--s4); max-width: 62ch; }
   height: 14px;
   background:
     radial-gradient(circle at 7px 50%, var(--paper) 5px, transparent 5.5px) 0 0 / 14px 14px repeat-x;
-  border-top: 1px dashed var(--rule-strong);
+  border-top: 1px dashed var(--plate-strong);
 }
 
 /* The identifier strip: reversed out, like the MRZ band on a passport. */
 .mrz {
-  background: var(--green-deep);
+  background: var(--plate-deep);
   color: #F4F1E6;
   padding: var(--s3) var(--s4);
   font-family: var(--font-mono);
@@ -263,17 +295,17 @@ p { margin: 0 0 var(--s4); max-width: 62ch; }
    no image, no font icon, and it scales to any screen. */
 .seal {
   width: 82px; height: 82px; border-radius: 50%; flex: none;
-  border: 2px solid var(--seal);
+  border: 2px solid var(--plate-seal);
   background:
     repeating-conic-gradient(from 0deg,
-      color-mix(in srgb, var(--seal) 16%, transparent) 0deg 6deg,
+      color-mix(in srgb, var(--plate-seal) 16%, transparent) 0deg 6deg,
       transparent 6deg 12deg),
-    radial-gradient(circle, var(--ochre-soft) 55%, transparent 56%);
+    radial-gradient(circle, var(--plate-gold) 55%, transparent 56%);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; line-height: 1.1;
   font-family: var(--font-body); font-weight: 700;
   font-size: .52rem; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--ochre);
+  color: var(--plate-ochre);
 }
 .seal strong { font-size: .82rem; display: block; letter-spacing: .04em; }
 
@@ -281,25 +313,40 @@ p { margin: 0 0 var(--s4); max-width: 62ch; }
    The absence IS the paywall, so it must look deliberate rather than broken. */
 .portrait {
   width: 96px; height: 116px; flex: none;
-  border: 1px solid var(--rule-strong);
+  border: 1px solid var(--plate-strong);
   border-radius: 2px;
-  background: var(--sunk);
+  background: var(--plate-sunk);
   display: flex; align-items: flex-end; justify-content: center;
   overflow: hidden;
 }
 .portrait svg { width: 66%; opacity: .34; }
 
+/* Anything that sets its own colour must be re-pinned inside the document.
+   Inheriting from .doc is not enough: the heading rule and .kuid both set
+   `color` explicitly, so they beat inheritance and follow the theme. This was
+   the visible symptom of the half-inverted plate — a near-white athlete name on
+   near-white paper, which reads as a rendering fault rather than a bug. */
+.doc h1, .doc h2, .doc h3,
+.doc .kuid, .notice .kuid,
+.doc p, .notice p,
+.doc li, .doc label, .doc strong,
+.notice strong, .notice li { color: var(--plate-ink); }
+
+.doc .eyebrow, .notice .eyebrow { color: var(--plate-ochre); }
+.doc .lede, .doc .hint, .notice .hint { color: var(--plate-muted); }
+.doc a, .notice a { color: var(--plate-green); }
+
 /* ---------------------------------------------------------------------------
    Data rows — a document lists facts, it does not decorate them
    --------------------------------------------------------------------------- */
-.facts { border-top: 1px solid var(--rule); margin: var(--s5) 0 0; }
+.facts { border-top: 1px solid var(--plate-rule); margin: var(--s5) 0 0; }
 .fact {
   display: flex; gap: var(--s4); justify-content: space-between;
-  padding: var(--s3) 0; border-bottom: 1px solid var(--rule);
+  padding: var(--s3) 0; border-bottom: 1px solid var(--plate-rule);
   font-size: .96rem;
 }
 .fact dt {
-  color: var(--muted); font-size: .72rem; letter-spacing: .12em;
+  color: var(--plate-muted); font-size: .72rem; letter-spacing: .12em;
   text-transform: uppercase; padding-top: 3px; flex: none;
 }
 .fact dd { margin: 0; text-align: right; font-weight: 700; }
@@ -308,6 +355,8 @@ p { margin: 0 0 var(--s4); max-width: 62ch; }
    Forms
    --------------------------------------------------------------------------- */
 .field { margin-bottom: var(--s5); }
+.doc .field > label { color: var(--plate-ink); }
+.doc .field .hint { color: var(--plate-muted); }
 .field > label {
   display: block; font-weight: 700; font-size: .92rem; margin-bottom: var(--s2);
 }
@@ -318,9 +367,9 @@ p { margin: 0 0 var(--s4); max-width: 62ch; }
   width: 100%;
   min-height: var(--tap);
   padding: var(--s3);
-  font-family: inherit; font-size: 1rem; color: var(--ink);
-  background: var(--card);
-  border: 1.5px solid var(--rule-strong);
+  font-family: inherit; font-size: 1rem; color: var(--plate-ink);
+  background: var(--plate-bg);
+  border: 1.5px solid var(--plate-strong);
   border-radius: var(--radius);
   /* Native select, native date input. A custom widget would need JavaScript
      and would fail on the exact phones this has to work on. */
@@ -330,18 +379,19 @@ a:focus-visible, button:focus-visible {
   outline: 3px solid var(--green);
   outline-offset: 2px;
 }
-.field--error input, .field--error select { border-color: var(--red); border-width: 2px; }
+.field--error input, .field--error select { border-color: var(--plate-red); border-width: 2px; }
 
 /* Errors sit next to the field that caused them, never only in a summary at
    the top — the person has to know which box to fix. */
 .field .error {
   display: block; margin-top: var(--s2);
-  color: var(--red); font-weight: 700; font-size: .88rem;
+  color: var(--plate-red); font-weight: 700; font-size: .88rem;
 }
 
 .consent {
   display: flex; gap: var(--s3); align-items: flex-start;
-  background: var(--sunk); border: 1px solid var(--rule);
+  color: var(--plate-ink);
+  background: var(--plate-sunk); border: 1px solid var(--plate-rule);
   border-radius: var(--radius); padding: var(--s4);
 }
 .consent input { width: 22px; height: 22px; flex: none; margin-top: 2px; }
@@ -369,29 +419,29 @@ a:focus-visible, button:focus-visible {
    Notices
    --------------------------------------------------------------------------- */
 .notice {
-  border: 1px solid var(--rule); border-left: 4px solid var(--muted);
-  background: var(--card); padding: var(--s4);
+  border: 1px solid var(--plate-rule); border-left: 4px solid var(--plate-muted);
+  background: var(--plate-bg); color: var(--plate-ink); padding: var(--s4);
   border-radius: 0 var(--radius) var(--radius) 0; font-size: .95rem;
 }
 .notice > :last-child { margin-bottom: 0; }
-.notice--good { border-left-color: var(--green); background: var(--green-soft); }
-.notice--warn { border-left-color: var(--seal); background: var(--ochre-soft); }
-.notice--bad  { border-left-color: var(--red);  background: var(--red-soft); }
+.notice--good { border-left-color: var(--plate-green); background: var(--plate-soft); }
+.notice--warn { border-left-color: var(--plate-seal); background: var(--plate-gold); }
+.notice--bad  { border-left-color: var(--plate-red);  background: var(--plate-redsoft); }
 .notice__title {
   font-weight: 700; font-size: .72rem; letter-spacing: .14em;
-  text-transform: uppercase; margin: 0 0 var(--s2); color: var(--muted);
+  text-transform: uppercase; margin: 0 0 var(--s2); color: var(--plate-muted);
 }
-.notice--good .notice__title { color: var(--green); }
-.notice--warn .notice__title { color: var(--ochre); }
-.notice--bad  .notice__title { color: var(--red); }
+.notice--good .notice__title { color: var(--plate-green); }
+.notice--warn .notice__title { color: var(--plate-ochre); }
+.notice--bad  .notice__title { color: var(--plate-red); }
 
 .pill {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
   padding: 4px 10px; border-radius: 100px; border: 1.5px solid currentColor;
 }
-.pill--issued { color: var(--green); background: var(--green-soft); }
-.pill--pending { color: var(--ochre); background: var(--ochre-soft); }
+.pill--issued { color: var(--plate-green); background: var(--plate-soft); }
+.pill--pending { color: var(--plate-ochre); background: var(--plate-gold); }
 
 /* ---------------------------------------------------------------------------
    Print — the card is meant to be printed and cut out
