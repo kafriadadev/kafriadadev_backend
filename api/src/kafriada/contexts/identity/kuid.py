@@ -152,6 +152,25 @@ def build(*, country: str, state: str, lga: str, year: int, serial: int) -> Kuid
     )
 
 
+def prefix(*, country: str, state: str, lga: str, year: int) -> str:
+    """Everything in a KUID up to and including the final separator.
+
+    Exists for one reason: the mint appends the serial to this prefix inside the
+    same SQL statement that allocates it, so that allocating a number, creating
+    the athlete and recording the career event are a single round trip. The
+    counter row is locked from that statement until COMMIT, and on a link where
+    a round trip costs 150ms the difference between one statement and four is
+    the difference between a lock held for milliseconds and one held for most of
+    a second.
+
+    The format still belongs to this module — SQL only concatenates the
+    zero-padded serial it has just allocated. Two independent guards catch a
+    mistake anyway: a CHECK constraint on the column enforces the full shape,
+    and a unique index on (state, year, serial) enforces the real rule.
+    """
+    return f"{PREFIX}-{country.upper()}-{state.upper()}-{lga.upper()}-{year}-"
+
+
 def is_valid(value: str) -> bool:
     """Cheap check for a form field, before any database work."""
     try:
