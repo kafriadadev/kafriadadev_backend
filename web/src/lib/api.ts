@@ -46,6 +46,37 @@ export type RegistrationResult = {
   qr_url: string;
 };
 
+export type IssuedSession = {
+  /** Shown once. Goes into an httpOnly cookie and nowhere else. */
+  token: string;
+  idle_expires_at: string;
+  absolute_expires_at: string;
+  is_staff: boolean;
+};
+
+export type RoleGrant = {
+  grant_id: string;
+  role: string;
+  scope_kind: string;
+  scope_id: string | null;
+  scope_name: string | null;
+};
+
+export type Me = {
+  full_name: string;
+  /** Masked by the API. The full number never comes back out. */
+  phone: string;
+  kuid: string | null;
+  lga_name: string | null;
+  is_staff: boolean;
+  roles: RoleGrant[];
+  idle_expires_at: string;
+  absolute_expires_at: string;
+};
+
+/** Where the person is, forwarded so the audit log records them, not us. */
+export type ClientMeta = { ip?: string; userAgent?: string };
+
 /** A rejection the person can act on: which field, and what to do about it. */
 export class ApiError extends Error {
   constructor(
@@ -58,16 +89,27 @@ export class ApiError extends Error {
   }
 }
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
+async function call<T>(
+  path: string,
+  init?: RequestInit & { token?: string; meta?: ClientMeta },
+): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  const { token, meta, ...rest } = init ?? {};
+  const extra: Record<string, string> = {};
+  // The session travels server to server as a bearer token. The browser holds
+  // it only in an httpOnly cookie that no script can read.
+  if (token) extra.authorization = `Bearer ${token}`;
+  if (meta?.ip) extra["x-real-ip"] = meta.ip;
+  if (meta?.userAgent) extra["user-agent"] = meta.userAgent;
 
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, {
-      ...init,
+      ...rest,
       signal: controller.signal,
-      headers: { "content-type": "application/json", ...init?.headers },
+      headers: { "content-type": "application/json", ...extra, ...rest.headers },
       // Nothing is cached. These are personal records and a registration is a
       // write; a stale profile would be worse than a slow one.
       cache: "no-store",
@@ -82,6 +124,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
     clearTimeout(timer);
   }
 
+  if (response.status === 204) return undefined as T;
   if (response.ok) return (await response.json()) as T;
 
   // The API returns { error: { message, reference } }, where message may itself
@@ -125,6 +168,25 @@ export function register(input: {
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export function signIn(
+  input: { phone: string; password: string },
+  meta: ClientMeta,
+): Promise<IssuedSession> {
+  return call<IssuedSession>("/v1/sessions", {
+    method: "POST",
+    body: JSON.stringify(input),
+    meta,
+  });
+}
+
+export function signOut(token: string, meta: ClientMeta): Promise<void> {
+  return call<void>("/v1/sessions/current", { method: "DELETE", token, meta });
+}
+
+export function getMe(token: string): Promise<Me> {
+  return call<Me>("/v1/me", { token });
 }
 
 /** Raw SVG for an athlete's QR code, fetched server-side and inlined. */

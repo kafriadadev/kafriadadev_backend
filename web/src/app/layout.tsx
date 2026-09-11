@@ -31,7 +31,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="wordmark">
               KAF<span>RIADA</span>
             </Link>
-            <p className="masthead__meta">Jigawa State · Pilot</p>
+            <p className="masthead__meta">
+              Jigawa State · Pilot ·{" "}
+              {/* Static on every page, so no page has to read the cookie to
+                  render its header. Signed-in visitors are sent on to /me. */}
+              <Link href="/sign-in" className="masthead__link">Sign in</Link>
+            </p>
           </header>
           <main id="main">{children}</main>
         </div>

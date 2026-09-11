@@ -132,9 +132,11 @@ def _install_routes(app: FastAPI) -> None:
     a breaking change to something other people build against needs a new
     address rather than a quiet redefinition of the old one.
     """
-    from kafriada.api.v1 import athletes
+    from kafriada.api.v1 import admin, athletes, sessions
 
     app.include_router(athletes.router, prefix="/v1")
+    app.include_router(sessions.router, prefix="/v1")
+    app.include_router(admin.router, prefix="/v1")
 
 
 def _install_error_handlers(app: FastAPI) -> None:
@@ -198,7 +200,13 @@ def _install_error_handlers(app: FastAPI) -> None:
 
 
 def _install_health(app: FastAPI) -> None:
-    @app.get("/healthz", include_in_schema=False)
+    from kafriada.api.security import Public
+
+    @app.get(
+        "/healthz",
+        include_in_schema=False,
+        dependencies=[Public("liveness probe; answers only 'ok'")],
+    )
     def healthz() -> dict[str, str]:
         """Liveness. Deliberately reveals nothing: version, environment and
         dependency state are all information an unauthenticated caller does not

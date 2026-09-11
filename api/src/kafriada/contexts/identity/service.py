@@ -18,6 +18,7 @@ mint is the last blocking statement inside it.
     hash the password        ~80ms   <-- OUTSIDE. This is the whole trick.
     BEGIN
       insert the user account         (unique phone; a duplicate ends it here)
+      grant the athlete role          (before the lock, so it costs no hold time)
       mint the serial                 <-- lock acquired
       insert the athlete
       insert the career event
@@ -43,6 +44,7 @@ from sqlalchemy.orm import Session
 
 from kafriada.clock import age_on, now_utc, today_in_nigeria
 from kafriada.contexts.access import phone as phone_mod
+from kafriada.contexts.access import service as access
 from kafriada.contexts.audit import service as audit
 from kafriada.contexts.identity import kuid as kuid_mod
 from kafriada.db.engine import transaction
@@ -157,6 +159,8 @@ def register(
                 "We could not complete your registration. Please try again."
             ) from None
 
+        access.grant_athlete_role(session, user_id)
+
         # -- the mint ----------------------------------------------------
         # One statement allocates the serial, creates the athlete and records
         # the career event. The counter row is locked from here until COMMIT, so
@@ -231,7 +235,7 @@ def register(
             action="athlete.registered",
             subject_type="athlete",
             subject_id=str(kuid),
-            metadata={"lga": lga["lga_name"], "sport": data.sport},
+            metadata={"lga": lga["lga_name"], "sport": data.sport, "role_granted": "athlete"},
             request_id=request_id,
             ip_address=ip_address,
         )
@@ -395,3 +399,78 @@ def get_public_profile(kuid_text: str) -> PublicProfile | None:
         is_verified=False,
         photo_url=None,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class AthleteListing:
+    kuid: str
+    full_name: str
+    sport: str
+    playing_position: str | None
+    registered_on: date
+
+
+LGA_LISTING_LIMIT = 200
+
+
+def list_athletes_in_lga(lga_id: str) -> list[AthleteListing] | None:
+    """Athletes whose current LGA is this one, newest first. None if no such LGA.
+
+    Who may call this is decided by the route's scope rule, not here.
+    """
+    with transaction() as session:
+        exists = session.execute(
+            text("SELECT 1 FROM ops.locations WHERE id = :id AND kind = 'lga'"),
+            {"id": lga_id},
+        ).scalar_one_or_none()
+        if exists is None:
+            return None
+        rows = session.execute(
+            text(
+                """
+                SELECT a.kuid, u.full_name, a.sport, a.playing_position,
+                       (a.created_at AT TIME ZONE 'Africa/Lagos')::date AS registered_on
+                  FROM identity.athletes a
+                  JOIN ops.users u ON u.id = a.user_id
+                 WHERE a.current_lga_id = :id AND u.anonymised_at IS NULL
+                 ORDER BY a.created_at DESC
+                 LIMIT :limit
+                """
+            ),
+            {"id": lga_id, "limit": LGA_LISTING_LIMIT},
+        ).mappings().all()
+    return [
+        AthleteListing(
+            kuid=r["kuid"],
+            full_name=r["full_name"],
+            sport=r["sport"],
+            playing_position=r["playing_position"],
+            registered_on=r["registered_on"],
+        )
+        for r in rows
+    ]
+
+
+@dataclass(frozen=True, slots=True)
+class OwnAthlete:
+    kuid: str
+    lga_name: str
+
+
+def athlete_for_user(user_id: UUID) -> OwnAthlete | None:
+    """The athlete record a signed-in user holds, if they hold one."""
+    with transaction() as session:
+        row = session.execute(
+            text(
+                """
+                SELECT a.kuid, lga.name AS lga_name
+                  FROM identity.athletes a
+                  JOIN ops.locations lga ON lga.id = a.current_lga_id
+                 WHERE a.user_id = :id
+                """
+            ),
+            {"id": user_id},
+        ).mappings().one_or_none()
+    if row is None:
+        return None
+    return OwnAthlete(kuid=row["kuid"], lga_name=row["lga_name"])

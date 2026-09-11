@@ -235,7 +235,8 @@ export default async function RegisterPage({
           </button>
 
           <p className="hint" style={{ textAlign: "center", marginTop: "var(--s4)" }}>
-            Already registered? <a href="/find">Look up your ID</a>
+            Already registered? <a href="/sign-in">Sign in</a> or{" "}
+            <a href="/find">look up your ID</a>
           </p>
         </div>
       </form>

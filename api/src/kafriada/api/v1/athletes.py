@@ -1,4 +1,4 @@
-"""Registration and the public profile.
+"""Registration, the public profile, and a coordinator's list of athletes.
 
 The two routes that matter most: the one that issues a person their permanent
 identity, and the one a stranger reaches by scanning a printed card.
@@ -6,19 +6,22 @@ identity, and the one a stranger reaches by scanning a printed card.
 Both are declared ``Public``, deliberately and with a reason. Registration is
 open because the register is free and open — that is the product. The profile is
 open because a QR code on a card is useless if it requires an account.
+
+The LGA list is the opposite case: scoped to the coordinator's own LGA (or their
+state's), so one coordinator can never read another area's register.
 """
 
 from __future__ import annotations
 
 import io
 from datetime import date
-from ipaddress import ip_address
 
 import segno
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
-from kafriada.api.security import Public
+from kafriada.api.client import client_ip, request_id
+from kafriada.api.security import Public, Requires
 from kafriada.contexts.geography import jigawa
 from kafriada.contexts.identity import service as identity
 from kafriada.security.signing import build_qr_signer
@@ -85,6 +88,16 @@ class LgaOption(BaseModel):
     is_open: bool
 
 
+class AthleteListing(BaseModel):
+    """One line of a coordinator's register. No phone, no date of birth."""
+
+    kuid: str
+    full_name: str
+    sport: str
+    playing_position: str | None
+    registered_on: date
+
+
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
@@ -114,8 +127,8 @@ def register_athlete(body: RegistrationRequest, request: Request) -> Registratio
                 playing_position=body.playing_position,
                 consent_notice_version=PRIVACY_NOTICE_VERSION,
             ),
-            request_id=request.scope.get("request_id"),
-            ip_address=_client_ip(request),
+            request_id=request_id(request),
+            ip_address=client_ip(request),
         )
     except identity.RegistrationError as exc:
         # A rejected registration is an ordinary outcome, not a server fault.
@@ -211,6 +224,31 @@ def athlete_qr(kuid: str) -> Response:
 
 
 # ---------------------------------------------------------------------------
+# A coordinator's register
+# ---------------------------------------------------------------------------
+@router.get(
+    "/lgas/{lga_id}/athletes",
+    response_model=list[AthleteListing],
+    dependencies=[Requires("athlete.search_scoped", scope="lga")],
+    summary="Athletes currently in one LGA, newest first",
+)
+def athletes_in_lga(lga_id: str) -> list[AthleteListing]:
+    listing = identity.list_athletes_in_lga(lga_id)
+    if listing is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such LGA.")
+    return [
+        AthleteListing(
+            kuid=a.kuid,
+            full_name=a.full_name,
+            sport=a.sport,
+            playing_position=a.playing_position,
+            registered_on=a.registered_on,
+        )
+        for a in listing
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Supporting data for the registration form
 # ---------------------------------------------------------------------------
 @router.get(
@@ -267,37 +305,3 @@ def _profile_url(kuid: str, *, signed: bool = False) -> str:
     base = cfg.public_base_url.rstrip("/")
     signature = build_qr_signer(cfg).sign(kuid)
     return f"{base}/a/{kuid}?s={signature}"
-
-
-def _client_ip(request: Request) -> str | None:
-    """The caller's address, taken from the edge rather than from the socket.
-
-    Behind Cloudflare the socket address is Cloudflare's. The header is only
-    trustworthy because nothing reaches this service except through the edge — if
-    that ever stops being true, this stops being trustworthy with it.
-
-    **The value is validated before it is returned, and that is not cosmetic.**
-    It is written into an ``inet`` column, so anything that is not an IP address
-    makes the INSERT fail — and the INSERT is the audit row inside the
-    registration transaction. Without this check, a caller sending
-    ``cf-connecting-ip: nonsense`` would take registration down for everybody, at
-    zero cost to themselves. Headers are attacker-controlled input, including the
-    ones a trusted proxy usually sets.
-    """
-    candidate: str | None = None
-    for header in ("cf-connecting-ip", "x-real-ip"):
-        if value := request.headers.get(header):
-            candidate = value.split(",")[0].strip()
-            break
-    if candidate is None and request.client:
-        candidate = request.client.host
-
-    if not candidate:
-        return None
-    try:
-        return str(ip_address(candidate))
-    except ValueError:
-        # Not an address. Drop it rather than failing the request: knowing where
-        # a registration came from is useful, and it is not worth refusing
-        # somebody their identity over a malformed header.
-        return None

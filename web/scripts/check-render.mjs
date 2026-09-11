@@ -16,7 +16,11 @@
  * It checks, at a real 360px phone viewport, in both light and dark:
  *   1. WCAG contrast of every text element (4.5:1, or 3:1 for large text)
  *   2. that nothing extends past the right edge of the screen
- *   3. that registration works with JavaScript switched OFF
+ *   3. that registration and sign-in work with JavaScript switched OFF
+ *
+ * With SIGNIN_PHONE and SIGNIN_PASSWORD set to a real account, it also signs in
+ * with JavaScript off, audits the signed-in page, and signs out again. Without
+ * them that part is skipped and says so.
  *
  * Exit code is non-zero if anything fails, so it can gate a commit.
  */
@@ -29,10 +33,13 @@ const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const KUID = process.env.KUID ?? "KA-NG-JG-BKD-2026-000115";
 const SIG = process.env.SIG ?? "";
 const OUT = process.env.SHOT_DIR; // optional: where to save full-page screenshots
+const SIGNIN_PHONE = process.env.SIGNIN_PHONE;
+const SIGNIN_PASSWORD = process.env.SIGNIN_PASSWORD;
 
 const PAGES = [
   ["home", "/"],
   ["register", "/register"],
+  ["sign-in", "/sign-in"],
   ["find", "/find"],
   ["privacy", "/privacy"],
   ["profile", `/a/${KUID}${SIG ? `?s=${SIG}` : ""}`],
@@ -146,6 +153,26 @@ function audit() {
 const browser = await chromium.launch({ channel: "msedge", headless: true });
 let failures = 0;
 
+/** Audit the page that is loaded and print one line for it. */
+async function report(page, name, status, shotSuffix) {
+  const { overflow, contrast, splits, checked } = await page.evaluate(audit);
+  const ok = status === 200 && !overflow.length && !contrast.length && !splits.length;
+  if (!ok) failures++;
+  console.log(`${ok ? "  ok  " : "  FAIL"}  ${name.padEnd(9)} HTTP ${status}  ${checked} text elements, ${contrast.length} low-contrast, ${overflow.length} overflowing, ${splits.length} split IDs`);
+  for (const line of contrast) console.log(`          contrast  ${line}`);
+  for (const line of overflow) console.log(`          overflow  ${line}`);
+  for (const line of splits) console.log(`          split ID  ${line}`);
+  if (OUT && ["card", "profile", "register", "sign-in", "me"].includes(name)) {
+    mkdirSync(OUT, { recursive: true });
+    await page.screenshot({ path: join(OUT, `${name}-${shotSuffix}.png`), fullPage: true });
+  }
+}
+
+function check(label, pass) {
+  if (!pass) failures++;
+  console.log(`${pass ? "  ok  " : "  FAIL"}  ${label}`);
+}
+
 try {
   // 320px is the narrowest screen the pilot designs for; one pass there is
   // enough to catch what only breaks when space runs out.
@@ -163,19 +190,7 @@ try {
 
     for (const [name, path] of PAGES) {
       const res = await page.goto(BASE + path, { waitUntil: "load", timeout: 90_000 });
-      const status = res?.status() ?? 0;
-      const { overflow, contrast, splits, checked } = await page.evaluate(audit);
-      const ok = status === 200 && !overflow.length && !contrast.length && !splits.length;
-      if (!ok) failures++;
-      console.log(`${ok ? "  ok  " : "  FAIL"}  ${name.padEnd(9)} HTTP ${status}  ${checked} text elements, ${contrast.length} low-contrast, ${overflow.length} overflowing, ${splits.length} split IDs`);
-      for (const line of contrast) console.log(`          contrast  ${line}`);
-      for (const line of overflow) console.log(`          overflow  ${line}`);
-      for (const line of splits) console.log(`          split ID  ${line}`);
-
-      if (OUT && (name === "card" || name === "profile" || name === "register")) {
-        mkdirSync(OUT, { recursive: true });
-        await page.screenshot({ path: join(OUT, `${name}-${scheme}-${width}.png`), fullPage: true });
-      }
+      await report(page, name, res?.status() ?? 0, `${scheme}-${width}`);
     }
     await ctx.close();
   }
@@ -208,11 +223,60 @@ try {
     ["password is NOT in the URL", !page.url().includes(encodeURIComponent(secret)) && !page.url().includes(secret)],
     ["password box comes back empty", (await page.inputValue("#password")) === ""],
   ];
-  for (const [label, pass] of checks) {
-    if (!pass) failures++;
-    console.log(`${pass ? "  ok  " : "  FAIL"}  ${label}`);
-  }
+  for (const [label, pass] of checks) check(label, pass);
   await ctx.close();
+
+  // -- Sign-in with JavaScript OFF, wrong credentials -------------------------
+  // A number in a range no subscriber holds, so the API finds no account and
+  // writes nothing — and answers exactly as it would for a wrong password.
+  console.log("\n=== SIGN-IN WITH JAVASCRIPT OFF ===");
+  {
+    const ctx = await browser.newContext({ viewport: PHONE, isMobile: true, javaScriptEnabled: false });
+    const page = await ctx.newPage();
+    await page.goto(BASE + "/sign-in", { waitUntil: "load", timeout: 90_000 });
+    const guess = "not the right password";
+    await page.fill("#phone", "0900 000 0000");
+    await page.fill("#password", guess);
+    await Promise.all([page.waitForLoadState("load"), page.click("button[type=submit]")]);
+    await page.waitForURL(/\/sign-in\?/, { timeout: 60_000 });
+    const alert = (await page.locator("[role=alert]").textContent()) ?? "";
+    check("form posted and came back without any script", new URL(page.url()).pathname === "/sign-in");
+    check("one message that does not say which half was wrong", alert.includes("phone number and password do not match"));
+    check("typed phone survives the round trip", (await page.inputValue("#phone")) === "0900 000 0000");
+    check("password is NOT in the URL", !page.url().includes(encodeURIComponent(guess)) && !page.url().includes(guess));
+    check("no session cookie was set", !(await ctx.cookies()).some((c) => c.name === "kaf_session"));
+    await ctx.close();
+  }
+
+  // -- A real sign-in, the signed-in page, and sign-out -----------------------
+  if (SIGNIN_PHONE && SIGNIN_PASSWORD) {
+    console.log("\n=== SIGNED IN, JAVASCRIPT OFF ===");
+    for (const [scheme, width] of [["light", PHONE.width], ["dark", 320]]) {
+      const ctx = await browser.newContext({
+        viewport: { width, height: PHONE.height }, isMobile: true,
+        javaScriptEnabled: false, colorScheme: scheme,
+      });
+      const page = await ctx.newPage();
+      await page.goto(BASE + "/sign-in", { waitUntil: "load", timeout: 90_000 });
+      await page.fill("#phone", SIGNIN_PHONE);
+      await page.fill("#password", SIGNIN_PASSWORD);
+      await Promise.all([page.waitForLoadState("load"), page.click("button[type=submit]")]);
+      await page.waitForURL(/\/me$/, { timeout: 60_000 });
+      const cookie = (await ctx.cookies()).find((c) => c.name === "kaf_session");
+      check(`${scheme}: signed in and landed on /me`, new URL(page.url()).pathname === "/me");
+      check(`${scheme}: session cookie is httpOnly and SameSite=Lax`, !!cookie && cookie.httpOnly && cookie.sameSite === "Lax");
+      await report(page, "me", 200, `${scheme}-${width}`);
+
+      await Promise.all([page.waitForLoadState("load"), page.click("button[type=submit]")]);
+      await page.waitForURL((u) => u.pathname === "/", { timeout: 60_000 });
+      check(`${scheme}: signed out, cookie gone`, !(await ctx.cookies()).some((c) => c.name === "kaf_session"));
+      await page.goto(BASE + "/me", { waitUntil: "load", timeout: 90_000 });
+      check(`${scheme}: /me now sends you to sign in`, new URL(page.url()).pathname === "/sign-in");
+      await ctx.close();
+    }
+  } else {
+    console.log("\n  skip  signed-in checks (set SIGNIN_PHONE and SIGNIN_PASSWORD to run them)");
+  }
 } finally {
   await browser.close();
 }

@@ -112,6 +112,7 @@ class Settings(BaseSettings):
     session_idle_minutes_staff: int = Field(default=30, ge=5, le=240)
     session_absolute_days_staff: int = Field(default=7, ge=1, le=30)
     session_idle_days_athlete: int = Field(default=30, ge=1, le=90)
+    session_absolute_days_athlete: int = Field(default=90, ge=1, le=365)
 
     # -- Password hashing -------------------------------------------------
     # OWASP minimum for Argon2id is 19 MiB, t=2, p=1. Raising memory_cost is the

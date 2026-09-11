@@ -249,6 +249,10 @@ p { margin: 0 0 var(--s4); max-width: 62ch; }
   font-size: .74rem; letter-spacing: .12em; text-transform: uppercase;
   color: var(--muted);
 }
+.masthead__link {
+  color: var(--green); font-weight: 700;
+  display: inline-block; padding: var(--s2) 0;   /* a target a thumb can hit */
+}
 
 /* ---------------------------------------------------------------------------
    The document card — the hero object of the whole product

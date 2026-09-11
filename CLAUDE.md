@@ -26,7 +26,13 @@ python scripts/demo_security.py             # live demo of what the DB refuses t
 ```
 `check:render` drives the installed Edge (playwright-core, no download): WCAG
 contrast of every text element, overflow, split IDs at 360px light/dark and 320px,
-plus a JS-off registration round trip that writes nothing. Run it after any UI change.
+plus JS-off registration and sign-in round trips that write nothing. Run it after
+any UI change. With `SIGNIN_PHONE`/`SIGNIN_PASSWORD` set it also signs in, audits
+`/me` and signs out — register a throwaway athlete for it; never commit its password.
+
+DB tests skip unless `DATABASE_URL_APP` is in the environment:
+`export DATABASE_URL_APP="$(grep '^DATABASE_URL_APP=' .env | cut -d= -f2-)"`.
+Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade head`.
 
 ## Gotchas (all hit for real)
 - **Port 8000 belongs to another project** (a Django app). KAFRIADA API uses 8010.
@@ -40,6 +46,17 @@ plus a JS-off registration round trip that writes nothing. Run it after any UI c
 - CSS: anything inside `.doc`/`.notice`/`.mrz` uses `--plate-*` tokens (the document
   never inverts in dark mode). Inline `var(--muted)` etc. inside a document is a bug.
 - `C:\Users\HP` itself is a git repo (another project). Always work inside `KAFRIADA/`.
+- **`scripts/dev.sh` is broken**: sourcing `api/.env` strips the quotes from
+  `TRUSTED_HOSTS=["*"]` and the API will not boot. Start the tiers directly:
+  `api/.venv/Scripts/python.exe -m uvicorn kafriada.main:app --host 127.0.0.1 --port 8010`
+  (from `api/`) and `node node_modules/next/dist/bin/next start -p 3000` (from `web/`).
+- The link to Supabase drops intermittently (DNS `getaddrinfo failed`, connection
+  timeouts). Retry before debugging. The 200-registration burst test times out at
+  default load on this link; use `BURST_WORKERS=6 BURST_SIZE=100`.
+- Audit metadata keys containing `session`, `token`, `password` etc. are stored as
+  `[redacted]` — name keys accordingly (e.g. `logins_ended`).
+- FastAPI ≥0.141 nests included routers; walk routes with `api.security.api_routes(app)`,
+  not `app.routes`.
 - Disk C: runs near full; `npm cache clean --force` frees several GB.
 
 ## Invariants — do not weaken
@@ -60,18 +77,24 @@ plus a JS-off registration round trip that writes nothing. Run it after any UI c
   (no name, KUID or card); detected by the `users_phone_unique` index name, so
   still no second KUID. `?returning` path removed. Test:
   `api/tests/test_duplicate_phone_reveals_nothing.py`.
-- **Not built:** 1.2 access (sessions, login, roles, permission matrix), OTP, outbox.
+- 1.2 access — done (ADR 0002: our own revocable session cookie). API:
+  `POST/DELETE /v1/sessions`, `GET /v1/me`, super_admin role grant/revoke and
+  end-all-sessions under `/v1/admin` (password re-entered for grant/revoke),
+  `GET /v1/lgas/{lga_id}/athletes` (LGA-scoped). `access.can()` behind
+  `Requires(perm, scope=)`; `SignedIn()` for own-account routes. Migration 0003
+  (applied to dev DB). Web: `/sign-in`, `/me`, sign-out. Tests: route manifest,
+  `test_access_sessions.py`, `test_permission_matrix.py` (12 principals × 12 routes,
+  two tenants).
+- **Not built:** OTP, outbox, password reset (AUT-05), per-IP sign-in rate limit
+  (needs Redis), expired-session sweep job, admin UI (ADM-02 is API only), a way to
+  appoint the first super_admin (today: SQL insert into `ops.user_roles`).
   `docs/KAFRIADA-CORE-Build-Tracker.pdf` predates most of this — update it.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
 2. ~~Registration copy promised an SMS code that is never sent.~~ Done 2026-09-11:
    all SMS/code wording removed from the web. Put it back when OTP (item 4) ships.
-3. **1.2 Access** — blocked on the sign-in decision (Supabase Auth in browser vs.
-   Supabase for passwords/codes + our own revocable session cookie; tracker
-   recommends the latter). Ask the user before starting. Then: sessions
-   (30 min staff / 30 days athletes), `can(user, permission, scope)` deny-by-default,
-   generated permission-matrix test with a second tenant, audit write on every change.
+3. ~~1.2 Access~~ Done 2026-09-11 (see Status for what is deliberately not built).
 4. **OTP via outbox** (Termii; outage queues rather than fails) — Termii sender ID
    takes 3–10 days to approve.
 5. **0.6 deploy pipeline** — staging, gated migrations, Sentry.

@@ -5,7 +5,7 @@ description = "KAFRIADA CORE domain tier"
 requires-python = ">=3.12"
 
 dependencies = [
-    "fastapi>=0.115",
+    "fastapi>=0.141",  # iter_route_contexts: the route manifest and matrix tests
     "uvicorn[standard]>=0.32",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
