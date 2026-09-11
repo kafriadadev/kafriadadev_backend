@@ -65,10 +65,8 @@ plus a JS-off registration round trip that writes nothing. Run it after any UI c
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
-2. **Registration form promises an SMS code that is never sent.** The phone hint
-   ("We send a code…") is gone; still left: "You will need a phone that can
-   receive SMS" in `web/src/app/page.tsx` and `web/src/app/register/page.tsx`.
-   Either remove that copy until OTP exists or build OTP (next item).
+2. ~~Registration copy promised an SMS code that is never sent.~~ Done 2026-09-11:
+   all SMS/code wording removed from the web. Put it back when OTP (item 4) ships.
 3. **1.2 Access** — blocked on the sign-in decision (Supabase Auth in browser vs.
    Supabase for passwords/codes + our own revocable session cookie; tracker
    recommends the latter). Ask the user before starting. Then: sessions

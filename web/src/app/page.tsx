@@ -23,7 +23,7 @@ export default function Home() {
 
       <p>
         <strong>Registration is free.</strong> It takes about two minutes and you
-        need a phone that can receive SMS.
+        need your phone number.
       </p>
 
       <div style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>

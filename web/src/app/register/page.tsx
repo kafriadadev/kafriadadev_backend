@@ -51,7 +51,7 @@ export default async function RegisterPage({
       <p className="eyebrow">Step 1 of 2 · Free</p>
       <h1>Get your KAFRIADA ID</h1>
       <p className="lede">
-        About two minutes. You will need a phone that can receive SMS.
+        About two minutes. You will need your phone number.
       </p>
 
       {/* An error summary AND an error beside the field. The summary is what a
