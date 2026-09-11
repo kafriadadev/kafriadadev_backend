@@ -75,11 +75,11 @@ export default async function CardPage({
               <h2 style={{ fontSize: "clamp(1.4rem, 5.5vw, 1.9rem)", marginBottom: "var(--s1)" }}>
                 {profile.full_name}
               </h2>
-              <p style={{ color: "var(--muted)", margin: 0, fontSize: ".95rem" }}>
+              <p style={{ color: "var(--plate-muted)", margin: 0, fontSize: ".95rem" }}>
                 {profile.sport}
                 {profile.playing_position ? ` · ${profile.playing_position}` : ""}
               </p>
-              <p style={{ color: "var(--muted)", margin: "2px 0 0", fontSize: ".95rem" }}>
+              <p style={{ color: "var(--plate-muted)", margin: "2px 0 0", fontSize: ".95rem" }}>
                 {profile.lga_name}, {profile.state_name}
               </p>
             </div>
@@ -94,7 +94,7 @@ export default async function CardPage({
             style={{
               display: "flex", gap: "var(--s4)", alignItems: "center",
               marginTop: "var(--s5)", paddingTop: "var(--s5)",
-              borderTop: "1px solid var(--rule)", flexWrap: "wrap",
+              borderTop: "1px solid var(--plate-rule)", flexWrap: "wrap",
             }}
           >
             {/* Server-rendered, cached a day, and proxied — the browser never
@@ -111,7 +111,7 @@ export default async function CardPage({
               <p className="eyebrow" style={{ marginBottom: "var(--s2)" }}>
                 Scan to verify
               </p>
-              <p style={{ fontSize: ".92rem", color: "var(--muted)", marginBottom: 0 }}>
+              <p style={{ fontSize: ".92rem", color: "var(--plate-muted)", marginBottom: 0 }}>
                 Anyone can scan this with a phone camera to see your public
                 profile. It does not show your phone number or your date of
                 birth.
@@ -157,7 +157,7 @@ export default async function CardPage({
           checks your ID document, and your photo then appears on your public
           profile with a verified badge.
         </p>
-        <p style={{ marginBottom: 0, fontSize: ".9rem", color: "var(--muted)" }}>
+        <p style={{ marginBottom: 0, fontSize: ".9rem", color: "var(--plate-muted)" }}>
           No bank card? Take ₦2,500 in cash to your LGA coordinator and they can
           do it for you. Payment opens shortly.
         </p>

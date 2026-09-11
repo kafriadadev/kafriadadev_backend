@@ -48,6 +48,7 @@
   --green:        #0E4429;
   --green-deep:   #0A3320;
   --green-soft:   #E3ECE5;
+  --on-green:     #FFFFFF;   /* text on a --green fill */
 
   /* -- Gold: two values, deliberately -------------------------------------
      --seal is the decorative gold of an embossed stamp. It does not pass
@@ -120,6 +121,7 @@
     --green:       #7CC49A;
     --green-deep:  #9BD9B4;
     --green-soft:  #17251C;
+    --on-green:    #12150F;
     --ochre:       #D6AC57;
     --ochre-soft:  #241D0F;
     --red:         #E38A7F;
@@ -204,7 +206,12 @@ p { margin: 0 0 var(--s4); max-width: 62ch; }
   letter-spacing: .06em;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
-  word-break: break-all;      /* never overflow a 320px screen */
+  /* Wrap only at the hyphens. break-all split an ID as "...-2026-0001 / 15",
+     which is how a number gets copied onto paper wrong. The hyphens are
+     already break opportunities and no segment exceeds six characters, so
+     `anywhere` is only a last resort that a real screen never reaches. */
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
 /* ---------------------------------------------------------------------------
@@ -283,7 +290,8 @@ p { margin: 0 0 var(--s4); max-width: 62ch; }
   letter-spacing: .1em;
   text-align: center;
   font-variant-numeric: tabular-nums;
-  word-break: break-all;
+  word-break: normal;         /* as .kuid: wrap at hyphens, never mid-segment */
+  overflow-wrap: anywhere;
 }
 .mrz small {
   display: block; font-family: var(--font-body);
@@ -408,7 +416,9 @@ a:focus-visible, button:focus-visible {
   cursor: pointer; text-decoration: none;
   transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
 }
-.btn--primary { background: var(--green); color: #fff; box-shadow: var(--shadow-lift); }
+/* Text on the green is a token, not #fff: in dark mode the green lightens to
+   #7CC49A and white on it measured 2.05:1. Dark ink on it is 8.96:1. */
+.btn--primary { background: var(--green); color: var(--on-green); box-shadow: var(--shadow-lift); }
 .btn--primary:hover { background: var(--green-deep); transform: translateY(-1px); }
 .btn--primary:active { transform: translateY(0); box-shadow: var(--shadow-press); }
 .btn--ghost { background: transparent; color: var(--green); border-color: var(--green); }

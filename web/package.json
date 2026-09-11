@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:render": "node scripts/check-render.mjs"
   },
   "dependencies": {
     "next": "15.5.4",
@@ -18,6 +19,7 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "playwright-core": "^1.55.0",
     "typescript": "^5.7"
   }
 }

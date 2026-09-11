@@ -80,7 +80,7 @@ export default async function ProfilePage({
               <h1 style={{ fontSize: "clamp(1.5rem, 6vw, 2.1rem)", marginBottom: "var(--s2)" }}>
                 {profile.full_name}
               </h1>
-              <p style={{ color: "var(--muted)", margin: 0 }}>
+              <p style={{ color: "var(--plate-muted)", margin: 0 }}>
                 {profile.sport}
                 {profile.playing_position ? ` · ${profile.playing_position}` : ""}
               </p>
@@ -139,7 +139,7 @@ export default async function ProfilePage({
                 {profile.is_verified ? (
                   "Verified"
                 ) : (
-                  <span style={{ color: "var(--muted)", fontWeight: 400 }}>
+                  <span style={{ color: "var(--plate-muted)", fontWeight: 400 }}>
                     Not yet added
                   </span>
                 )}
