@@ -3,10 +3,12 @@
 This is the most correctness-critical path in the system, and the ordering of the
 statements below *is* the design. Two properties have to hold at once:
 
-**Nobody ever gets two identities.** One verified phone means one KUID, enforced
-by a unique index rather than by a check in this file. A retried request — a
-timeout on a 2G connection, a double-tapped Submit button, a load balancer
-retrying — must return the KUID the person already has, not mint a second one.
+**Nobody ever gets two identities.** One phone means one KUID, enforced by a
+unique index rather than by a check in this file. A retried request — a timeout
+on a 2G connection, a double-tapped Submit button, a load balancer retrying —
+must never mint a second one. It is refused, and refused *without saying whose
+number it is*: until a code sent to the phone proves the caller owns it, the
+refusal must not carry the holder's name, KUID or card.
 
 **Two hundred people can register in the same minute.** Every registration in the
 state contends on a single counter row, so the row lock has to be held for
@@ -50,6 +52,13 @@ log = structlog.get_logger(__name__)
 
 MINIMUM_AGE = 18
 
+# The partial unique index on ops.users (migration 0001).
+PHONE_UNIQUE_INDEX = "users_phone_unique"
+DUPLICATE_PHONE_MESSAGE = (
+    "This number is already registered. "
+    "Sign in instead, or ask your LGA coordinator for help."
+)
+
 
 class RegistrationError(Exception):
     """Something about the submission is wrong. The message is shown to the user."""
@@ -79,11 +88,6 @@ class RegistrationResult:
     kuid: str
     full_name: str
     lga_name: str
-    # True when this phone was already registered and we returned the existing
-    # identity instead of creating a second one. The caller shows the same
-    # success screen either way — from the person's point of view they are
-    # registered, which is true.
-    already_registered: bool = False
 
 
 def register(
@@ -140,19 +144,18 @@ def register(
                 password_hash=password_hash,
                 consent_version=data.consent_notice_version,
             )
-        except IntegrityError:
-            # This phone already has an identity. Not an error from the person's
-            # side — they pressed the button twice, or their connection dropped
-            # and they tried again. Give them what they already have.
+        except IntegrityError as exc:
+            # Nothing was minted: the unique index stopped it before the counter
+            # was touched. It used to hand back the existing identity, which
+            # told anyone who typed a phone number whose it was. The same answer
+            # now goes to the owner retrying and to a stranger probing.
             session.rollback()
-            existing = _find_existing(data_phone=phone_e164)
-            if existing is None:
-                # The unique violation was on something other than the phone.
-                raise RegistrationError(
-                    "We could not complete your registration. Please try again."
-                ) from None
-            log.info("registration_retry_returned_existing", kuid=existing.kuid)
-            return existing
+            if _violated_constraint(exc) == PHONE_UNIQUE_INDEX:
+                log.info("registration_refused_duplicate_phone")
+                raise RegistrationError(DUPLICATE_PHONE_MESSAGE, field="phone") from None
+            raise RegistrationError(
+                "We could not complete your registration. Please try again."
+            ) from None
 
         # -- the mint ----------------------------------------------------
         # One statement allocates the serial, creates the athlete and records
@@ -320,37 +323,10 @@ def _insert_user(
     return user_id
 
 
-def _find_existing(*, data_phone: str) -> RegistrationResult | None:
-    """Look up the identity this phone already holds.
-
-    Runs in its own transaction because the caller's was rolled back by the
-    unique violation that brought us here.
-    """
-    with transaction() as session:
-        row = session.execute(
-            text(
-                """
-                SELECT a.id AS athlete_id, a.kuid, u.id AS user_id,
-                       u.full_name, lga.name AS lga_name
-                  FROM ops.users u
-                  JOIN identity.athletes a ON a.user_id = u.id
-                  JOIN ops.locations lga   ON lga.id = a.current_lga_id
-                 WHERE u.phone_e164 = :phone AND u.anonymised_at IS NULL
-                """
-            ),
-            {"phone": data_phone},
-        ).mappings().one_or_none()
-
-    if row is None:
-        return None
-    return RegistrationResult(
-        athlete_id=row["athlete_id"],
-        user_id=row["user_id"],
-        kuid=row["kuid"],
-        full_name=row["full_name"],
-        lga_name=row["lga_name"],
-        already_registered=True,
-    )
+def _violated_constraint(exc: IntegrityError) -> str | None:
+    """Name of the constraint or index PostgreSQL reported, if any."""
+    diag = getattr(exc.orig, "diag", None)
+    return getattr(diag, "constraint_name", None)
 
 
 # ---------------------------------------------------------------------------

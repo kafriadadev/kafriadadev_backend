@@ -97,7 +97,7 @@ export default async function RegisterPage({
           <div className={errClass("phone")}>
             <label htmlFor="phone">Phone number</label>
             <span className="hint" id="phone-hint">
-              We send a code to this number. One phone, one KAFRIADA ID.
+              One phone, one KAFRIADA ID.
             </span>
             <input
               id="phone"

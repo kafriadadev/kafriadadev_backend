@@ -44,7 +44,6 @@ export type RegistrationResult = {
   lga_name: string;
   profile_url: string;
   qr_url: string;
-  already_registered: boolean;
 };
 
 /** A rejection the person can act on: which field, and what to do about it. */

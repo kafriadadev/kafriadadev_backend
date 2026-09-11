@@ -55,7 +55,6 @@ class RegistrationResponse(BaseModel):
     lga_name: str
     profile_url: str
     qr_url: str
-    already_registered: bool
 
 
 class PublicProfileResponse(BaseModel):
@@ -133,7 +132,6 @@ def register_athlete(body: RegistrationRequest, request: Request) -> Registratio
         lga_name=result.lga_name,
         profile_url=_profile_url(result.kuid),
         qr_url=f"/v1/public/athletes/{result.kuid}/qr.svg",
-        already_registered=result.already_registered,
     )
 
 

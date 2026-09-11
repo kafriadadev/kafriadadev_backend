@@ -62,8 +62,7 @@ export async function registerAthlete(formData: FormData): Promise<void> {
     throw error;
   }
 
-  // Whether this minted a new identity or returned the one this phone already
-  // had, the person is registered — which is true either way, and is what the
-  // card page says.
-  redirect(`/card/${encodeURIComponent(result.kuid)}${result.already_registered ? "?returning=1" : ""}`);
+  // Only a newly minted identity reaches here. A phone that is already
+  // registered comes back as a field error above, never as somebody's card.
+  redirect(`/card/${encodeURIComponent(result.kuid)}`);
 }

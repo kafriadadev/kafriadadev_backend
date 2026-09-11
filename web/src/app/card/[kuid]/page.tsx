@@ -6,8 +6,6 @@ import { getProfile, type PublicProfile } from "@/lib/api";
 export const metadata: Metadata = { title: "Your KAFRIADA card" };
 export const dynamic = "force-dynamic";
 
-type Search = Record<string, string | string[] | undefined>;
-
 /**
  * The card (AUT-03 + ATH-03) — the moment the product is delivered.
  *
@@ -22,13 +20,10 @@ type Search = Record<string, string | string[] | undefined>;
  */
 export default async function CardPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ kuid: string }>;
-  searchParams: Promise<Search>;
 }) {
   const { kuid } = await params;
-  const returning = Boolean((await searchParams).returning);
 
   let profile: PublicProfile;
   try {
@@ -42,26 +37,12 @@ export default async function CardPage({
   return (
     <div className="stack">
       <div className="no-print">
-        <p className="eyebrow">
-          {returning ? "You are already registered" : "Step 2 of 2 · Done"}
+        <p className="eyebrow">Step 2 of 2 · Done</p>
+        <h1>{`${firstName}, this is your ID.`}</h1>
+        <p className="lede">
+          It is permanent and it is yours. Print it, download it, or simply
+          write the number down — all three work.
         </p>
-        <h1>
-          {returning
-            ? `Welcome back, ${firstName}.`
-            : `${firstName}, this is your ID.`}
-        </h1>
-        {returning ? (
-          <p className="lede">
-            This phone number already has a KAFRIADA ID, so we have shown you the
-            one you already hold rather than creating a second. Your ID never
-            changes.
-          </p>
-        ) : (
-          <p className="lede">
-            It is permanent and it is yours. Print it, download it, or simply
-            write the number down — all three work.
-          </p>
-        )}
       </div>
 
       {/* -- The card itself. This is what gets printed. ------------------- */}

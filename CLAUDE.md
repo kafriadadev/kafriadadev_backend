@@ -50,24 +50,25 @@ plus a JS-off registration round trip that writes nothing. Run it after any UI c
 - LGA codes in `contexts/geography/jigawa.py` are printed into every KUID —
   **need CEO/state-coordinator sign-off before the first card is issued.**
 
-## Status (as of 2026-09-11, commit b4172f2)
+## Status (as of 2026-09-11)
 - Stage 0 foundations — done, except 0.6 deploy pipeline (staging, Sentry).
 - 1.1 identity anchor — done. Live Supabase DB, security guarantees proved.
 - 1.3 KUID minting — done, burst-tested under real contention.
 - 1.4 partial — API: register, public profile, signed QR. Web: landing, register,
   card, profile, find, privacy. All verified by `check:render`.
+- Phone→identity leak — fixed. A duplicate phone gets a field error on `phone`
+  (no name, KUID or card); detected by the `users_phone_unique` index name, so
+  still no second KUID. `?returning` path removed. Test:
+  `api/tests/test_duplicate_phone_reveals_nothing.py`.
 - **Not built:** 1.2 access (sessions, login, roles, permission matrix), OTP, outbox.
   `docs/KAFRIADA-CORE-Build-Tracker.pdf` predates most of this — update it.
 
 ## Next tasks, in order
-1. **Fix phone→identity leak (privacy bug).** `identity/service.py::_find_existing`:
-   registering an already-used phone with ANY password returns that person's
-   name + KUID and the web shows their card. Until OTP proves phone ownership, a
-   duplicate must return a generic "this number is already registered — sign in"
-   with no KUID/name. Update `register/actions.ts` and the card's `?returning` path;
-   add a test.
-2. **Registration form promises an SMS code that is never sent.** Either remove the
-   copy until OTP exists or build OTP (next item).
+1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
+2. **Registration form promises an SMS code that is never sent.** The phone hint
+   ("We send a code…") is gone; still left: "You will need a phone that can
+   receive SMS" in `web/src/app/page.tsx` and `web/src/app/register/page.tsx`.
+   Either remove that copy until OTP exists or build OTP (next item).
 3. **1.2 Access** — blocked on the sign-in decision (Supabase Auth in browser vs.
    Supabase for passwords/codes + our own revocable session cookie; tracker
    recommends the latter). Ask the user before starting. Then: sessions

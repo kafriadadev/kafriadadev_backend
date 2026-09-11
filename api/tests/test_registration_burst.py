@@ -11,7 +11,7 @@ and then asserts the properties that matter:
   1. every registration produced a KUID
   2. every KUID is unique
   3. the serials form an unbroken run with no gaps
-  4. a duplicate phone number returns the existing identity rather than a second one
+  4. a duplicate phone number is refused rather than minting a second identity
 
 **On cleanup.** It does not clean up, and that is not an oversight. Career events
 are append-only and the application role holds no DELETE on athletes — by design,
@@ -173,11 +173,13 @@ def test_two_hundred_concurrent_registrations_never_collide() -> None:
         assert parsed.year == today_in_nigeria().year
 
 
-def test_a_retried_registration_returns_the_same_identity() -> None:
+def test_a_retried_registration_never_mints_a_second_identity() -> None:
     """The same phone twice must never produce two KUIDs.
 
     This is what happens in the field: a 2G connection times out after the
-    server already committed, and the athlete presses the button again.
+    server already committed, and the athlete presses the button again. The
+    retry is refused on the phone field — it cannot return the existing KUID,
+    because the same answer would go to a stranger who typed the number.
     """
     marker = _run_id()
     data = RegistrationInput(
@@ -190,12 +192,10 @@ def test_a_retried_registration_returns_the_same_identity() -> None:
         consent_notice_version="1.0",
     )
 
-    first = register(data)
-    second = register(data)
-
-    assert second.kuid == first.kuid, "a retry minted a second identity"
-    assert second.already_registered is True
-    assert first.already_registered is False
+    register(data)
+    with pytest.raises(RegistrationError) as caught:
+        register(data)
+    assert caught.value.field == "phone"
 
     # And the database agrees there is exactly one.
     engine = create_engine(
@@ -205,11 +205,17 @@ def test_a_retried_registration_returns_the_same_identity() -> None:
     )
     with engine.connect() as conn:
         count = conn.execute(
-            text("SELECT count(*) FROM identity.athletes WHERE kuid = :k"),
-            {"k": first.kuid},
+            text(
+                """
+                SELECT count(*) FROM identity.athletes a
+                  JOIN ops.users u ON u.id = a.user_id
+                 WHERE u.phone_e164 = :p
+                """
+            ),
+            {"p": data.phone},
         ).scalar_one()
     engine.dispose()
-    assert count == 1
+    assert count == 1, "a retry minted a second identity"
 
 
 def test_registration_is_refused_in_an_lga_that_is_not_open() -> None:
