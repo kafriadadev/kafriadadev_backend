@@ -112,8 +112,19 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   (applied to dev DB). Web: `/sign-in`, `/me`, sign-out. Tests: route manifest,
   `test_access_sessions.py`, `test_permission_matrix.py` (12 principals × 12 routes,
   two tenants).
-- **Not built:** per-IP sign-in and code rate limit
-  (needs Redis), expired-session sweep, outbox retention/scheduling (0.6 — the
+- Per-address rate limits — code done 2026-09-12 (commit f8db7ff). Counted in
+  Postgres, not Redis (`contexts/access/ratelimit.py` — six endpoints at pilot
+  volume do not justify running a second service; `settings.redis_url` is now
+  marked unused). `Throttle("bucket")` on sign-in, send-code, confirm-code,
+  register. Migration 0005 (`ops.rate_counters`). Sweep of closed windows is
+  piggybacked on the outbox worker's loop (hourly).
+  **NOT VERIFIED — DO THIS FIRST:** this machine lost IPv6 mid-session and the
+  Supabase host is IPv6-reachable only, so migration 0005 has never been applied
+  and `api/tests/test_rate_limits.py` has never run. Before anything else: check
+  connectivity, `alembic upgrade head`, then
+  `pytest api/tests/test_rate_limits.py -v`. If a test is wrong, fix the test —
+  the code was written but never exercised.
+- **Not built:** expired-session sweep, outbox retention/scheduling (0.6 — the
   worker is started by hand today), admin UI (ADM-02 is API only), a way to
   appoint the first super_admin (today: SQL insert into `ops.user_roles`).
   `docs/KAFRIADA-CORE-Build-Tracker.pdf` predates most of this — update it.
@@ -127,11 +138,13 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
 4. ~~OTP via outbox~~ Done 2026-09-12. Waiting on Twilio credentials: set
    `SMS_PROVIDER=twilio` with the account SID, auth token and Messaging Service
    SID in `api/.env`, then run the dispatcher. Nothing else changes.
-5. **0.6 deploy pipeline** — code done 2026-09-12; blocked on accounts: a staging
+5. **Per-address rate limits** — code done 2026-09-12, **unverified against a
+   database — see Status above.** Verify first, before starting anything else.
+6. **0.6 deploy pipeline** — code done 2026-09-12; blocked on accounts: a staging
    Supabase project, a host (Fly/Render/Hetzner — decide), a Sentry project, and
    the `staging` GitHub Environment with `STAGING_DATABASE_URL_MIGRATE` and a
    required reviewer. Then build the images once for real.
-6. Stage 2 (ledger & Paystack, media & verification, outbox jobs, assisted cash
+7. Stage 2 (ledger & Paystack, media & verification, outbox jobs, assisted cash
    payment & clubs) — do not compress. Then Stage 3 launch readiness.
 
 ## Outside the code (block launch, not build)
