@@ -37,7 +37,7 @@ export default async function CardPage({
   return (
     <div className="stack">
       <div className="no-print">
-        <p className="eyebrow">Step 2 of 2 · Done</p>
+        <p className="eyebrow">Step 3 of 3 · Done</p>
         <h1>{`${firstName}, this is your ID.`}</h1>
         <p className="lede">
           It is permanent and it is yours. Print it, download it, or simply

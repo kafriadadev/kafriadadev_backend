@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { ApiError, signIn } from "@/lib/api";
-import { clientMeta, startSession } from "@/lib/session";
+import { clientMeta, startPending, startSession } from "@/lib/session";
 
 /**
  * Sign-in (AUT-04), as a plain form POST, so it works with JavaScript off.
@@ -36,5 +36,10 @@ export async function signInAction(formData: FormData): Promise<void> {
     isStaff: session.is_staff,
     absoluteExpiresAt: session.absolute_expires_at,
   });
+  // AUT-04: a number that was never confirmed goes straight to AUT-02.
+  if (!session.phone_verified) {
+    await startPending({ phone, kuid: "" });
+    redirect("/register/confirm");
+  }
   redirect("/me");
 }

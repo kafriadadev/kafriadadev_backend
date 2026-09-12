@@ -28,6 +28,7 @@ export default async function SignInPage({
   const params = await searchParams;
   const error = one(params.error);
   const ended = one(params.ended);
+  const reset = one(params.reset);
 
   // Already signed in: go straight to the account page.
   const token = await sessionToken();
@@ -45,6 +46,13 @@ export default async function SignInPage({
         <div className="notice notice--bad" role="alert" tabIndex={-1}>
           <p className="notice__title">We could not sign you in</p>
           <p style={{ marginBottom: 0 }}>{error}</p>
+        </div>
+      ) : reset ? (
+        <div className="notice notice--good" role="status">
+          <p className="notice__title">Your password is changed</p>
+          <p style={{ marginBottom: 0 }}>
+            Sign in with your new password. Every other device was signed out.
+          </p>
         </div>
       ) : ended ? (
         <div className="notice" role="status">
@@ -87,6 +95,9 @@ export default async function SignInPage({
           </button>
 
           <p className="hint" style={{ textAlign: "center", marginTop: "var(--s4)" }}>
+            <a href="/forgot">Forgot your password?</a>
+          </p>
+          <p className="hint" style={{ textAlign: "center", marginTop: "var(--s2)" }}>
             No account yet? <a href="/register">Register free</a>
           </p>
         </div>

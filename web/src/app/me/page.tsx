@@ -66,6 +66,17 @@ export default async function MePage() {
         </div>
       </section>
 
+      {!me.phone_verified ? (
+        <div className="notice notice--warn">
+          <p className="notice__title">Confirm your phone number</p>
+          <p style={{ marginBottom: "var(--s3)" }}>
+            Your ID is already yours. Confirming the number is how we know the
+            phone belongs to you, and it is needed before you can be verified.
+          </p>
+          <a href="/register/confirm">Enter the code</a>
+        </div>
+      ) : null}
+
       {me.kuid ? (
         <div style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>
           <a href={`/card/${encodeURIComponent(me.kuid)}`} className="btn btn--primary">

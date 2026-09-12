@@ -17,6 +17,12 @@ from pydantic import Field, PostgresDsn, SecretStr, field_validator, model_valid
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+class SmsProvider(StrEnum):
+    NONE = "none"
+    CONSOLE = "console"
+    TWILIO = "twilio"
+
+
 class Environment(StrEnum):
     LOCAL = "local"
     STAGING = "staging"
@@ -135,9 +141,33 @@ class Settings(BaseSettings):
     paystack_base_url: str = "https://api.paystack.co"
     paystack_timeout_seconds: float = Field(default=8.0, gt=0, le=30)
 
-    # -- Termii (SMS) -----------------------------------------------------
+    # -- SMS --------------------------------------------------------------
+    # Which adapter sends a queued message. 'none' leaves messages in the
+    # outbox, which is exactly what an unconfigured environment should do: the
+    # registration still succeeds and the code goes out when a provider exists.
+    # 'console' prints the message instead of sending it and is refused outside
+    # local development, because a code in a log file is a code anyone can read.
+    sms_provider: SmsProvider = SmsProvider.NONE
+
+    twilio_account_sid: str | None = None
+    twilio_auth_token: SecretStr | None = None
+    # One of these. A Messaging Service is the better choice for Nigeria — it
+    # holds the sender id registration and the number pool.
+    twilio_messaging_service_sid: str | None = None
+    twilio_from_number: str | None = None
+    twilio_base_url: str = "https://api.twilio.com"
+    sms_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
+
+    # Termii was the original choice and may return as a second adapter; its
+    # settings stay so an environment configured for it still loads.
     termii_api_key: SecretStr | None = None
     termii_sender_id: str = "KAFRIADA"
+
+    # -- One-time codes ---------------------------------------------------
+    # Six digits is only safe because of these three numbers. See contexts/access/otp.py.
+    otp_minutes_valid: int = Field(default=10, ge=2, le=60)
+    otp_resend_seconds: int = Field(default=60, ge=15, le=600)
+    otp_sends_per_day: int = Field(default=5, ge=1, le=20)
 
     # -- Redis (rate limits and the idempotency cache only) ---------------
     redis_url: str = "redis://localhost:6379/0"
@@ -203,8 +233,17 @@ class Settings(BaseSettings):
             problems.append("paystack_secret_key is required in production")
         elif self.paystack_secret_key.get_secret_value().startswith("sk_test_"):
             problems.append("refusing a Paystack TEST key in production")
-        if self.termii_api_key is None:
-            problems.append("termii_api_key is required in production")
+        if self.sms_provider is SmsProvider.CONSOLE:
+            problems.append(
+                "sms_provider must not be 'console' outside local development — "
+                "it writes one-time codes to the log"
+            )
+        if self.sms_provider is SmsProvider.NONE:
+            problems.append(
+                "sms_provider must be configured in production, or no code is ever sent"
+            )
+        if self.sms_provider is SmsProvider.TWILIO:
+            problems.extend(self._twilio_problems())
         if self.database_url_app == self.database_url_money:
             problems.append(
                 "database_url_app and database_url_money must use different roles — "
@@ -216,6 +255,19 @@ class Settings(BaseSettings):
                 "refusing to start in production:\n  - " + "\n  - ".join(problems)
             )
         return self
+
+    def _twilio_problems(self) -> list[str]:
+        """Everything Twilio needs before a message can leave the building."""
+        problems: list[str] = []
+        if not self.twilio_account_sid:
+            problems.append("twilio_account_sid is required when sms_provider is twilio")
+        if self.twilio_auth_token is None:
+            problems.append("twilio_auth_token is required when sms_provider is twilio")
+        if not (self.twilio_messaging_service_sid or self.twilio_from_number):
+            problems.append(
+                "twilio needs twilio_messaging_service_sid or twilio_from_number"
+            )
+        return problems
 
     # ------------------------------------------------------------------
     # Helpers

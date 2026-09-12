@@ -19,6 +19,7 @@ mint is the last blocking statement inside it.
     BEGIN
       insert the user account         (unique phone; a duplicate ends it here)
       grant the athlete role          (before the lock, so it costs no hold time)
+      queue the confirmation code     (likewise — and it commits with the record)
       mint the serial                 <-- lock acquired
       insert the athlete
       insert the career event
@@ -90,6 +91,9 @@ class RegistrationResult:
     kuid: str
     full_name: str
     lga_name: str
+    # Masked, for the "we sent a code to 0803 *** 4321" line. The full number
+    # never travels back out of the domain tier.
+    phone_masked: str = ""
 
 
 def register(
@@ -160,6 +164,11 @@ def register(
             ) from None
 
         access.grant_athlete_role(session, user_id)
+        # The confirmation code, queued in this same transaction: a registration
+        # that rolls back sends nobody a code, and a code that is queued belongs
+        # to a registration that really happened. Before the mint, so it costs
+        # no time on the counter lock.
+        access.send_registration_code(session, user_id, phone_e164)
 
         # -- the mint ----------------------------------------------------
         # One statement allocates the serial, creates the athlete and records
@@ -247,6 +256,7 @@ def register(
         kuid=str(kuid),
         full_name=full_name,
         lga_name=lga["lga_name"],
+        phone_masked=phone_mod.mask(phone_e164),
     )
 
 

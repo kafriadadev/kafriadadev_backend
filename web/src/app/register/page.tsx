@@ -48,10 +48,10 @@ export default async function RegisterPage({
 
   return (
     <div className="stack">
-      <p className="eyebrow">Step 1 of 2 · Free</p>
+      <p className="eyebrow">Step 1 of 3 · Free</p>
       <h1>Get your KAFRIADA ID</h1>
       <p className="lede">
-        About two minutes. You will need your phone number.
+        About two minutes. You need a phone that can receive SMS.
       </p>
 
       {/* An error summary AND an error beside the field. The summary is what a
@@ -97,7 +97,7 @@ export default async function RegisterPage({
           <div className={errClass("phone")}>
             <label htmlFor="phone">Phone number</label>
             <span className="hint" id="phone-hint">
-              One phone, one KAFRIADA ID.
+              We send a code to this number. One phone, one KAFRIADA ID.
             </span>
             <input
               id="phone"

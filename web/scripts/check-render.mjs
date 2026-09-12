@@ -40,6 +40,7 @@ const PAGES = [
   ["home", "/"],
   ["register", "/register"],
   ["sign-in", "/sign-in"],
+  ["forgot", "/forgot"],
   ["find", "/find"],
   ["privacy", "/privacy"],
   ["profile", `/a/${KUID}${SIG ? `?s=${SIG}` : ""}`],
@@ -162,7 +163,7 @@ async function report(page, name, status, shotSuffix) {
   for (const line of contrast) console.log(`          contrast  ${line}`);
   for (const line of overflow) console.log(`          overflow  ${line}`);
   for (const line of splits) console.log(`          split ID  ${line}`);
-  if (OUT && ["card", "profile", "register", "sign-in", "me"].includes(name)) {
+  if (OUT && ["card", "profile", "register", "sign-in", "me", "confirm", "forgot"].includes(name)) {
     mkdirSync(OUT, { recursive: true });
     await page.screenshot({ path: join(OUT, `${name}-${shotSuffix}.png`), fullPage: true });
   }
@@ -225,6 +226,51 @@ try {
   ];
   for (const [label, pass] of checks) check(label, pass);
   await ctx.close();
+
+  // -- The confirm screen (AUT-02) -------------------------------------------
+  // Rendered from a pending-registration cookie, which is all that screen needs
+  // when nobody is signed in. Nothing is written.
+  console.log("\n=== CONFIRM YOUR PHONE ===");
+  for (const [scheme, width] of [["light", PHONE.width], ["dark", 320]]) {
+    const ctx = await browser.newContext({
+      viewport: { width, height: PHONE.height }, isMobile: true, colorScheme: scheme,
+    });
+    await ctx.addCookies([{
+      name: "kaf_pending",
+      value: JSON.stringify({ phone: "+2349000000000", kuid: KUID }),
+      domain: "localhost", path: "/", httpOnly: true, sameSite: "Lax",
+    }]);
+    const page = await ctx.newPage();
+    const res = await page.goto(BASE + "/register/confirm", { waitUntil: "load", timeout: 90_000 });
+    check(`${scheme}: the confirm screen renders for a pending registration`,
+      new URL(page.url()).pathname === "/register/confirm");
+    await report(page, "confirm", res?.status() ?? 0, `${scheme}-${width}`);
+    await ctx.close();
+  }
+
+  // -- Password reset with JavaScript OFF ------------------------------------
+  // An unregistered number: the API answers exactly as it would for a real one
+  // and writes nothing, which is the property being checked.
+  console.log("\n=== PASSWORD RESET WITH JAVASCRIPT OFF ===");
+  {
+    const ctx = await browser.newContext({ viewport: PHONE, isMobile: true, javaScriptEnabled: false });
+    const page = await ctx.newPage();
+    await page.goto(BASE + "/forgot", { waitUntil: "load", timeout: 90_000 });
+    await page.fill("#phone", "0900 000 0000");
+    await Promise.all([page.waitForLoadState("load"), page.click("button[type=submit]")]);
+    await page.waitForURL(/\/forgot\?/, { timeout: 60_000 });
+    check("an unknown number is told a code is on its way, like any other",
+      (await page.locator("[role=status]").count()) > 0);
+
+    const secret = "a brand new passphrase";
+    await page.fill("#code", "000000");
+    await page.fill("#new_password", secret);
+    await Promise.all([page.waitForLoadState("load"), page.click("button[type=submit]")]);
+    await page.waitForURL(/\/forgot\?/, { timeout: 60_000 });
+    check("a wrong code is refused on the page", (await page.locator("[role=alert]").count()) > 0);
+    check("the new password is NOT in the URL", !page.url().includes(encodeURIComponent(secret)));
+    await ctx.close();
+  }
 
   // -- Sign-in with JavaScript OFF, wrong credentials -------------------------
   // A number in a range no subscriber holds, so the API finds no account and

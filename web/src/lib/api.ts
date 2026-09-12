@@ -44,6 +44,20 @@ export type RegistrationResult = {
   lga_name: string;
   profile_url: string;
   qr_url: string;
+  /** Masked. The ID exists already; only the confirmation is outstanding. */
+  phone: string;
+  phone_verified: boolean;
+  code_resend_seconds: number;
+};
+
+export type CodeSent = { resend_in: number; daily_limit_reached: boolean };
+
+export type PhoneConfirmed = {
+  kuid: string | null;
+  token: string;
+  idle_expires_at: string;
+  absolute_expires_at: string;
+  is_staff: boolean;
 };
 
 export type IssuedSession = {
@@ -52,6 +66,7 @@ export type IssuedSession = {
   idle_expires_at: string;
   absolute_expires_at: string;
   is_staff: boolean;
+  phone_verified: boolean;
 };
 
 export type RoleGrant = {
@@ -69,6 +84,7 @@ export type Me = {
   kuid: string | null;
   lga_name: string | null;
   is_staff: boolean;
+  phone_verified: boolean;
   roles: RoleGrant[];
   idle_expires_at: string;
   absolute_expires_at: string;
@@ -183,6 +199,44 @@ export function signIn(
 
 export function signOut(token: string, meta: ClientMeta): Promise<void> {
   return call<void>("/v1/sessions/current", { method: "DELETE", token, meta });
+}
+
+export function sendPhoneCode(phone: string, meta: ClientMeta): Promise<CodeSent> {
+  return call<CodeSent>("/v1/phone/code", {
+    method: "POST",
+    body: JSON.stringify({ phone }),
+    meta,
+  });
+}
+
+export function confirmPhone(
+  input: { phone: string; code: string },
+  meta: ClientMeta,
+): Promise<PhoneConfirmed> {
+  return call<PhoneConfirmed>("/v1/phone/confirm", {
+    method: "POST",
+    body: JSON.stringify(input),
+    meta,
+  });
+}
+
+export function sendResetCode(phone: string, meta: ClientMeta): Promise<CodeSent> {
+  return call<CodeSent>("/v1/password-reset/code", {
+    method: "POST",
+    body: JSON.stringify({ phone }),
+    meta,
+  });
+}
+
+export function resetPassword(
+  input: { phone: string; code: string; new_password: string },
+  meta: ClientMeta,
+): Promise<void> {
+  return call<void>("/v1/password-reset/confirm", {
+    method: "POST",
+    body: JSON.stringify(input),
+    meta,
+  });
 }
 
 export function getMe(token: string): Promise<Me> {

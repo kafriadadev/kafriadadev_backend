@@ -39,10 +39,11 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from kafriada.contexts.access import otp
 from kafriada.contexts.access import phone as phone_mod
 from kafriada.contexts.audit import service as audit
 from kafriada.db.engine import transaction
-from kafriada.security.passwords import get_password_service
+from kafriada.security.passwords import get_password_service, password_policy_error
 from kafriada.security.tokens import hash_token, new_token
 from kafriada.settings import get_settings
 
@@ -85,6 +86,44 @@ class AccessError(Exception):
         self.field = field
 
 
+class CodeRefused(Exception):
+    """A one-time code was wrong, expired, or spent."""
+
+    def __init__(self, message: str, *, attempts_left: int = 0) -> None:
+        super().__init__(message)
+        self.message = message
+        self.attempts_left = attempts_left
+
+
+@dataclass(frozen=True, slots=True)
+class CodeRequested:
+    """The answer to "send me a code", shaped so it reveals nothing.
+
+    ``resend_in`` is how long before another can be asked for. For a password
+    reset it is the same whether or not the number is registered.
+    """
+
+    resend_in: int
+    daily_limit_reached: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class _Found:
+    """An account found by phone number, for the code flows."""
+
+    id: UUID
+    full_name: str
+    phone_e164: str
+    password_hash: str | None
+    phone_verified_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class PhoneConfirmed:
+    user_id: UUID
+    session: IssuedSession
+
+
 @dataclass(frozen=True, slots=True)
 class Scope:
     """The place or organisation a request acts on."""
@@ -112,6 +151,9 @@ class IssuedSession:
     idle_expires_at: datetime
     absolute_expires_at: datetime
     is_staff: bool
+    # Whether the phone behind this account has been confirmed with a code.
+    # Signing in does not require it; the confirm screen does.
+    phone_verified: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +172,7 @@ class Account:
     user_id: UUID
     full_name: str
     phone_masked: str
+    phone_verified: bool
     roles: tuple[RoleGrant, ...]
 
     @property
@@ -286,6 +329,12 @@ def _issue(
         {"id": user_id},
     ).scalars().all()
     is_staff = any(role != ATHLETE_ROLE for role in roles)
+    phone_verified = bool(
+        session.execute(
+            text("SELECT phone_verified_at IS NOT NULL FROM ops.users WHERE id = :id"),
+            {"id": user_id},
+        ).scalar_one()
+    )
     if is_staff:
         idle_seconds = cfg.session_idle_minutes_staff * 60
         absolute_seconds = cfg.session_absolute_days_staff * 86_400
@@ -325,6 +374,7 @@ def _issue(
         idle_expires_at=row["idle_expires_at"],
         absolute_expires_at=row["absolute_expires_at"],
         is_staff=is_staff,
+        phone_verified=phone_verified,
     )
 
 
@@ -383,6 +433,265 @@ def _record_failed_attempt(
                 ip_address=ip_address,
             )
             log.warning("account_locked")
+
+
+# ---------------------------------------------------------------------------
+# One-time codes: confirming a phone, and resetting a password
+# ---------------------------------------------------------------------------
+def send_registration_code(session: Session, user_id: UUID, phone_e164: str) -> None:
+    """Queue the confirmation code, inside the registration's own transaction.
+
+    Called before the KUID is minted, so it adds nothing to the time the counter
+    row is held. The limits are not applied to this one: it is the first code of
+    a registration that has just been accepted, and nobody should be told to
+    come back in a minute for a code they have not yet been sent once.
+    """
+    otp.send_code(
+        session,
+        user_id=user_id,
+        purpose=otp.PHONE_VERIFICATION,
+        phone_e164=phone_e164,
+        enforce_limits=False,
+    )
+
+
+def request_phone_code(
+    raw_phone: str,
+    *,
+    request_id: str | None = None,
+    ip_address: str | None = None,
+) -> CodeRequested:
+    """Send another phone-confirmation code.
+
+    Reached from the confirm screen by someone who has just registered, so a
+    "wait 40 seconds" answer tells them nothing registration did not already.
+    """
+    cfg = get_settings()
+    user = _user_for_phone(raw_phone)
+    if user is None or user.phone_verified_at is not None:
+        # Nothing to confirm. Same shape as success: this screen is public.
+        return CodeRequested(resend_in=cfg.otp_resend_seconds)
+
+    with transaction() as session:
+        try:
+            otp.send_code(
+                session,
+                user_id=user.id,
+                purpose=otp.PHONE_VERIFICATION,
+                phone_e164=user.phone_e164,
+            )
+        except otp.TooSoon as exc:
+            return CodeRequested(resend_in=exc.seconds)
+        except otp.TooMany:
+            return CodeRequested(resend_in=cfg.otp_resend_seconds, daily_limit_reached=True)
+
+        audit.record(
+            session,
+            actor=audit.Actor(user_id=user.id, label=user.full_name),
+            action="phone.code_sent",
+            subject_type="user",
+            subject_id=str(user.id),
+            request_id=request_id,
+            ip_address=ip_address,
+        )
+    return CodeRequested(resend_in=cfg.otp_resend_seconds)
+
+
+def confirm_phone(
+    raw_phone: str,
+    code: str,
+    *,
+    request_id: str | None = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> PhoneConfirmed:
+    """Check the code and mark the phone confirmed, then sign the person in.
+
+    Holding the phone is exactly what a session is meant to prove, so a correct
+    code issues one. Raises :class:`CodeRefused` for every kind of failure.
+    """
+    user = _user_for_phone(raw_phone)
+    if user is None:
+        # An unknown number gets the answer a wrong code gets.
+        raise CodeRefused("That code is wrong or has expired. Ask for a new one.")
+
+    # The attempt is spent in its own transaction, and committed, before any
+    # refusal is raised. Counting a wrong guess inside the transaction that the
+    # refusal rolls back means the counter never moves — which is five guesses
+    # becoming as many as anyone likes.
+    _spend_code(user.id, otp.PHONE_VERIFICATION, code)
+
+    with transaction() as session:
+        if user.phone_verified_at is None:
+            session.execute(
+                text("UPDATE ops.users SET phone_verified_at = now() WHERE id = :id"),
+                {"id": user.id},
+            )
+            audit.record(
+                session,
+                actor=audit.Actor(user_id=user.id, label=user.full_name),
+                action="phone.verified",
+                subject_type="user",
+                subject_id=str(user.id),
+                request_id=request_id,
+                ip_address=ip_address,
+            )
+
+        issued = _issue(session, user.id, ip_address=ip_address, user_agent=user_agent)
+        audit.record(
+            session,
+            actor=audit.Actor(user_id=user.id, label=user.full_name),
+            action="session.issued",
+            subject_type="user",
+            subject_id=str(user.id),
+            metadata={"method": "phone_code", "staff": issued.is_staff},
+            request_id=request_id,
+            ip_address=ip_address,
+        )
+
+    return PhoneConfirmed(user_id=user.id, session=issued)
+
+
+def request_password_reset(
+    raw_phone: str,
+    *,
+    request_id: str | None = None,
+    ip_address: str | None = None,
+) -> CodeRequested:
+    """Send a reset code — or quietly do nothing for an unknown number.
+
+    The answer is identical either way. Anything else turns this screen into a
+    way of asking "is this person registered with KAFRIADA?".
+    """
+    cfg = get_settings()
+    user = _user_for_phone(raw_phone)
+    if user is None or user.password_hash is None:
+        return CodeRequested(resend_in=cfg.otp_resend_seconds)
+
+    with transaction() as session:
+        try:
+            otp.send_code(
+                session,
+                user_id=user.id,
+                purpose=otp.PASSWORD_RESET,
+                phone_e164=user.phone_e164,
+            )
+        except (otp.TooSoon, otp.TooMany):
+            # Also silent: a cooling-off message would answer the same question.
+            return CodeRequested(resend_in=cfg.otp_resend_seconds)
+
+        audit.record(
+            session,
+            actor=audit.Actor(user_id=None, label="anonymous reset request"),
+            action="password.reset_requested",
+            subject_type="user",
+            subject_id=str(user.id),
+            request_id=request_id,
+            ip_address=ip_address,
+        )
+    return CodeRequested(resend_in=cfg.otp_resend_seconds)
+
+
+def reset_password(
+    raw_phone: str,
+    code: str,
+    new_password: str,
+    *,
+    request_id: str | None = None,
+    ip_address: str | None = None,
+) -> None:
+    """Set a new password with a code, and sign out everywhere.
+
+    Every other session ends: if the reason for the reset was that somebody else
+    had the account, leaving their session alive would defeat the exercise.
+    """
+    if (problem := password_policy_error(new_password)) is not None:
+        raise AccessError(problem, field="new_password")
+
+    user = _user_for_phone(raw_phone)
+    # Hashing happens here, outside the transaction, as everywhere else.
+    password_hash = get_password_service().hash(new_password)
+
+    if user is None:
+        raise CodeRefused("That code is wrong or has expired. Ask for a new one.")
+
+    _spend_code(user.id, otp.PASSWORD_RESET, code)
+
+    with transaction() as session:
+        session.execute(
+            text(
+                """
+                UPDATE ops.users
+                   SET password_hash = :hash, failed_login_count = 0, locked_until = NULL
+                 WHERE id = :id
+                """
+            ),
+            {"id": user.id, "hash": password_hash},
+        )
+        ended = _revoke_sessions(session, user.id, reason="password_reset")
+        audit.record(
+            session,
+            actor=audit.Actor(user_id=user.id, label=user.full_name),
+            action="password.reset",
+            subject_type="user",
+            subject_id=str(user.id),
+            metadata={"logins_ended": ended},
+            request_id=request_id,
+            ip_address=ip_address,
+        )
+    log.info("password_reset", logins_ended=ended)
+
+
+def _spend_code(user_id: UUID, purpose: str, code: str) -> None:
+    """Check a code and commit the attempt, then refuse if it was wrong.
+
+    Its own transaction, deliberately: a wrong guess has to be *recorded* even
+    though the request fails, or the five-attempt limit records nothing.
+    """
+    with transaction() as session:
+        checked = otp.check_code(session, user_id=user_id, purpose=purpose, code=code)
+    if not checked.ok:
+        raise CodeRefused(_code_message(checked), attempts_left=checked.attempts_left)
+
+
+def _code_message(checked: otp.CodeCheck) -> str:
+    if checked.expired:
+        return "That code has expired. Ask for a new one."
+    if checked.attempts_left > 0:
+        tries = "try" if checked.attempts_left == 1 else "tries"
+        return f"That code is not right. {checked.attempts_left} {tries} left."
+    return "That code is wrong or has expired. Ask for a new one."
+
+
+def _user_for_phone(raw_phone: str) -> _Found | None:
+    """Look up an account by phone. Returns None for anything unusable."""
+    try:
+        phone_e164 = phone_mod.normalise(raw_phone)
+    except phone_mod.InvalidPhoneNumberError:
+        return None
+
+    with transaction() as session:
+        row = session.execute(
+            text(
+                """
+                SELECT id, full_name, phone_e164, password_hash, phone_verified_at
+                  FROM ops.users
+                 WHERE phone_e164 = :phone
+                   AND anonymised_at IS NULL
+                   AND status = 'active'
+                """
+            ),
+            {"phone": phone_e164},
+        ).mappings().one_or_none()
+    if row is None:
+        return None
+    return _Found(
+        id=row["id"],
+        full_name=row["full_name"],
+        phone_e164=row["phone_e164"],
+        password_hash=row["password_hash"],
+        phone_verified_at=row["phone_verified_at"],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -556,14 +865,18 @@ def describe_account(user_id: UUID) -> Account:
     """The caller's own account: name, masked phone, and the roles they hold."""
     with transaction() as session:
         user = session.execute(
-            text("SELECT id, full_name, phone_e164 FROM ops.users WHERE id = :id"),
+            text(
+                "SELECT id, full_name, phone_e164, phone_verified_at "
+                "FROM ops.users WHERE id = :id"
+            ),
             {"id": user_id},
         ).mappings().one()
         grants = _active_grants(session, user_id)
     return Account(
-        user_id=user["id"],
-        full_name=user["full_name"],
-        phone_masked=phone_mod.mask(user["phone_e164"]),
+        user_id=user.id,
+        full_name=user.full_name,
+        phone_masked=phone_mod.mask(user.phone_e164),
+        phone_verified=user.phone_verified_at is not None,
         roles=grants,
     )
 

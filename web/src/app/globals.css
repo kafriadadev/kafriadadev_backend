@@ -166,6 +166,12 @@ body {
 
 img, svg { max-width: 100%; height: auto; display: block; }
 
+/* Page links follow the theme. Without this they fall back to the browser's
+   default blue, which is unreadable on the dark paper — measured, not guessed:
+   #0000ee on #12150f is 1.96:1 against a floor of 4.5. Links inside a document
+   are a separate rule further down, because a document never inverts. */
+a { color: var(--green); }
+
 /* ---------------------------------------------------------------------------
    Typography
    --------------------------------------------------------------------------- */

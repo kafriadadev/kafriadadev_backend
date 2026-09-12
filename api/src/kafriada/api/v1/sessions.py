@@ -31,6 +31,9 @@ class SessionResponse(BaseModel):
     idle_expires_at: datetime
     absolute_expires_at: datetime
     is_staff: bool
+    # False sends the caller to the confirm screen (AUT-04's own note). Signing
+    # in still works: the ID exists, only the confirmation is outstanding.
+    phone_verified: bool
 
 
 class RoleGrantOut(BaseModel):
@@ -49,6 +52,7 @@ class MeResponse(BaseModel):
     kuid: str | None
     lga_name: str | None
     is_staff: bool
+    phone_verified: bool
     roles: list[RoleGrantOut]
     idle_expires_at: datetime
     absolute_expires_at: datetime
@@ -78,6 +82,7 @@ def sign_in(body: SignInRequest, request: Request) -> SessionResponse:
         ) from None
     return SessionResponse(
         token=issued.token,
+        phone_verified=issued.phone_verified,
         idle_expires_at=issued.idle_expires_at,
         absolute_expires_at=issued.absolute_expires_at,
         is_staff=issued.is_staff,
@@ -115,6 +120,7 @@ def me(request: Request) -> MeResponse:
         kuid=athlete.kuid if athlete else None,
         lga_name=athlete.lga_name if athlete else None,
         is_staff=account.is_staff,
+        phone_verified=account.phone_verified,
         roles=[
             RoleGrantOut(
                 grant_id=g.grant_id,

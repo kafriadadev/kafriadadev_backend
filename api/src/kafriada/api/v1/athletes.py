@@ -58,6 +58,11 @@ class RegistrationResponse(BaseModel):
     lga_name: str
     profile_url: str
     qr_url: str
+    # The ID exists from this moment; only the phone confirmation is outstanding.
+    # A provider outage therefore delays a confirmation, never a registration.
+    phone: str  # masked
+    phone_verified: bool
+    code_resend_seconds: int
 
 
 class PublicProfileResponse(BaseModel):
@@ -145,6 +150,9 @@ def register_athlete(body: RegistrationRequest, request: Request) -> Registratio
         lga_name=result.lga_name,
         profile_url=_profile_url(result.kuid),
         qr_url=f"/v1/public/athletes/{result.kuid}/qr.svg",
+        phone=result.phone_masked,
+        phone_verified=False,
+        code_resend_seconds=get_settings().otp_resend_seconds,
     )
 
 

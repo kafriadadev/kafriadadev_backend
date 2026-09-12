@@ -42,6 +42,44 @@ export async function endSession(): Promise<void> {
   (await cookies()).delete(SESSION_COOKIE);
 }
 
+/**
+ * A registration waiting to be confirmed.
+ *
+ * The ID has already been minted, so this only carries what the confirm screen
+ * needs: which number the code went to, and the KUID, so the person can reach
+ * their card even if the code never arrives. httpOnly and short-lived — it is
+ * their own number and their own ID, but neither belongs in a URL or in reach
+ * of a script.
+ */
+export const PENDING_COOKIE = "kaf_pending";
+
+export type Pending = { phone: string; kuid: string };
+
+export async function startPending(pending: Pending): Promise<void> {
+  (await cookies()).set(PENDING_COOKIE, JSON.stringify(pending), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60, // an hour is long enough to find the message and type it
+  });
+}
+
+export async function pending(): Promise<Pending | null> {
+  const raw = (await cookies()).get(PENDING_COOKIE)?.value;
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<Pending>;
+    return parsed.phone ? { phone: parsed.phone, kuid: parsed.kuid ?? "" } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function endPending(): Promise<void> {
+  (await cookies()).delete(PENDING_COOKIE);
+}
+
 /** The visitor's address and browser, for the audit trail. */
 export async function clientMeta(): Promise<ClientMeta> {
   const h = await headers();

@@ -23,6 +23,7 @@ cd api && .venv/Scripts/python.exe -m pytest
 cd web && npm run typecheck && npm run build
 cd web && npm run check:render              # needs both tiers up; see below
 python scripts/demo_security.py             # live demo of what the DB refuses to do
+cd api && .venv/Scripts/python.exe -m kafriada.outbox.dispatch --once   # send queued SMS
 ```
 `check:render` drives the installed Edge (playwright-core, no download): WCAG
 contrast of every text element, overflow, split IDs at 360px light/dark and 320px,
@@ -55,6 +56,9 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   default load on this link; use `BURST_WORKERS=6 BURST_SIZE=100`.
 - Audit metadata keys containing `session`, `token`, `password` etc. are stored as
   `[redacted]` — name keys accordingly (e.g. `logins_ended`).
+- A wrong one-time code must be counted in its **own** committed transaction: the
+  refusal rolls back the caller's transaction, and with it the attempt counter,
+  which silently turns five guesses into unlimited (caught by a test, `_spend_code`).
 - FastAPI ≥0.141 nests included routers; walk routes with `api.security.api_routes(app)`,
   not `app.routes`.
 - Disk C: runs near full; `npm cache clean --force` frees several GB.
@@ -67,7 +71,7 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
 - LGA codes in `contexts/geography/jigawa.py` are printed into every KUID —
   **need CEO/state-coordinator sign-off before the first card is issued.**
 
-## Status (as of 2026-09-11)
+## Status (as of 2026-09-12)
 - Stage 0 foundations — done, except 0.6 deploy pipeline (staging, Sentry).
 - 1.1 identity anchor — done. Live Supabase DB, security guarantees proved.
 - 1.3 KUID minting — done, burst-tested under real contention.
@@ -77,6 +81,13 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   (no name, KUID or card); detected by the `users_phone_unique` index name, so
   still no second KUID. `?returning` path removed. Test:
   `api/tests/test_duplicate_phone_reveals_nothing.py`.
+- 1.4 OTP — done (ADR 0003: SMS behind a provider port, Twilio first). Codes are
+  queued in `ops.outbox` inside the same transaction as the record; a worker
+  (`python -m kafriada.outbox.dispatch`) drains it. **The KUID is minted before
+  the code is confirmed** (wireframe AUT-02), so a provider outage delays a
+  confirmation, never a registration. Web: `/register/confirm` (AUT-02),
+  `/forgot` (AUT-05). `SMS_PROVIDER=none` keeps messages queued; `console`
+  prints them (local only); `twilio` sends. Migration 0004.
 - 1.2 access — done (ADR 0002: our own revocable session cookie). API:
   `POST/DELETE /v1/sessions`, `GET /v1/me`, super_admin role grant/revoke and
   end-all-sessions under `/v1/admin` (password re-entered for grant/revoke),
@@ -85,25 +96,30 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   (applied to dev DB). Web: `/sign-in`, `/me`, sign-out. Tests: route manifest,
   `test_access_sessions.py`, `test_permission_matrix.py` (12 principals × 12 routes,
   two tenants).
-- **Not built:** OTP, outbox, password reset (AUT-05), per-IP sign-in rate limit
-  (needs Redis), expired-session sweep job, admin UI (ADM-02 is API only), a way to
+- **Not built:** per-IP sign-in and code rate limit
+  (needs Redis), expired-session sweep, outbox retention/scheduling (0.6 — the
+  worker is started by hand today), admin UI (ADM-02 is API only), a way to
   appoint the first super_admin (today: SQL insert into `ops.user_roles`).
   `docs/KAFRIADA-CORE-Build-Tracker.pdf` predates most of this — update it.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
-2. ~~Registration copy promised an SMS code that is never sent.~~ Done 2026-09-11:
-   all SMS/code wording removed from the web. Put it back when OTP (item 4) ships.
+2. ~~Registration copy promised an SMS code that is never sent.~~ Done 2026-09-11,
+   and restored 2026-09-12 now that the code flow exists — true as soon as a
+   provider is configured; with `SMS_PROVIDER=none` the code is only queued.
 3. ~~1.2 Access~~ Done 2026-09-11 (see Status for what is deliberately not built).
-4. **OTP via outbox** (Termii; outage queues rather than fails) — Termii sender ID
-   takes 3–10 days to approve.
+4. ~~OTP via outbox~~ Done 2026-09-12. Waiting on Twilio credentials: set
+   `SMS_PROVIDER=twilio` with the account SID, auth token and Messaging Service
+   SID in `api/.env`, then run the dispatcher. Nothing else changes.
 5. **0.6 deploy pipeline** — staging, gated migrations, Sentry.
 6. Stage 2 (ledger & Paystack, media & verification, outbox jobs, assisted cash
    payment & clubs) — do not compress. Then Stage 3 launch readiness.
 
 ## Outside the code (block launch, not build)
 Paystack business verification needs current CAC registration (1–3 weeks; nobody
-has checked it is current). Termii sender ID (3–10 days). LGA code sign-off.
+has checked it is current). **Twilio account + Nigerian sender ID registration**
+(replaces the Termii sender ID; the regulatory paperwork is the same shape and
+nobody has started it). LGA code sign-off.
 
 ## Commits
 End messages with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.

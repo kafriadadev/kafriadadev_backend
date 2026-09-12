@@ -38,7 +38,10 @@ def production(**overrides: object) -> Settings:
         "trusted_hosts": ["api.kafriada.ng"],
         "cors_allow_origins": [],
         "paystack_secret_key": "sk_live_" + "z" * 30,
-        "termii_api_key": "t" * 30,
+        "sms_provider": "twilio",
+        "twilio_account_sid": "AC" + "1" * 30,
+        "twilio_auth_token": "t" * 30,
+        "twilio_messaging_service_sid": "MG" + "2" * 30,
     }
     values.update(overrides)
     return build(**values)
@@ -95,8 +98,17 @@ class TestProductionLockdown:
     def test_missing_payment_or_sms_credentials_are_refused(self) -> None:
         with pytest.raises(ValidationError, match="paystack_secret_key is required"):
             production(paystack_secret_key=None)
-        with pytest.raises(ValidationError, match="termii_api_key is required"):
-            production(termii_api_key=None)
+        with pytest.raises(ValidationError, match="twilio_auth_token is required"):
+            production(twilio_auth_token=None)
+        with pytest.raises(ValidationError, match="messaging_service_sid or"):
+            production(twilio_messaging_service_sid=None, twilio_from_number=None)
+
+    def test_an_unconfigured_or_printing_sms_provider_is_refused(self) -> None:
+        """A queue nobody drains, and codes in a log file, are both production bugs."""
+        with pytest.raises(ValidationError, match="sms_provider must be configured"):
+            production(sms_provider="none")
+        with pytest.raises(ValidationError, match="must not be 'console'"):
+            production(sms_provider="console")
 
     def test_sharing_one_database_role_for_app_and_money_is_refused(self) -> None:
         """The ledger privilege boundary, checked at startup.
@@ -112,11 +124,11 @@ class TestProductionLockdown:
         # Fixing a misconfiguration one restart at a time is how a deploy window
         # gets used up. Report everything wrong at once.
         with pytest.raises(ValidationError) as caught:
-            production(enable_docs=True, trusted_hosts=["*"], termii_api_key=None)
+            production(enable_docs=True, trusted_hosts=["*"], twilio_auth_token=None)
         message = str(caught.value)
         assert "enable_docs" in message
         assert "trusted_hosts" in message
-        assert "termii_api_key" in message
+        assert "twilio_auth_token" in message
 
 
 class TestReadRouting:

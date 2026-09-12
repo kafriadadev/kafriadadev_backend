@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { ApiError, register } from "@/lib/api";
+import { startPending } from "@/lib/session";
 
 /**
  * Registration, submitted as a plain form POST.
@@ -62,7 +63,9 @@ export async function registerAthlete(formData: FormData): Promise<void> {
     throw error;
   }
 
-  // Only a newly minted identity reaches here. A phone that is already
-  // registered comes back as a field error above, never as somebody's card.
-  redirect(`/card/${encodeURIComponent(result.kuid)}`);
+  // The ID has been minted. Next comes the code that confirms the number
+  // (AUT-02); the card is reachable from there either way, because a delayed
+  // message must never look like a lost registration.
+  await startPending({ phone: submitted.phone, kuid: result.kuid });
+  redirect("/register/confirm");
 }
