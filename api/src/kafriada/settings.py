@@ -174,6 +174,12 @@ class Settings(BaseSettings):
 
     # -- Observability ----------------------------------------------------
     sentry_dsn: SecretStr | None = None
+    # The deployed commit. Set by the release step; makes a Sentry issue point at
+    # a revision rather than at "production".
+    release: str | None = None
+    # Traces are sampled, errors never are. 10% is enough to see the shape of the
+    # registration and payment paths without paying for every QR scan.
+    sentry_traces_sample_rate: float = Field(default=0.1, ge=0.0, le=1.0)
     log_level: str = "INFO"
 
     # -- HTTP -------------------------------------------------------------

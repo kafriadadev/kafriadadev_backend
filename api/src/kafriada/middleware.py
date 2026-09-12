@@ -13,6 +13,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp
 
+from kafriada.observability import tag_request
 from kafriada.settings import Settings
 
 _log = structlog.get_logger(__name__)
@@ -63,6 +64,7 @@ class RequestContextMiddleware:
         request_id = candidate if _SAFE_REQUEST_ID.match(candidate) else new_request_id()
 
         scope["request_id"] = request_id
+        tag_request(request_id)
         structlog.contextvars.bind_contextvars(
             request_id=request_id,
             path=scope.get("path", ""),

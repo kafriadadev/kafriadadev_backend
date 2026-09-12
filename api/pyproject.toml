@@ -19,6 +19,9 @@ dependencies = [
     # JavaScript, so form-encoded bodies are a first-class input, not a fallback.
     "python-multipart>=0.0.18",
     "redis>=5.2",
+    # Error reporting and tracing. Inert without a DSN, so it costs nothing in
+    # development and in CI.
+    "sentry-sdk[fastapi]>=2.20",
 ]
 
 [project.optional-dependencies]

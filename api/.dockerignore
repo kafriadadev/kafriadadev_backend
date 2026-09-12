@@ -1,0 +1,11 @@
+# Nothing here belongs in an image.
+.venv/
+.env
+.env.*
+tests/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+alembic.ini.bak

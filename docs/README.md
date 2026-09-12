@@ -31,6 +31,8 @@ needed, nothing to log into.
 
 ## Also here
 
+- `deploy-runbook.md` — how a release runs, how to roll one back, and what is
+  still needed before staging exists.
 - `decisions/` — architecture decision records. Each one states what was decided,
   what was rejected, and what would justify revisiting it.
 - `prompts/` — the prompts used to produce the architecture and blueprint documents.

@@ -1,0 +1,89 @@
+# Staging: the two tiers, and nothing else.
+#
+#   docker compose -f infra/docker-compose.staging.yml --env-file api/.env.staging up -d
+#
+# There is no database here on purpose. Staging points at a Supabase project in
+# Frankfurt — a database this file could create would be a fourth environment
+# nobody migrates, and the point of staging is to rehearse against the real
+# thing.
+#
+# The shape mirrors production: only the web tier is published. The API listens
+# on the compose network, reachable by the web tier and by nothing else, which
+# is the arrangement the architecture depends on — the domain tier is not
+# addressable from the internet.
+#
+# NOT YET RUN. Written on a machine without Docker; the first real execution
+# will be on the staging host. See docs/deploy-runbook.md.
+
+name: kafriada-staging
+
+services:
+  api:
+    image: kafriada-api:${RELEASE:-latest}
+    build:
+      context: ../api
+    restart: unless-stopped
+    # No ports: this is deliberate and is the security boundary. To reach it
+    # from the host for debugging, publish 127.0.0.1:8010:8010 temporarily.
+    environment:
+      ENVIRONMENT: staging
+      LOG_LEVEL: INFO
+      ENABLE_DOCS: "false"
+      RELEASE: ${RELEASE:-unknown}
+      # Everything below comes from the env file and never from this file.
+      DATABASE_URL_APP: ${DATABASE_URL_APP}
+      DATABASE_URL_MONEY: ${DATABASE_URL_MONEY}
+      DATABASE_URL_READER: ${DATABASE_URL_READER}
+      SECRET_KEY: ${SECRET_KEY}
+      QR_SECRET: ${QR_SECRET}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SMS_PROVIDER: ${SMS_PROVIDER:-none}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_MESSAGING_SERVICE_SID: ${TWILIO_MESSAGING_SERVICE_SID:-}
+      PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY:-}
+    # DATABASE_URL_MIGRATE is absent, and must stay absent. Migrations are a
+    # release step run by scripts/release.sh; a running process that holds DDL
+    # is a running process that can disable the audit log's protections.
+
+  # The same image, doing the other job: draining the outbox. One container, so
+  # a stuck send cannot hold up a request, and so it can be stopped on its own.
+  outbox:
+    image: kafriada-api:${RELEASE:-latest}
+    restart: unless-stopped
+    command: ["python", "-m", "kafriada.outbox.dispatch", "--interval", "10"]
+    environment:
+      ENVIRONMENT: staging
+      LOG_LEVEL: INFO
+      DATABASE_URL_APP: ${DATABASE_URL_APP}
+      DATABASE_URL_MONEY: ${DATABASE_URL_MONEY}
+      DATABASE_URL_READER: ${DATABASE_URL_READER}
+      SECRET_KEY: ${SECRET_KEY}
+      QR_SECRET: ${QR_SECRET}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SMS_PROVIDER: ${SMS_PROVIDER:-none}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_MESSAGING_SERVICE_SID: ${TWILIO_MESSAGING_SERVICE_SID:-}
+    depends_on:
+      - api
+
+  web:
+    image: kafriada-web:${RELEASE:-latest}
+    build:
+      context: ../web
+    restart: unless-stopped
+    ports:
+      # Behind Cloudflare in front of this host. Bound to localhost so the
+      # tunnel or reverse proxy is the only way in.
+      - "127.0.0.1:3000:3000"
+    environment:
+      NODE_ENV: production
+      # The private address of the domain tier, inside this network.
+      KAFRIADA_API_URL: http://api:8010
+    depends_on:
+      api:
+        condition: service_healthy

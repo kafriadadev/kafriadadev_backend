@@ -4,6 +4,11 @@ const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
 
+  // The container image runs .next/standalone/server.js, which carries only the
+  // node_modules actually reached at runtime. Harmless locally: `next start`
+  // still serves the same build.
+  output: "standalone",
+
   // Every launch screen must work with JavaScript disabled: Opera Mini in proxy
   // mode is common in northern Nigeria and runs almost none. Server Components
   // and server actions give us that for free, and this keeps us honest about it.

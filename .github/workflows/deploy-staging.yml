@@ -1,0 +1,149 @@
+name: Deploy staging
+
+# Run by hand, or by pushing a tag. Never automatically on a merge: a deploy
+# that happens because a pull request was approved is a deploy nobody was
+# watching.
+on:
+  workflow_dispatch:
+    inputs:
+      skip_migrations:
+        description: "Deploy without running migrations (rollback of app code only)"
+        type: boolean
+        default: false
+  push:
+    tags: ["staging-*"]
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false # never interrupt a deploy mid-migration
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. The plan. Runs with no approval and changes nothing: it prints the SQL a
+  #    person is about to approve, into the job summary, where it is readable
+  #    without a terminal.
+  # ---------------------------------------------------------------------------
+  plan:
+    name: Plan migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install
+        working-directory: api
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Plan
+        env:
+          DATABASE_URL_MIGRATE: ${{ secrets.STAGING_DATABASE_URL_MIGRATE }}
+          PYTHON: python
+        run: |
+          {
+            echo '## Migration plan for staging'
+            echo '```sql'
+            bash scripts/release.sh plan staging 2>&1
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # 2. The gate. The `staging` environment carries a required-reviewer rule in
+  #    the repository settings, so this job waits for a person. That wait is the
+  #    gate the build plan asks for — it is deliberately not in this file, where
+  #    it could be edited in the same pull request that changes a migration.
+  # ---------------------------------------------------------------------------
+  migrate:
+    name: Apply migrations (approval required)
+    needs: plan
+    if: ${{ !inputs.skip_migrations }}
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install
+        working-directory: api
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Apply
+        env:
+          DATABASE_URL_MIGRATE: ${{ secrets.STAGING_DATABASE_URL_MIGRATE }}
+          # The approval already happened, in the environment protection rule.
+          # This is how that decision reaches the script instead of a prompt.
+          RELEASE_APPROVED: staging
+          PYTHON: python
+        run: bash scripts/release.sh migrate staging
+
+      - name: Verify the database is at head
+        env:
+          DATABASE_URL_MIGRATE: ${{ secrets.STAGING_DATABASE_URL_MIGRATE }}
+          PYTHON: python
+        run: bash scripts/release.sh verify staging
+
+  # ---------------------------------------------------------------------------
+  # 3. The deploy itself. Images are built here; the push and release step
+  #    depends on a hosting provider that has not been chosen yet — see
+  #    docs/deploy-runbook.md. Until it is, this job proves the images build.
+  # ---------------------------------------------------------------------------
+  images:
+    name: Build images
+    needs: migrate
+    # A rollback of app code alone skips the migration job, and must still deploy.
+    if: ${{ always() && !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./api
+          push: false
+          tags: kafriada-api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web
+          push: false
+          tags: kafriada-web:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------------
+  # 4. Does it answer? A deploy that ends without asking the deployed thing
+  #    whether it can reach its database is not finished, it is only quiet.
+  # ---------------------------------------------------------------------------
+  smoke:
+    name: Smoke test
+    needs: images
+    runs-on: ubuntu-latest
+    environment: staging
+    if: ${{ vars.STAGING_BASE_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Health and readiness
+        run: bash scripts/release.sh smoke "${{ vars.STAGING_BASE_URL }}"

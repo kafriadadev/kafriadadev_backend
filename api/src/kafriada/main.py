@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import structlog
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -27,6 +27,7 @@ from kafriada.middleware import (
     SecurityHeadersMiddleware,
     short_reference,
 )
+from kafriada.observability import configure_sentry
 from kafriada.settings import Settings, get_settings
 
 log = structlog.get_logger(__name__)
@@ -97,6 +98,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app(settings: Settings | None = None) -> FastAPI:
     cfg = settings or get_settings()
     configure_logging(cfg)
+    # Before the routes exist, so a fault while wiring them is reported too.
+    configure_sentry(cfg)
 
     app = FastAPI(
         title="KAFRIADA CORE API",
@@ -211,9 +214,36 @@ def _install_health(app: FastAPI) -> None:
     def healthz() -> dict[str, str]:
         """Liveness. Deliberately reveals nothing: version, environment and
         dependency state are all information an unauthenticated caller does not
-        need. Readiness, which does check the database, is a separate internal
-        endpoint added with the database layer."""
+        need. Whether the dependencies answer is /readyz."""
         return {"status": "ok"}
+
+    @app.get(
+        "/readyz",
+        include_in_schema=False,
+        dependencies=[Public("readiness probe; answers ready or not, nothing else")],
+    )
+    def readyz(response: Response) -> dict[str, str]:
+        """Readiness: can this process actually serve a request?
+
+        It opens a connection on each role, because "the process is up" and "the
+        process can reach its database with the privileges it needs" are
+        different questions, and a load balancer that cannot tell them apart
+        sends traffic into a hole.
+
+        **Which role failed is not in the answer.** It is in the log. A probe
+        endpoint is reachable from inside the network by anything at all, and
+        "kaf_money cannot connect" is a sentence that helps an attacker more
+        than it helps an operator.
+        """
+        from kafriada.db.engine import check_connectivity
+
+        results = check_connectivity()
+        if all(results.values()):
+            return {"status": "ready"}
+
+        log.error("not_ready", **{name: ok for name, ok in results.items()})
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "not ready"}
 
 
 app = create_app()

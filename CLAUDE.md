@@ -24,7 +24,13 @@ cd web && npm run typecheck && npm run build
 cd web && npm run check:render              # needs both tiers up; see below
 python scripts/demo_security.py             # live demo of what the DB refuses to do
 cd api && .venv/Scripts/python.exe -m kafriada.outbox.dispatch --once   # send queued SMS
+python scripts/check_migration_safety.py    # refuses data loss in an upgrade()
+bash scripts/release.sh plan staging        # pending migrations + the SQL
+bash scripts/release.sh migrate staging     # apply, after typing the name
+bash scripts/release.sh smoke http://127.0.0.1:8010
 ```
+Probes: `/healthz` (alive) and `/readyz` (can reach the database on each role;
+503 otherwise, and which role failed goes to the log, not the response).
 `check:render` drives the installed Edge (playwright-core, no download): WCAG
 contrast of every text element, overflow, split IDs at 360px light/dark and 320px,
 plus JS-off registration and sign-in round trips that write nothing. Run it after
@@ -61,6 +67,9 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   which silently turns five guesses into unlimited (caught by a test, `_spend_code`).
 - FastAPI ≥0.141 nests included routers; walk routes with `api.security.api_routes(app)`,
   not `app.routes`.
+- `web/next.config.ts` sets `output: "standalone"` for the container image. `next
+  start` still serves the same build, so local flow is unchanged.
+- The API must be restarted to pick up new routes — it runs without `--reload`.
 - Disk C: runs near full; `npm cache clean --force` frees several GB.
 
 ## Invariants — do not weaken
@@ -72,7 +81,14 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   **need CEO/state-coordinator sign-off before the first card is issued.**
 
 ## Status (as of 2026-09-12)
-- Stage 0 foundations — done, except 0.6 deploy pipeline (staging, Sentry).
+- Stage 0 foundations — done. 0.6 pipeline: everything except the staging host
+  itself. Sentry wired and scrubbed (`observability.py`, inert without a DSN),
+  `/readyz`, gated migrations (`scripts/release.sh` + `check_migration_safety.py`),
+  `deploy-staging.yml` waiting on the `staging` GitHub Environment, CI now builds
+  the web tier and runs the access/OTP DB tests, Dockerfiles for both tiers.
+  **Not done:** no staging Supabase project, no host chosen (see
+  `docs/deploy-runbook.md`), no Sentry project, no GitHub Environment configured.
+  The images have never been built — this machine has no Docker.
 - 1.1 identity anchor — done. Live Supabase DB, security guarantees proved.
 - 1.3 KUID minting — done, burst-tested under real contention.
 - 1.4 partial — API: register, public profile, signed QR. Web: landing, register,
@@ -111,7 +127,10 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
 4. ~~OTP via outbox~~ Done 2026-09-12. Waiting on Twilio credentials: set
    `SMS_PROVIDER=twilio` with the account SID, auth token and Messaging Service
    SID in `api/.env`, then run the dispatcher. Nothing else changes.
-5. **0.6 deploy pipeline** — staging, gated migrations, Sentry.
+5. **0.6 deploy pipeline** — code done 2026-09-12; blocked on accounts: a staging
+   Supabase project, a host (Fly/Render/Hetzner — decide), a Sentry project, and
+   the `staging` GitHub Environment with `STAGING_DATABASE_URL_MIGRATE` and a
+   required reviewer. Then build the images once for real.
 6. Stage 2 (ledger & Paystack, media & verification, outbox jobs, assisted cash
    payment & clubs) — do not compress. Then Stage 3 launch readiness.
 

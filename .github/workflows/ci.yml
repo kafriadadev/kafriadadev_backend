@@ -51,9 +51,45 @@ jobs:
         # Without this the boundary is a convention, and conventions decay.
         run: lint-imports || echo "::warning::import-linter contracts not yet defined"
 
+      - name: No migration destroys data without saying so
+        run: python scripts/check_migration_safety.py
+
       - name: Unit tests
         working-directory: api
         run: pytest -m "not db"
+
+  # ---------------------------------------------------------------------------
+  # The presentation tier. Types and a real production build: a page that fails
+  # to build is a page nobody can register on.
+  # ---------------------------------------------------------------------------
+  web:
+    name: Web types and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        working-directory: web
+        run: npm ci
+
+      - name: Types
+        working-directory: web
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: web
+        # KAFRIADA_API_URL is not read at build time — every page is dynamic and
+        # calls the API per request — but a missing value must not silently turn
+        # into a build-time fetch to localhost either.
+        env:
+          KAFRIADA_API_URL: http://127.0.0.1:8010
+        run: npm run build
 
   # ---------------------------------------------------------------------------
   # The security gates. Each corresponds to a specific, named failure.
@@ -110,6 +146,19 @@ jobs:
       DATABASE_URL_MIGRATE: postgresql+psycopg://kaf_migrate:ci_pw@localhost:5432/kafriada
       DATABASE_URL_APP: postgresql+psycopg://kaf_app:ci_pw@localhost:5432/kafriada
       DATABASE_URL_MONEY: postgresql+psycopg://kaf_money:ci_pw@localhost:5432/kafriada
+      DATABASE_URL_READER: postgresql+psycopg://kaf_reader:ci_pw@localhost:5432/kafriada
+      # The session, code and permission tests build the real application, which
+      # refuses to start without these. CI values, never reused anywhere.
+      ENVIRONMENT: local
+      SECRET_KEY: ci_only_secret_key_thirty_two_chars_min
+      QR_SECRET: ci_only_qr_secret_thirty_two_chars_min
+      # Messages stay in the outbox. Nothing in CI may reach a real phone.
+      SMS_PROVIDER: none
+      # Argon2 at production cost turns a lockout test into a minute of CPU.
+      PASSWORD_HASH_CONCURRENCY: 4
+      # Keep the burst test honest but quick against a local database.
+      BURST_SIZE: "120"
+      BURST_WORKERS: "12"
 
     steps:
       - uses: actions/checkout@v4
