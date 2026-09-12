@@ -20,6 +20,7 @@ from types import FrameType
 
 import structlog
 
+from kafriada.contexts.access import ratelimit
 from kafriada.main import configure_logging
 from kafriada.outbox import service
 from kafriada.outbox.providers import build_sender
@@ -60,11 +61,28 @@ def main(argv: list[str] | None = None) -> int:
     signal.signal(signal.SIGTERM, _stop)
     log.info("outbox_started", provider=sender.name, once=args.once)
 
+    # Closed rate-limit windows are swept here rather than by a second worker:
+    # this loop already runs continuously, and the sweep is one indexed DELETE.
+    # An hour between sweeps is plenty for rows whose shortest window is an hour.
+    last_pruned = 0.0
+    PRUNE_EVERY = 3_600.0
+
     while not _stopping:
         result = service.drain(limit=args.batch, sender=sender)
         if result.sent or result.retried or result.failed:
             log.info("outbox_pass", sent=result.sent, retried=result.retried,
                      failed=result.failed)
+
+        now = time.monotonic()
+        if args.once or now - last_pruned >= PRUNE_EVERY:
+            last_pruned = now
+            try:
+                if removed := ratelimit.prune():
+                    log.info("rate_counters_pruned", removed=removed)
+            except Exception:
+                # Housekeeping must never stop messages going out.
+                log.warning("rate_counter_prune_failed", exc_info=True)
+
         if args.once:
             break
         time.sleep(args.interval)

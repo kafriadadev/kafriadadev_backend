@@ -169,7 +169,29 @@ class Settings(BaseSettings):
     otp_resend_seconds: int = Field(default=60, ge=15, le=600)
     otp_sends_per_day: int = Field(default=5, ge=1, le=20)
 
-    # -- Redis (rate limits and the idempotency cache only) ---------------
+    # -- Per-address rate limits ------------------------------------------
+    # These count what one SOURCE is doing. The per-person limits (account
+    # lockout, five codes a day per number) are elsewhere and are unaffected.
+    #
+    # The numbers are deliberately generous. Nigerian mobile networks put very
+    # many subscribers behind one public address, and a coordinator at a
+    # registration desk legitimately registers many athletes from one
+    # connection. These stop ten thousand attempts, not ten. Expect to tune
+    # them from real pilot traffic rather than from first principles.
+    rate_limits_enabled: bool = True
+    signins_per_ip_hourly: int = Field(default=60, ge=5, le=10_000)
+    code_requests_per_ip_hourly: int = Field(default=30, ge=3, le=10_000)
+    code_requests_per_ip_daily: int = Field(default=150, ge=5, le=100_000)
+    code_attempts_per_ip_hourly: int = Field(default=60, ge=5, le=10_000)
+    registrations_per_ip_hourly: int = Field(default=40, ge=2, le=10_000)
+    registrations_per_ip_daily: int = Field(default=200, ge=5, le=100_000)
+
+    # -- Redis ------------------------------------------------------------
+    # Unused. Rate limits count in Postgres (contexts/access/ratelimit.py):
+    # six endpoints and a few thousand attempts a day do not justify another
+    # service to run, secure and monitor. Kept because the idempotency cache
+    # for Paystack webhooks may want it, and because it is the obvious swap if
+    # traffic ever outgrows a table.
     redis_url: str = "redis://localhost:6379/0"
 
     # -- Observability ----------------------------------------------------

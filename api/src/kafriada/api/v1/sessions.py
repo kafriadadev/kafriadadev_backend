@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from kafriada.api.client import client_ip, request_id, user_agent
 from kafriada.api.security import Public, SignedIn, current_principal
+from kafriada.api.throttle import Throttle
 from kafriada.contexts.access import service as access
 from kafriada.contexts.identity import service as identity
 
@@ -62,7 +63,13 @@ class MeResponse(BaseModel):
     "/sessions",
     response_model=SessionResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Public("signing in is how a session begins")],
+    dependencies=[
+        Public("signing in is how a session begins"),
+        # Per account, a lock already stops repeated wrong passwords. This stops
+        # one password being tried against thousands of different accounts,
+        # which trips no account's lock at all.
+        Throttle("sign_in"),
+    ],
     summary="Sign in with phone and password",
 )
 def sign_in(body: SignInRequest, request: Request) -> SessionResponse:

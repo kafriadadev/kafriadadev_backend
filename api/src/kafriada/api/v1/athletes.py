@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from kafriada.api.client import client_ip, request_id
 from kafriada.api.security import Public, Requires
+from kafriada.api.throttle import Throttle
 from kafriada.contexts.geography import jigawa
 from kafriada.contexts.identity import service as identity
 from kafriada.security.signing import build_qr_signer
@@ -110,7 +111,14 @@ class AthleteListing(BaseModel):
     "/register",
     response_model=RegistrationResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Public("the register is free and open; this is the product")],
+    dependencies=[
+        Public("the register is free and open; this is the product"),
+        # A junk registration is not merely noise: it permanently spends a KUID
+        # serial for that LGA and year, and KUIDs are never reused. The limit is
+        # set high enough for a coordinator registering a queue of athletes from
+        # one desk on one connection.
+        Throttle("register"),
+    ],
     summary="Register an athlete and issue their permanent KUID",
 )
 def register_athlete(body: RegistrationRequest, request: Request) -> RegistrationResponse:

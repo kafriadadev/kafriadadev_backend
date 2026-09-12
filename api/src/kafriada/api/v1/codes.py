@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from kafriada.api.client import client_ip, request_id, user_agent
 from kafriada.api.security import Public
+from kafriada.api.throttle import Throttle
 from kafriada.contexts.access import service as access
 from kafriada.contexts.identity import service as identity
 
@@ -65,7 +66,10 @@ def _code_refused(exc: access.CodeRefused) -> HTTPException:
     "/phone/code",
     response_model=CodeSentResponse,
     status_code=status.HTTP_202_ACCEPTED,
-    dependencies=[Public("someone confirming their phone has no session yet")],
+    dependencies=[
+        Public("someone confirming their phone has no session yet"),
+        Throttle("send_code"),
+    ],
     summary="Send another phone confirmation code",
 )
 def send_phone_code(body: PhoneRequest, request: Request) -> CodeSentResponse:
@@ -82,7 +86,10 @@ def send_phone_code(body: PhoneRequest, request: Request) -> CodeSentResponse:
 @router.post(
     "/phone/confirm",
     response_model=ConfirmedResponse,
-    dependencies=[Public("the code itself is the credential here")],
+    dependencies=[
+        Public("the code itself is the credential here"),
+        Throttle("confirm_code"),
+    ],
     summary="Confirm a phone number with its code, and sign in",
 )
 def confirm_phone(body: ConfirmPhoneRequest, request: Request) -> ConfirmedResponse:
@@ -111,7 +118,12 @@ def confirm_phone(body: ConfirmPhoneRequest, request: Request) -> ConfirmedRespo
     "/password-reset/code",
     response_model=CodeSentResponse,
     status_code=status.HTTP_202_ACCEPTED,
-    dependencies=[Public("somebody who cannot sign in cannot be signed in to ask")],
+    dependencies=[
+        Public("somebody who cannot sign in cannot be signed in to ask"),
+        # The per-number limit protects one victim; this protects everybody
+        # else's phone at 3am, and the SMS bill.
+        Throttle("send_code"),
+    ],
     summary="Send a password reset code",
 )
 def send_reset_code(body: PhoneRequest, request: Request) -> CodeSentResponse:
@@ -127,7 +139,10 @@ def send_reset_code(body: PhoneRequest, request: Request) -> CodeSentResponse:
 @router.post(
     "/password-reset/confirm",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Public("the code is the credential; that is the point of a reset")],
+    dependencies=[
+        Public("the code is the credential; that is the point of a reset"),
+        Throttle("confirm_code"),
+    ],
     summary="Set a new password with a reset code",
 )
 def reset_password(body: ResetPasswordRequest, request: Request) -> Response:
