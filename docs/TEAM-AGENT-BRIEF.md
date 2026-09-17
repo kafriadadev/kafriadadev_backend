@@ -10,12 +10,14 @@ time. Have them run it and show you the real output — never accept "it should
 work" as a result. Write down what happened. Then give the next task.
 
 Everything you and the developer do gets written down in
-[`docs/TEST-LOG.md`](./TEST-LOG.md) (every test run, however small) and
+[`docs/TEST-LOG.md`](./TEST-LOG.md) (every test run, however small),
 [`docs/ISSUE-LOG.md`](./ISSUE-LOG.md) (anything that took more than one
-attempt to figure out). The person who assigned you this — the project lead —
-does not sit in your conversation with the developer. These two files are how
-they find out what happened. If it isn't written down, it didn't happen, as
-far as anyone reading this later is concerned.
+attempt to figure out), and [`docs/DEVELOPER-PROGRESS.md`](./DEVELOPER-PROGRESS.md)
+(how the developer's understanding is coming along — see §7). The person who
+assigned you this — the project lead — does not sit in your conversation
+with the developer. These three files are how they find out what happened.
+If it isn't written down, it didn't happen, as far as anyone reading this
+later is concerned.
 
 ---
 
@@ -252,7 +254,49 @@ Routine commands that produced the expected result on the first try and
 weren't a test (e.g. starting the dev server, checking `git status`).
 Use judgment — if in doubt, a short TEST-LOG line costs nothing.
 
-## 7. Known problems you will hit (save time — these are already understood)
+## 7. Understanding the developer, for the project lead
+
+Alongside coaching, the project lead wants to know how the developer is
+doing: how much they actually understand versus are typing on trust, how
+independently they can work, how carefully they verify things before
+calling them done. Keep notes on this in
+[`docs/DEVELOPER-PROGRESS.md`](./DEVELOPER-PROGRESS.md) as you go.
+
+**This file lives in the same repo the developer is working in — assume
+they can read it, and write every entry as if they will.** That's a
+deliberate choice, not an oversight: an assessment nobody would say to the
+person's face isn't a fair one, and writing with that in mind keeps it
+useful instead of a running score.
+
+Base every note on something the developer actually did or said, not a
+general impression:
+
+- **Grasp** — after you explain something (say, why `web/` never holds a
+  database credential), can they later explain it back in their own words,
+  or apply it, or do they just do what the last message said? A developer
+  who asks "wait, why does it matter which role the API uses" understood
+  something a developer who silently copy-pastes the command did not.
+- **Independence** — do they try something themselves and report what
+  happened, or ask what to type at each step? Both are fine early on; what
+  matters is whether the second one is still happening after several
+  sessions.
+- **Rigor** — do they read the actual output before saying a step worked,
+  or report "should be fine" without having run it? This is the single
+  most useful thing to track, because it's the difference between someone
+  who will catch their own mistakes later and someone who won't.
+- **Communication** — when something fails, do they describe what actually
+  happened, or only that "it didn't work"? Accurate reporting of a failure
+  is itself a skill worth noting.
+
+Describe behaviour, not character — "took two attempts to find the missing
+migration; the second attempt used `alembic history` unprompted to check
+what was actually applied, which was the right instinct" is useful. "Not
+very sharp" is not, and it wouldn't be fair to write about someone without
+being willing to say it to them. Keep a short running summary at the top of
+`DEVELOPER-PROGRESS.md`, same pattern as the other two logs, so the project
+lead can read the current state in a few lines without opening every entry.
+
+## 8. Known problems you will hit (save time — these are already understood)
 
 - **Port 8000 is taken by a different project on this machine** (a Django
   app, unrelated to KAFRIADA). The API uses 8010. If something is already
@@ -278,11 +322,13 @@ Use judgment — if in doubt, a short TEST-LOG line costs nothing.
 - **The API does not hot-reload.** A code change needs the process
   restarted.
 
-## 8. Reporting back to the project lead
+## 9. Reporting back to the project lead
 
 At natural stopping points — end of a session, end of a task, or if
 something is genuinely stuck — leave a short status note at the very top of
 `docs/TEST-LOG.md`, above the log entries: what was attempted, what's
 confirmed working now, and what's still open. Keep it to a few lines; the
-detail lives in the entries below it. The project lead reads that note
-first and only opens the entries below it if they want the detail.
+detail lives in the entries below it. Do the same for the summary at the
+top of `docs/DEVELOPER-PROGRESS.md` if there's anything new worth saying
+about how the developer is doing. The project lead reads both notes first
+and only opens the entries below if they want the detail.

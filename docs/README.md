@@ -36,6 +36,7 @@ needed, nothing to log into.
 | **TEAM-AGENT-BRIEF.md** | Written for the developer's AI agent: what's actually built (not the vision — the current repo), how the system fits together, and the coaching process — one task at a time, verified with real output, everything logged. Start here if you're new. |
 | **TEST-LOG.md** | Every test run, dated, with command and result. A status note at the top for a quick read. |
 | **ISSUE-LOG.md** | Anything that took more than one attempt — the back-and-forth that led to the answer, not just the fix. |
+| **DEVELOPER-PROGRESS.md** | How the developer's understanding is coming along, for the project lead — evidence-based, and written knowing the developer can read it too. |
 
 ## Also here
 

@@ -5,8 +5,9 @@ free → permanent KUID + signed QR card → anyone can scan and verify. Paid St
 verification (₦2,500) adds a photo. Full context: `docs/README.md` and the PDFs in `docs/`.
 
 A developer is testing what's built, coached by their own agent. That agent's
-brief is `docs/TEAM-AGENT-BRIEF.md`; test runs land in `docs/TEST-LOG.md`, and
-anything that took more than one attempt lands in `docs/ISSUE-LOG.md`. Check
+brief is `docs/TEAM-AGENT-BRIEF.md`; test runs land in `docs/TEST-LOG.md`,
+anything that took more than one attempt lands in `docs/ISSUE-LOG.md`, and how
+the developer is coming along lands in `docs/DEVELOPER-PROGRESS.md`. Check
 those before assuming something untested actually works.
 
 ## Working style (user preference)
