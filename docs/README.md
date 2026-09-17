@@ -29,6 +29,14 @@ needed, nothing to log into.
 | **KAFRIADA-Pilot-Build-Spec.pdf** | The original build specification. |
 | **Kaf 0100 Doc.pdf** | KAF 000 GDOC v1.0 — the original 244-page specification. |
 
+## For a developer joining to test what's built
+
+| Document | Contents |
+| --- | --- |
+| **TEAM-AGENT-BRIEF.md** | Written for the developer's AI agent: what's actually built (not the vision — the current repo), how the system fits together, and the coaching process — one task at a time, verified with real output, everything logged. Start here if you're new. |
+| **TEST-LOG.md** | Every test run, dated, with command and result. A status note at the top for a quick read. |
+| **ISSUE-LOG.md** | Anything that took more than one attempt — the back-and-forth that led to the answer, not just the fix. |
+
 ## Also here
 
 - `deploy-runbook.md` — how a release runs, how to roll one back, and what is
