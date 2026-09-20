@@ -151,19 +151,32 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   addresses); (3) the local `bootstrap-roles.sql` lacked `GRANT CREATE ON DATABASE`
   to `kaf_migrate`, so a local database failed its first migration. Still worth
   repeating against Supabase once it is reachable.
-- 2.1 payments core — pure rules done 2026-09-20, merged to `main`. No DB, no route,
-  no migration yet. `contexts/payments/rules.py`: strict `charge.success` parsing,
-  `decide()` (NGN + success + amount *exactly* equal, else FREEZE — never approve),
-  reference `KAF-{uuid4}`, payment status machine. `contexts/ledger/entries.py`:
-  a settled payment is exactly two lines, gross credit + provider-fee debit. 131
-  tests, all six hand-made mutations caught. The duplicate check is deliberately
-  NOT here: it must be one atomic `INSERT … ON CONFLICT DO NOTHING RETURNING` in the
-  settlement service, tested by replaying one webhook five times → two ledger rows.
+- 2.1 payments — rules, tables and settlement done 2026-09-20 (16d02cf). No route,
+  no Paystack initialise call, no screen yet. `contexts/payments/rules.py`: strict
+  `charge.success` parsing, `decide()` (NGN + success + amount *exactly* equal,
+  else FREEZE — never approve), reference `KAF-{uuid4}`, status machine.
+  `contexts/ledger/entries.py`: a settled payment is exactly two lines, gross
+  credit + provider-fee debit. **Migration 0006** (`money` schema): `payments`
+  (guard trigger: agreed fields immutable, `success` final), insert-only
+  `ledger_entries` (unique `(payment_id, source)`) and insert-only `webhook_events`
+  — both `REVOKE ALL` then SELECT/INSERT for `kaf_money`, plus the `ops.deny_mutation`
+  trigger so not even the owner can edit a row. **No wallets** (decided: ledger
+  lines belong to the payment). `contexts/payments/settlement.py: settle_charge()`:
+  lookup → atomic `INSERT … ON CONFLICT DO NOTHING RETURNING` on `webhook_events`
+  → `FOR UPDATE` → `decide()` → two lines + status + audit, one commit; a mismatch
+  is `frozen` + audit + an error log emitted *after* the commit. Unknown `KAF-`
+  reference writes nothing (a redelivery can still settle); a non-`KAF-` one is
+  ignored. `tests/test_settlement.py`: 29 DB tests, incl. five concurrent copies × 6
+  rounds → two rows. Mutations proved red: read-then-insert dedupe, no dedupe,
+  always-settle, `GRANT INSERT` to `kaf_app`, `GRANT UPDATE/DELETE` to `kaf_money`,
+  the owner trigger disabled. Full suite 389 passed / 0 skipped on the local DB.
   Choices to confirm: missing `fees` from Paystack → FREEZE (check a real test-mode
-  payload); new `frozen` status beyond the spec's four; followed the Build Plan
-  ("provider fee") over Pilot Build Spec §6 ("fee debit"), which is ambiguous.
-  Next slice: migration (payments, wallets, `ledger_entries` insert-only on
-  `kaf_money`), the settlement service, `/v1/payments/webhook/paystack`, initialise.
+  payload); new `frozen` status; followed the Build Plan ("provider fee") over
+  Pilot Build Spec §6. Idempotency key is `charge.success:<reference>`, not
+  Paystack's transaction id (`ChargeEvent` does not carry it). An illegal
+  transition (e.g. a frozen payment receiving a new settle) raises and rolls back
+  rather than returning — the route must decide what Paystack is told.
+  Next slice: `/v1/payments/webhook/paystack`, then initialise (`[ACCT]` keys).
 - **Not built:** expired-session sweep, outbox retention/scheduling (0.6 — the
   worker is started by hand today), admin UI (ADM-02 is API only), a way to
   appoint the first super_admin (today: SQL insert into `ops.user_roles`).
@@ -187,8 +200,7 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
 7. Stage 2 (ledger & Paystack, media & verification, outbox jobs, assisted cash
    payment & clubs) — do not compress. Then Stage 3 launch readiness.
    **The full, ordered list — every remaining item, screen and decision — is
-   `docs/TODO.md`. Start there.** Next in line: 2.1's migration 0006, blocked on
-   one decision (wallets, or ledger tied to payments only).
+   `docs/TODO.md`. Start there.** Next in line: 2.1's webhook route.
 
 ## Outside the code (block launch, not build)
 Paystack business verification needs current CAC registration (1–3 weeks; nobody

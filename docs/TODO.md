@@ -17,9 +17,9 @@ database item on the strength of tests that skipped.
 
 ## Where we are
 
-Stage 0 and Stage 1 are done. Stage 2 has started: the pure half of 2.1 (what a
-Paystack event is worth, and what the ledger writes) is on `main` with 131 tests.
-No money table, route or migration exists yet. **12 of 46 screens are built**
+Stage 0 and Stage 1 are done. Stage 2 has started: 2.1's rules, money tables
+(migration 0006) and settlement service are on `main`. No webhook route, no
+initialise call and no screen exists yet. **12 of 46 screens are built**
 (37 are for launch, 9 wait for Slice 2). Five contexts are still empty:
 `clubs`, `feed`, `media`, `transfers`, `verification`.
 
@@ -34,8 +34,8 @@ today. The other two cannot until Stage 2 is built — that is what this list is
 - [ ] `[USER]` **Supabase project.** Its hostnames do not resolve at all (2026-09-20)
   while supabase.com does — likely paused after a week idle. Check the dashboard
   and restore it. Blocks the developer's database testing.
-- [ ] `[USER]` **Wallets: per-athlete, or ledger tied to payments only?** Blocks the
-  2.1 migration. Recommendation: payments only — gross and provider fee are
+- [x] `[USER]` **Wallets: per-athlete, or ledger tied to payments only?** Decided
+  2026-09-20: payments only, no wallets table. Gross and provider fee are
   platform facts, not an athlete's balance. Wallets can come when something needs
   a balance. (The Pilot Build Spec lists wallets; the Build Plan lists ledger lines.)
 - [ ] `[ACCT]` **Paystack test keys** — needed to build initialise and the webhook
@@ -66,9 +66,10 @@ here is `[DB]`.
 
 ### 2.1 Ledger and payments (4–5 days)
 
-Done: pure rules — `contexts/payments/rules.py`, `contexts/ledger/entries.py`.
+Done: pure rules — `contexts/payments/rules.py`, `contexts/ledger/entries.py`;
+migration 0006 and the settlement service (16d02cf).
 
-- [ ] **Migration 0006 — the money tables.** `payments` (our reference `KAF-{uuid}`,
+- [x] **Migration 0006 — the money tables** (16d02cf; applies and reverses cleanly). `payments` (our reference `KAF-{uuid}`,
   purpose, expected kobo, status incl. the new `frozen`, `paid_by`,
   `on_behalf_of`, `coordinator_id`), insert-only `ledger_entries`, and the
   webhook-idempotency table. `kaf_money` is granted UPDATE by default in the
@@ -76,7 +77,7 @@ Done: pure rules — `contexts/payments/rules.py`, `contexts/ledger/entries.py`.
   so even the owner cannot edit a ledger row (copy the `ops.audit_log` pattern).
   A unique `(payment_id, source)` makes "exactly two rows" structural. Run
   `scripts/check_migration_safety.py`.
-- [ ] **Settlement service**, on `money_transaction()`. In ONE transaction:
+- [x] **Settlement service** (16d02cf, `contexts/payments/settlement.py`), on `money_transaction()`. In ONE transaction:
   idempotency `INSERT … ON CONFLICT DO NOTHING RETURNING` (no row back = seen
   before: return 200, do nothing) → `decide()` → two ledger lines → status →
   audit row. On a mismatch: `frozen` + audit + an error-level alert, never approve.
@@ -89,7 +90,8 @@ Done: pure rules — `contexts/payments/rules.py`, `contexts/ledger/entries.py`.
   account only): create the `pending` row first, then call Paystack through a
   port with a fake for tests (same pattern as SMS, ADR 0003). Timeout on the call.
   Returns the redirect URL. `[ACCT]` test keys.
-- [ ] **Tests that must exist:** the same webhook five times *concurrently* → exactly
+- [ ] **Tests that must exist** (all but *bad signature* are done at the service
+  level in `tests/test_settlement.py`, 16d02cf; that one needs the route): the same webhook five times *concurrently* → exactly
   two ledger rows; a ₦10 payment for a ₦2,500 badge → frozen + alert; bad
   signature → no state change; `abandoned` → `success` on a late payment;
   `kaf_app` cannot INSERT a ledger row; nobody, `kaf_money` and the owner
