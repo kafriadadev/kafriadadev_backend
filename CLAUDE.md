@@ -130,6 +130,21 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   connectivity, `alembic upgrade head`, then
   `pytest api/tests/test_rate_limits.py -v`. If a test is wrong, fix the test —
   the code was written but never exercised.
+- 2.1 payments core — pure rules done 2026-09-20, **branch `stage2-payments-core`,
+  not merged** (kept off `main` so the developer's `alembic upgrade head` in
+  `TEAM-AGENT-BRIEF` §5 does not pick up a new migration mid-test). No DB, no route,
+  no migration yet. `contexts/payments/rules.py`: strict `charge.success` parsing,
+  `decide()` (NGN + success + amount *exactly* equal, else FREEZE — never approve),
+  reference `KAF-{uuid4}`, payment status machine. `contexts/ledger/entries.py`:
+  a settled payment is exactly two lines, gross credit + provider-fee debit. 131
+  tests, all six hand-made mutations caught. The duplicate check is deliberately
+  NOT here: it must be one atomic `INSERT … ON CONFLICT DO NOTHING RETURNING` in the
+  settlement service, tested by replaying one webhook five times → two ledger rows.
+  Choices to confirm: missing `fees` from Paystack → FREEZE (check a real test-mode
+  payload); new `frozen` status beyond the spec's four; followed the Build Plan
+  ("provider fee") over Pilot Build Spec §6 ("fee debit"), which is ambiguous.
+  Next slice: migration (payments, wallets, `ledger_entries` insert-only on
+  `kaf_money`), the settlement service, `/v1/payments/webhook/paystack`, initialise.
 - **Not built:** expired-session sweep, outbox retention/scheduling (0.6 — the
   worker is started by hand today), admin UI (ADM-02 is API only), a way to
   appoint the first super_admin (today: SQL insert into `ops.user_roles`).
