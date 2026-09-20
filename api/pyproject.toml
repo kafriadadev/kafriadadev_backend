@@ -14,6 +14,9 @@ dependencies = [
     "alembic>=1.14",
     "argon2-cffi>=23.1",
     "httpx>=0.28",
+    # QR card generation (api/v1/athletes.py). It was imported but never declared,
+    # so a fresh install failed at collection — found on a second machine.
+    "segno>=1.6",
     "structlog>=24.4",
     # Required for HTML form POSTs. Every launch screen must work without
     # JavaScript, so form-encoded bodies are a first-class input, not a fallback.
