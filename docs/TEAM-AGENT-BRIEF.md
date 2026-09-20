@@ -245,12 +245,24 @@ seen it:**
    the end.
 5. Run the full suite once more to confirm nothing else broke:
    `.venv/Scripts/python.exe -m pytest -v` from `api/`. Log it.
-6. Only once all of that is green: have the developer manually try to
-   trigger a limit — e.g. hit `/v1/phone/code` with the same phone from a
-   script six or seven times in a row and confirm the response changes once
-   the limit is hit. This is the one check that proves the *feature* works,
-   not just that the tests pass. Log what they saw, including the actual
-   response body of the call that got throttled.
+6. Only once all of that is green: have the developer manually trip the
+   **per-address** limit. This is the one check that proves the *feature*
+   works, not just that the tests pass. Log what they saw, including the
+   actual response body and headers of the call that got throttled.
+
+   **Use sign-in, and use a different phone number every time.** The
+   per-address sign-in limit is 60 an hour, so send 61 wrong-password
+   `POST /v1/sessions` calls from one machine, each with a *different*
+   made-up phone number: the first 60 should each be `401`, and the 61st
+   should be `429` with a `Retry-After` header and a message that says how
+   long to wait and nothing else. Different phones matter — if they reuse one,
+   the *account* locks first and they will have tested the old per-account
+   limit by mistake. (An earlier version of this step said to hit
+   `/v1/phone/code` six or seven times; that only trips the older per-phone
+   limit of 5 codes a day and would have looked like a pass while proving
+   nothing about the new feature.) If the developer wants to see it without
+   sending 61 requests, `tests/test_rate_limits.py` lowers the limit to 3 —
+   that is the same code path, and it is what step 4 already ran.
 
 If all six steps are clean, update the "Not verified" line about rate
 limits in `CLAUDE.md`'s Status section to say it's confirmed, with the date
