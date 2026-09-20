@@ -3,6 +3,7 @@
 Permanent sports ID for athletes (Jigawa State pilot, Birnin Kudu first). Register
 free → permanent KUID + signed QR card → anyone can scan and verify. Paid Stage-2
 verification (₦2,500) adds a photo. Full context: `docs/README.md` and the PDFs in `docs/`.
+**What is left to build, in order: `docs/TODO.md`.**
 
 A developer is testing what's built, coached by their own agent. That agent's
 brief is `docs/TEAM-AGENT-BRIEF.md`; test runs land in `docs/TEST-LOG.md`,
@@ -185,6 +186,9 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
    required reviewer. Then build the images once for real.
 7. Stage 2 (ledger & Paystack, media & verification, outbox jobs, assisted cash
    payment & clubs) — do not compress. Then Stage 3 launch readiness.
+   **The full, ordered list — every remaining item, screen and decision — is
+   `docs/TODO.md`. Start there.** Next in line: 2.1's migration 0006, blocked on
+   one decision (wallets, or ledger tied to payments only).
 
 ## Outside the code (block launch, not build)
 Paystack business verification needs current CAC registration (1–3 weeks; nobody

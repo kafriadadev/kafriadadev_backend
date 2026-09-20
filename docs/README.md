@@ -29,6 +29,12 @@ needed, nothing to log into.
 | **KAFRIADA-Pilot-Build-Spec.pdf** | The original build specification. |
 | **Kaf 0100 Doc.pdf** | KAF 000 GDOC v1.0 — the original 244-page specification. |
 
+## What is left to build
+
+| Document | Contents |
+| --- | --- |
+| **TODO.md** | Every remaining item in build order, with the screens, the decisions only the project lead can make, the launch waves and the rules that do not bend. |
+
 ## For a developer joining to test what's built
 
 | Document | Contents |
