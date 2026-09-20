@@ -63,6 +63,22 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `TRUSTED_HOSTS=["*"]` and the API will not boot. Start the tiers directly:
   `api/.venv/Scripts/python.exe -m uvicorn kafriada.main:app --host 127.0.0.1 --port 8010`
   (from `api/`) and `node node_modules/next/dist/bin/next start -p 3000` (from `web/`).
+- **2026-09-20: `db.slwlefnfdsjfeimyjhag.supabase.co` and the project's API host
+  `slwlefnfdsjfeimyjhag.supabase.co` do not resolve at all** ("No such host") while
+  supabase.com and github.com do — so it is not IPv6 and not the local network. Most
+  likely the free project was **paused after a week idle** (or removed). Check the
+  Supabase dashboard and restore it before debugging anything else.
+- **No reachable database? Build a private one.** Needs only the installed
+  PostgreSQL binaries, no Docker, no password for any existing database:
+  `initdb -D <tmp>/pgdata -U kafriada_admin -A scram-sha-256 --pwfile=<file> -E UTF8`,
+  `pg_ctl -D <tmp>/pgdata -o "-p 54329 -c listen_addresses=127.0.0.1" -l pg.log start`,
+  `createdb -p 54329 kafriada`, `psql -f infra/bootstrap-roles.sql` (with the four
+  `-v *_password=` variables), then `alembic upgrade head`, and export **all four**
+  `DATABASE_URL_*` (APP, MONEY, READER, MIGRATE) at `127.0.0.1:54329` — leaving
+  READER unset lets `api/.env` supply the dead host and `/readyz` returns 503, which
+  fails the permission-matrix test. Do not run `scripts/bootstrap-local-db.sh`
+  as-is: it hard-codes port 5432. `pg_ctl -w start` can hang a wrapping shell; the
+  server is up regardless (check `netstat` for the port).
 - The link to Supabase drops intermittently (DNS `getaddrinfo failed`, connection
   timeouts). Retry before debugging. The 200-registration burst test times out at
   default load on this link; use `BURST_WORKERS=6 BURST_SIZE=100`.
@@ -124,15 +140,17 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   marked unused). `Throttle("bucket")` on sign-in, send-code, confirm-code,
   register. Migration 0005 (`ops.rate_counters`). Sweep of closed windows is
   piggybacked on the outbox worker's loop (hourly).
-  **NOT VERIFIED — DO THIS FIRST:** this machine lost IPv6 mid-session and the
-  Supabase host is IPv6-reachable only, so migration 0005 has never been applied
-  and `api/tests/test_rate_limits.py` has never run. Before anything else: check
-  connectivity, `alembic upgrade head`, then
-  `pytest api/tests/test_rate_limits.py -v`. If a test is wrong, fix the test —
-  the code was written but never exercised.
-- 2.1 payments core — pure rules done 2026-09-20, **branch `stage2-payments-core`,
-  not merged** (kept off `main` so the developer's `alembic upgrade head` in
-  `TEAM-AGENT-BRIEF` §5 does not pick up a new migration mid-test). No DB, no route,
+  **VERIFIED 2026-09-20 against a private local PostgreSQL 15** (not Supabase, which
+  is unreachable — see Gotchas): migrations 0001→0005 apply, all 9 rate-limit tests
+  pass three runs in a row, and the whole suite is 360 passed / 0 skipped with the
+  database attached. Running it for real found three faults that every non-database
+  test had missed: (1) `main.py`'s HTTP error handler dropped every response header,
+  so a 429 lost its `Retry-After`; (2) the tests reused the same IPs every run, so a
+  re-run inside the hour failed on its first request (now random 2001:db8::/32
+  addresses); (3) the local `bootstrap-roles.sql` lacked `GRANT CREATE ON DATABASE`
+  to `kaf_migrate`, so a local database failed its first migration. Still worth
+  repeating against Supabase once it is reachable.
+- 2.1 payments core — pure rules done 2026-09-20, merged to `main`. No DB, no route,
   no migration yet. `contexts/payments/rules.py`: strict `charge.success` parsing,
   `decide()` (NGN + success + amount *exactly* equal, else FREEZE — never approve),
   reference `KAF-{uuid4}`, payment status machine. `contexts/ledger/entries.py`:
@@ -159,8 +177,8 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
 4. ~~OTP via outbox~~ Done 2026-09-12. Waiting on Twilio credentials: set
    `SMS_PROVIDER=twilio` with the account SID, auth token and Messaging Service
    SID in `api/.env`, then run the dispatcher. Nothing else changes.
-5. **Per-address rate limits** — code done 2026-09-12, **unverified against a
-   database — see Status above.** Verify first, before starting anything else.
+5. ~~Per-address rate limits~~ Verified 2026-09-20 on a local database, three
+   faults found and fixed (see Status). Repeat on Supabase when it is reachable.
 6. **0.6 deploy pipeline** — code done 2026-09-12; blocked on accounts: a staging
    Supabase project, a host (Fly/Render/Hetzner — decide), a Sentry project, and
    the `staging` GitHub Environment with `STAGING_DATABASE_URL_MIGRATE` and a

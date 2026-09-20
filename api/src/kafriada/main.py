@@ -164,6 +164,11 @@ def _install_error_handlers(app: FastAPI) -> None:
                     "reference": short_reference(request_id),
                 }
             },
+            # Headers the route asked for travel with the error. Without this a
+            # 429 loses its Retry-After, and a client cannot tell "wait a minute"
+            # from "go away" — found the first time the rate limits ran against a
+            # real database, having passed every test that does not touch one.
+            headers=exc.headers,
         )
 
     @app.exception_handler(RequestValidationError)

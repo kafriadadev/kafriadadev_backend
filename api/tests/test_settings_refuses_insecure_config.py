@@ -136,6 +136,15 @@ class TestReadRouting:
         replica = "postgresql+psycopg://kaf_reader:pw@replica:5432/kafriada"
         assert str(build(database_url_reader=replica).read_url) == replica
 
-    def test_reads_fall_back_to_the_primary_rather_than_failing(self) -> None:
+    def test_reads_fall_back_to_the_primary_rather_than_failing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         # A missing replica should degrade performance, never availability.
+        #
+        # An exported DATABASE_URL_READER *is* a configured replica, and reaches
+        # Settings through the process environment even with _env_file=None. So
+        # this test would fail for anyone running the database tests against a
+        # local database with all four URLs set — clear it rather than depend on
+        # what the shell happens to hold.
+        monkeypatch.delenv("DATABASE_URL_READER", raising=False)
         assert str(build().read_url) == APP_URL

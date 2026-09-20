@@ -189,6 +189,30 @@ connection dropped mid-session (Supabase is IPv6-only from here, and this
 network's IPv6 is unreliable — this has happened before and will probably
 happen again).
 
+> **Update 2026-09-20 — read before starting.** Two things have changed since the
+> paragraph above was written.
+>
+> **1. The rate-limit code has now been run for real, and fixed.** The project
+> lead's agent applied migrations 0001→0005 to a private local PostgreSQL 15 and
+> ran the whole suite: it found three faults that no database-free test could see
+> (a dropped `Retry-After` header, tests that failed on a second run inside the
+> hour, and a missing grant in the local role script). All are fixed on `main` —
+> `git pull` first, or you will hit them yourself. What you are confirming in the
+> steps below is therefore the *same code against the real Supabase database*, not
+> a first-ever run. See `CLAUDE.md` → Status for the details.
+>
+> **2. The IPv6 explanation may be wrong.** From the project lead's machine,
+> `db.slwlefnfdsjfeimyjhag.supabase.co` *and* the project's API host
+> `slwlefnfdsjfeimyjhag.supabase.co` return "No such host" — while `supabase.com`
+> and `github.com` resolve fine. A host that does not resolve at all is not an IPv6
+> routing problem. The likeliest cause is that the free Supabase project was
+> **paused after a week idle**. That is a dashboard action for the project lead,
+> not something to work around in code, so if `/readyz` is still 503: first run
+> `nslookup db.slwlefnfdsjfeimyjhag.supabase.co` and log what it says, then tell
+> the project lead. Switching to the IPv4 pooler will not help a paused project.
+> If you have PostgreSQL installed and want to keep testing meanwhile, the recipe
+> for a private local database is in `CLAUDE.md` → Gotchas.
+
 **Walk the developer through this, one step at a time, and have them show
 you the actual terminal output at each step — don't move on until you've
 seen it:**

@@ -104,4 +104,11 @@ ALTER ROLE kaf_reader SET default_transaction_read_only = on;
 REVOKE ALL ON DATABASE :"DBNAME" FROM PUBLIC;
 GRANT CONNECT ON DATABASE :"DBNAME" TO kaf_migrate, kaf_app, kaf_money, kaf_reader;
 
+-- Migration 0001 creates the identity, ops and money schemas, and creating a
+-- schema needs CREATE on the database. bootstrap-roles-supabase.sql has always
+-- granted this; this file did not, so a local database built from it failed on
+-- its very first migration. It went unnoticed because nobody had run the local
+-- path — found the first time it was, on a machine without Docker.
+GRANT CREATE ON DATABASE :"DBNAME" TO kaf_migrate;
+
 REVOKE ALL ON SCHEMA public FROM PUBLIC;

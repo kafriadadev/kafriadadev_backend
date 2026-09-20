@@ -14,9 +14,10 @@ What is proved here:
 
 from __future__ import annotations
 
-import itertools
 import os
+import secrets
 from collections.abc import Iterator
+from ipaddress import IPv6Address
 
 import pytest
 from fastapi.testclient import TestClient
@@ -63,13 +64,17 @@ def small_limits(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ratelimit, "limits_for", small)
 
 
-# The counters are keyed per address, so two tests sharing one would interfere.
-# 198.51.100.0/24 is reserved for documentation and belongs to nobody.
-_IPS = itertools.count(1)
-
-
+# The counters are keyed per address, so two tests sharing one would interfere —
+# and the counters live in the database for the whole window, an hour, so it is
+# not enough for addresses to differ *within* a run: they must differ *between*
+# runs too. This once handed out 198.51.100.1, .2, .3 in order every time, so a
+# second run inside the hour inherited the first run's counts and failed with a
+# 429 on the very first request. Found the first time it was run twice.
+#
+# 2001:db8::/32 is the IPv6 documentation range: it belongs to nobody, and 32
+# random bits of it make a collision between runs a non-event.
 def _unique_ip() -> str:
-    return f"198.51.100.{next(_IPS) % 250 + 1}"
+    return str(IPv6Address((0x2001_0DB8 << 96) | secrets.randbits(32)))
 
 
 WRONG = "not the right passphrase"  # deliberately wrong
@@ -120,7 +125,11 @@ def test_the_refusal_says_when_to_come_back_and_nothing_else(client: TestClient)
     assert response.status_code == 429
     assert int(response.headers["retry-after"]) > 0
 
-    message = response.json()["error"]["message"]
+    # An error's message may itself be {message, field}: a rejection can name the
+    # box to point at, and web/src/lib/api.ts is written against that shape.
+    rejection = response.json()["error"]["message"]
+    assert rejection["field"] is None, "a throttle points at no field — that would say which"
+    message = rejection["message"]
     assert "try again" in message.lower()
     # It says when to come back, and nothing about which limit was hit or how
     # much allowance is left — that is the recipe for pacing an attack to sit
@@ -183,7 +192,7 @@ def test_no_address_is_counted_rather_than_refused() -> None:
 
 
 def test_the_table_stores_no_addresses() -> None:
-    ip = "198.51.100.77"
+    ip = _unique_ip()
     ratelimit.hit("sign_in", ip, (ratelimit.Limit(times=99, per_seconds=ratelimit.HOUR),))
     with transaction() as session:
         keys = session.execute(text("SELECT key_hash FROM ops.rate_counters")).scalars().all()
