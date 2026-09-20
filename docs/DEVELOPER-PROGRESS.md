@@ -10,9 +10,7 @@ they are, and nothing that wouldn't be fair to say to their face.
 
 ## Summary (for the project lead — keep this current, keep it short)
 
-_No sessions yet. This will hold a few lines on grasp, independence and
-rigor as soon as there's evidence to report — see the dimensions in
-TEAM-AGENT-BRIEF.md §7._
+**2026-09-19** — Developer booted Uvicorn server on port 8010 and executed `/healthz` and `/readyz` probes in parallel terminal. Shared raw server logs alongside client responses. Server health OK; database connection timed out on readyz probe. Investigating connection stability as expected per brief.
 
 ---
 
@@ -34,5 +32,62 @@ before, first time this has come up — whatever's true>
 ```
 
 ---
+
+### 2026-09-19 — Step 1 execution: API boot and probe verification
+
+**What happened:**
+Developer successfully booted the FastAPI server using Uvicorn on 127.0.0.1:8010 in one terminal, opened a second terminal, and ran both `curl` probe checks. Shared the complete server-side log output along with the client-side JSON responses.
+
+**What it suggests:**
+- **Rigor:** Accurately captured both the client curl outputs and the corresponding backend Uvicorn logs, showing duration and error types (`OperationalError`, 30s timeout).
+- **Independence:** Handled running multi-terminal processes seamlessly.
+
+---
+
+### 2026-09-19 — Second session: .env creation and dependency resolution
+
+**What happened:**
+Developer successfully created and populated `api/.env` locally and verified file existence with `dir`. Executed `pytest -v` and shared the full raw terminal traceback. When Settings initialized cleanly, route loading failed on `ModuleNotFoundError: No module named 'segno'`.
+
+**What it suggests:**
+- **Independence:** Handled creating `.env` and configuring credentials on their own cleanly without leaking secret values into the prompt.
+- **Rigor:** Shared the full raw stack trace, showing Sentry initialization and the specific collection failure.
+- **Communication:** Directly reported command outcomes.
+
+**Compared to last time:** Progressing smoothly through the environment setup hurdles.
+
+---
+
+### 2026-09-18 — First session: environment setup and first test run
+
+**What happened:**
+Developer set up the project environment from scratch on a new machine.
+They ran each command as given and pasted the full terminal output each time
+— including errors — without paraphrasing. When pip failed twice due to
+network timeouts, they retried without being asked. When pytest produced 7
+collection errors, they shared the complete output including the full
+stacktrace.
+
+Developer also asked directly: "why are we installing all this and why are
+we running pytest?" — rather than following commands blindly. This was a
+good sign. The explanation (that we're setting up the exam-runner, not
+changing any code) was received and understood.
+
+Developer read the TEAM-AGENT-BRIEF when asked and understood the summary
+(what KAFRIADA is, how the two-tier system works, what's built vs not).
+
+**What it suggests:**
+- **Rigor:** Strong for a first session. Shared real output every time,
+  including full errors. Did not report "it worked" without evidence.
+- **Communication:** Clear and direct. Asked why before doing, which is
+  the right instinct.
+- **Grasp:** Too early to assess fully — one session of setup work doesn't
+  test understanding of the system itself. Will become clearer once tests
+  are running and the developer is interpreting results.
+- **Independence:** Followed agent guidance closely this session, which is
+  appropriate for day one. Worth watching whether this changes once the
+  environment is stable.
+
+**Compared to last time:** First session — no prior baseline.
 
 <!-- Newest entries go here, above this line. -->
