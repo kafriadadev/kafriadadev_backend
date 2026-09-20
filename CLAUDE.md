@@ -92,6 +92,11 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   not `app.routes`.
 - `web/next.config.ts` sets `output: "standalone"` for the container image. `next
   start` still serves the same build, so local flow is unchanged.
+- **Tests that assert on logs:** `structlog.testing.capture_logs` silently sees nothing once
+  `create_app()` has run in the process (loggers are cached on first use). Use
+  `tests/_payment_helpers.record_logs`, which swaps the module's `log`. And build the
+  app once before spawning threads: `create_app()` racing itself breaks sentry's
+  lazy imports.
 - The API must be restarted to pick up new routes — it runs without `--reload`.
 - Disk C: runs near full; `npm cache clean --force` frees several GB.
 
@@ -176,7 +181,34 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   Paystack's transaction id (`ChargeEvent` does not carry it). An illegal
   transition (e.g. a frozen payment receiving a new settle) raises and rolls back
   rather than returning — the route must decide what Paystack is told.
-  Next slice: `/v1/payments/webhook/paystack`, then initialise (`[ACCT]` keys).
+- 2.1 payments — webhook route, checkout start and VER-03 done 2026-09-20 (f7269e9).
+  `api/v1/payments.py`: `POST /v1/payments/webhook/paystack` (raw body → HMAC →
+  parse → `settle_charge`; bad/missing signature or no key → 400 and NOTHING
+  changes; 413 over 64 KB; 200 for unhandled events, unreadable bodies, non-`KAF-`
+  and unknown references, illegal transitions — each logged at error where a human
+  is needed; a database failure is left as 5xx so Paystack redelivers and the
+  rolled-back payment can settle). `POST /v1/payments` (`payment.initiate_self`,
+  throttled `start_payment`; body only `{purpose:"stage2_athlete"}` — the price is
+  ours), `GET /v1/payments/quote`, `GET /v1/payments/{reference}` (own only; else
+  404; states `checking|confirmed|failed|review` — a frozen payment reads as
+  `review`). `contexts/payments/service.py`: pending row committed BEFORE the
+  provider call; provider failure → `failed` + audit + 503 with a calm message
+  (the error handler now passes a 503's message through — every other 5xx is still
+  generic); paid or frozen athlete → 409; `none` provider → 503 and no row.
+  `contexts/payments/provider.py`: port + `PaystackProvider` (httpx, 8s deadline,
+  https-only address) + `FakeProvider` + `NoProvider`; **`PAYMENT_PROVIDER=none|fake|paystack`**
+  (fake refused outside local; production must be `paystack`). Web: `/pay`
+  (start + return in one address, JS off, "Check again" is a link), `lib/money.ts`,
+  a "Get verified" link on `/me`. Suite: 456 passed / 0 skipped; `check:render`
+  passes for `/pay` (start view). Local demo: run the API with
+  `PAYMENT_PROVIDER=fake PAYSTACK_SECRET_KEY=sk_test_…` and post a signed
+  `charge.success` yourself (HMAC-SHA512 of the raw body, header `x-paystack-signature`).
+  **Not verified:** the Paystack adapter against the real sandbox (payload shapes,
+  `fees` present?, whether Paystack accepts the `.invalid` placeholder email for an
+  athlete with no email); the return-state screens (confirmed/failed/review) were
+  read as text but not contrast-audited; no SMS on confirmation (2.4).
+  Next: 2.2 (media and verification) — or 2.3's reconciliation/72h expiry, which
+  share `settle_charge`.
 - **Not built:** expired-session sweep, outbox retention/scheduling (0.6 — the
   worker is started by hand today), admin UI (ADM-02 is API only), a way to
   appoint the first super_admin (today: SQL insert into `ops.user_roles`).
@@ -200,7 +232,7 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
 7. Stage 2 (ledger & Paystack, media & verification, outbox jobs, assisted cash
    payment & clubs) — do not compress. Then Stage 3 launch readiness.
    **The full, ordered list — every remaining item, screen and decision — is
-   `docs/TODO.md`. Start there.** Next in line: 2.1's webhook route.
+   `docs/TODO.md`. Start there.** Next in line: 2.2 (media and verification).
 
 ## Outside the code (block launch, not build)
 Paystack business verification needs current CAC registration (1–3 weeks; nobody

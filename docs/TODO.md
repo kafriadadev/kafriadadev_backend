@@ -17,9 +17,10 @@ database item on the strength of tests that skipped.
 
 ## Where we are
 
-Stage 0 and Stage 1 are done. Stage 2 has started: 2.1's rules, money tables
-(migration 0006) and settlement service are on `main`. No webhook route, no
-initialise call and no screen exists yet. **12 of 46 screens are built**
+Stage 0 and Stage 1 are done. Stage 2 has started: 2.1 (ledger and payments) is
+built end to end on `main` against the fake provider — rules, money tables,
+settlement, webhook route, checkout start, VER-03. Nothing has touched real
+Paystack yet. **12 of 46 screens are built**
 (37 are for launch, 9 wait for Slice 2). Five contexts are still empty:
 `clubs`, `feed`, `media`, `transfers`, `verification`.
 
@@ -67,7 +68,8 @@ here is `[DB]`.
 ### 2.1 Ledger and payments (4–5 days)
 
 Done: pure rules — `contexts/payments/rules.py`, `contexts/ledger/entries.py`;
-migration 0006 and the settlement service (16d02cf).
+migration 0006 and the settlement service (16d02cf); webhook route, checkout
+start and VER-03 (f7269e9).
 
 - [x] **Migration 0006 — the money tables** (16d02cf; applies and reverses cleanly). `payments` (our reference `KAF-{uuid}`,
   purpose, expected kobo, status incl. the new `frozen`, `paid_by`,
@@ -81,22 +83,26 @@ migration 0006 and the settlement service (16d02cf).
   idempotency `INSERT … ON CONFLICT DO NOTHING RETURNING` (no row back = seen
   before: return 200, do nothing) → `decide()` → two ledger lines → status →
   audit row. On a mismatch: `frozen` + audit + an error-level alert, never approve.
-- [ ] **Webhook route** `POST /v1/payments/webhook/paystack`: read the raw body
+- [x] **Webhook route** (f7269e9) `POST /v1/payments/webhook/paystack`: read the raw body
   first, verify the signature (`verify_paystack_signature` already exists), then
   parse. Ignore references that are not `KAF-…`. Always 200 after a valid
   signature. Register it as `Public` with its reason; update the route manifest
   and permission matrix.
-- [ ] **Payment intent + Paystack initialise** `POST /v1/payments` (athlete, own
+- [x] **Payment intent + Paystack initialise** (f7269e9; adapter never run against
+  the real sandbox — `[ACCT]` test keys) `POST /v1/payments` (athlete, own
   account only): create the `pending` row first, then call Paystack through a
   port with a fake for tests (same pattern as SMS, ADR 0003). Timeout on the call.
   Returns the redirect URL. `[ACCT]` test keys.
-- [ ] **Tests that must exist** (all but *bad signature* are done at the service
-  level in `tests/test_settlement.py`, 16d02cf; that one needs the route): the same webhook five times *concurrently* → exactly
+- [x] **Tests that must exist** (`tests/test_settlement.py`, `test_paystack_webhook.py`,
+  `test_payments_api.py`; f7269e9): the same webhook five times *concurrently* → exactly
   two ledger rows; a ₦10 payment for a ₦2,500 badge → frozen + alert; bad
   signature → no state change; `abandoned` → `success` on a late payment;
   `kaf_app` cannot INSERT a ledger row; nobody, `kaf_money` and the owner
   included, can UPDATE or DELETE one.
-- [ ] `[UI]` **VER-03** payment — leaving for Paystack, and coming back.
+- [x] `[UI]` **VER-03** payment (f7269e9, `/pay`) — leaving for Paystack, and coming
+  back. Deliberately does NOT promise the wireframe's "we will send you an SMS":
+  no confirmation SMS exists (see 2.4). Wireframe's "draft case stays open during
+  an outage" waits for 2.2's verification cases.
 
 ### 2.2 Media and verification (4–5 days)
 
