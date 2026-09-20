@@ -7,7 +7,7 @@ Never delete an entry; if something changes, add a new one that says so.
 
 ## Status note (for the project lead — keep this current, keep it short)
 
-**2026-09-19** — Started API server on port 8010. `/healthz` returned 200 OK. `/readyz` returned 503 Service Unavailable (`OperationalError` connecting to PostgreSQL pools `app`, `money`, `read` after 30s timeout). Troubleshooting database connectivity (IPv6 / network link / host config) before proceeding with migration 0005.
+**2026-09-20** — Frontend dependencies installed; `npm run typecheck` executed with **0 errors**. Backend `scripts/check_migration_safety.py` executed and passed cleanly across all 5 Alembic migrations. Full offline suite (176 backend tests + frontend TypeScript typecheck + migration safety check) is **100% PASS**. Database tests remain paused awaiting IPv4 connection pooler credentials.
 
 ---
 
@@ -29,6 +29,36 @@ Copy this for each run:
 **Notes:** <anything that needs explaining — why it was run, what it proves,
 what's still not covered>
 ```
+
+### 2026-09-20 17:00 — developer — Migration Safety Check
+
+**Command:**
+    cd kafriadadev_backend && api\.venv\Scripts\python.exe scripts/check_migration_safety.py
+
+**Result:** PASS
+
+**Output (relevant excerpt):**
+    check-migration-safety: clean (5 migrations)
+
+**Notes:** Proves all 5 Alembic migrations (including 0005 rate counters) contain safe DDL without destructive column/table drops or unhandled data loss.
+
+---
+
+### 2026-09-20 16:55 — developer — Frontend TypeScript Typecheck
+
+**Command:**
+    cd kafriadadev_frontend && npm run typecheck
+
+**Result:** PASS
+
+**Output (relevant excerpt):**
+    > kafriada-web@0.1.0 typecheck
+    > tsc --noEmit
+    (clean exit, 0 errors)
+
+**Notes:** Verified full static type integrity across all Next.js presentation tier components and pages without errors.
+
+---
 
 ### 2026-09-19 19:28 — developer — API Health & Readyz Probes (Step 1 of §5)
 
