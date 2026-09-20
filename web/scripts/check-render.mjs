@@ -313,6 +313,11 @@ try {
       check(`${scheme}: session cookie is httpOnly and SameSite=Lax`, !!cookie && cookie.httpOnly && cookie.sameSite === "Lax");
       await report(page, "me", 200, `${scheme}-${width}`);
 
+      // VER-03, the start view. Looked at, never submitted: submitting creates a payment.
+      await page.goto(BASE + "/pay", { waitUntil: "load", timeout: 90_000 });
+      await report(page, "pay", 200, `${scheme}-${width}`);
+      await page.goto(BASE + "/me", { waitUntil: "load", timeout: 90_000 });
+
       await Promise.all([page.waitForLoadState("load"), page.click("button[type=submit]")]);
       await page.waitForURL((u) => u.pathname === "/", { timeout: 60_000 });
       check(`${scheme}: signed out, cookie gone`, !(await ctx.cookies()).some((c) => c.name === "kaf_session"));

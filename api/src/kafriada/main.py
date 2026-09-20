@@ -135,12 +135,13 @@ def _install_routes(app: FastAPI) -> None:
     a breaking change to something other people build against needs a new
     address rather than a quiet redefinition of the old one.
     """
-    from kafriada.api.v1 import admin, athletes, codes, sessions
+    from kafriada.api.v1 import admin, athletes, codes, payments, sessions
 
     app.include_router(athletes.router, prefix="/v1")
     app.include_router(sessions.router, prefix="/v1")
     app.include_router(codes.router, prefix="/v1")
     app.include_router(admin.router, prefix="/v1")
+    app.include_router(payments.router, prefix="/v1")
 
 
 def _install_error_handlers(app: FastAPI) -> None:
@@ -160,7 +161,12 @@ def _install_error_handlers(app: FastAPI) -> None:
             status_code=exc.status_code,
             content={
                 "error": {
-                    "message": exc.detail if exc.status_code < 500 else "Something went wrong.",
+                    # A 503 is "not now", raised on purpose by a route that chose its
+                    # words (payments while Paystack is away). Every other 5xx is a
+                    # fault, and says nothing about how the system is built.
+                    "message": exc.detail
+                    if exc.status_code < 500 or exc.status_code == 503
+                    else "Something went wrong.",
                     "reference": short_reference(request_id),
                 }
             },

@@ -351,6 +351,8 @@ p { margin: 0 0 var(--s4); max-width: 62ch; }
 .notice strong, .notice li { color: var(--plate-ink); }
 
 .doc .eyebrow, .notice .eyebrow { color: var(--plate-ochre); }
+.amount { font-size: 1.9rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.doc .amount, .notice .amount { color: var(--plate-ink); }
 .doc .lede, .doc .hint, .notice .hint { color: var(--plate-muted); }
 .doc a, .notice a { color: var(--plate-green); }
 

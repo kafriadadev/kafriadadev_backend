@@ -26,7 +26,6 @@ from uuid import UUID
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
-from structlog.testing import capture_logs
 
 from kafriada.contexts.ledger.entries import InvalidAmount
 from kafriada.contexts.payments import settlement
@@ -39,6 +38,7 @@ from kafriada.contexts.payments.rules import (
 from kafriada.contexts.payments.settlement import Outcome, settle_charge
 from kafriada.db.engine import money_transaction
 from tests._access_helpers import make_user
+from tests._payment_helpers import record_logs
 
 URLS = {
     name: os.environ.get(f"DATABASE_URL_{name.upper()}")
@@ -178,13 +178,13 @@ class TestSettling:
         assert settle_charge(charge("order-8841")).outcome is Outcome.IGNORED
 
     def test_an_unknown_kaf_reference_writes_nothing_and_stays_retryable(
-        self, payer: UUID
+        self, payer: UUID, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         ref = new_reference()  # no payment row yet
-        with capture_logs() as logs:
-            assert settle_charge(charge(ref)).outcome is Outcome.UNKNOWN
-        assert any(e["event"] == "payment_reference_unknown" and e["log_level"] == "error"
-                   for e in logs)
+        logs = record_logs(monkeypatch, settlement)
+        assert settle_charge(charge(ref)).outcome is Outcome.UNKNOWN
+        assert logs.errors() == ["payment_reference_unknown"]
+        monkeypatch.undo()
         assert seen_count(ref) == 0
 
         # The row becomes visible; the same delivery, retried, now settles.
@@ -229,18 +229,19 @@ class TestReplay:
 
 
 class TestFreezing:
-    def test_ten_naira_never_buys_a_2500_naira_badge(self, payer: UUID) -> None:
+    def test_ten_naira_never_buys_a_2500_naira_badge(
+        self, payer: UUID, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         ref = make_payment(payer)
-        with capture_logs() as logs:
-            result = settle_charge(charge(ref, amount_kobo=1_000, fees_kobo=15))
+        logs = record_logs(monkeypatch, settlement)
+        result = settle_charge(charge(ref, amount_kobo=1_000, fees_kobo=15))
 
         assert result.outcome is Outcome.FROZEN
         assert status_of(ref) == "frozen"
         assert ledger_for(ref) == []
         assert result.payment_id is not None
         assert audit_actions(result.payment_id) == ["payment.frozen"]
-        alerts = [e for e in logs if e["event"] == "payment_frozen"]
-        assert len(alerts) == 1 and alerts[0]["log_level"] == "error"
+        assert logs.errors() == ["payment_frozen"]
 
     @pytest.mark.parametrize(
         "overrides",

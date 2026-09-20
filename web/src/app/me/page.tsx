@@ -85,6 +85,9 @@ export default async function MePage() {
           <a href={`/a/${encodeURIComponent(me.kuid)}`} className="btn btn--ghost">
             My public profile
           </a>
+          {me.phone_verified ? (
+            <a href="/pay" className="btn btn--ghost">Get verified</a>
+          ) : null}
         </div>
       ) : null}
 

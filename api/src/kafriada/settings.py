@@ -23,6 +23,12 @@ class SmsProvider(StrEnum):
     TWILIO = "twilio"
 
 
+class PaymentProviderKind(StrEnum):
+    NONE = "none"
+    FAKE = "fake"
+    PAYSTACK = "paystack"
+
+
 class Environment(StrEnum):
     LOCAL = "local"
     STAGING = "staging"
@@ -140,6 +146,15 @@ class Settings(BaseSettings):
     paystack_secret_key: SecretStr | None = None
     paystack_base_url: str = "https://api.paystack.co"
     paystack_timeout_seconds: float = Field(default=8.0, gt=0, le=30)
+    # Who starts a checkout. 'none' answers "payments are not available yet"
+    # rather than pretending. 'fake' hands back a local address and never leaves
+    # the machine — for tests and demos, refused outside local development.
+    # 'paystack' calls Paystack, and needs paystack_secret_key.
+    payment_provider: PaymentProviderKind = PaymentProviderKind.NONE
+    # Paystack insists on an email and an athlete need not have one. The
+    # placeholder is built on a reserved domain (.invalid never resolves), so a
+    # receipt sent to it goes nowhere instead of to a stranger.
+    payment_placeholder_email_domain: str = "payments.kafriada.invalid"
 
     # -- SMS --------------------------------------------------------------
     # Which adapter sends a queued message. 'none' leaves messages in the
@@ -185,6 +200,8 @@ class Settings(BaseSettings):
     code_attempts_per_ip_hourly: int = Field(default=60, ge=5, le=10_000)
     registrations_per_ip_hourly: int = Field(default=40, ge=2, le=10_000)
     registrations_per_ip_daily: int = Field(default=200, ge=5, le=100_000)
+    # Each one is a Paystack call and a permanent row in money.payments.
+    payments_started_per_ip_hourly: int = Field(default=30, ge=2, le=10_000)
 
     # -- Redis ------------------------------------------------------------
     # Unused. Rate limits count in Postgres (contexts/access/ratelimit.py):
@@ -240,6 +257,20 @@ class Settings(BaseSettings):
         return upper
 
     @model_validator(mode="after")
+    def _paystack_needs_its_key(self) -> Self:
+        if (
+            self.payment_provider is PaymentProviderKind.PAYSTACK
+            and self.paystack_secret_key is None
+        ):
+            raise ValueError("paystack_secret_key is required when payment_provider is paystack")
+        if (
+            self.payment_provider is PaymentProviderKind.FAKE
+            and self.environment is not Environment.LOCAL
+        ):
+            raise ValueError("payment_provider 'fake' is for local development only")
+        return self
+
+    @model_validator(mode="after")
     def _production_is_locked_down(self) -> Self:
         if not self.environment.is_production:
             return self
@@ -261,6 +292,11 @@ class Settings(BaseSettings):
             problems.append("paystack_secret_key is required in production")
         elif self.paystack_secret_key.get_secret_value().startswith("sk_test_"):
             problems.append("refusing a Paystack TEST key in production")
+        if self.payment_provider is not PaymentProviderKind.PAYSTACK:
+            problems.append(
+                "payment_provider must be 'paystack' in production — 'fake' and 'none' "
+                "take no money"
+            )
         if self.sms_provider is SmsProvider.CONSOLE:
             problems.append(
                 "sms_provider must not be 'console' outside local development — "

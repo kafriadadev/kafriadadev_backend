@@ -38,6 +38,7 @@ def production(**overrides: object) -> Settings:
         "trusted_hosts": ["api.kafriada.ng"],
         "cors_allow_origins": [],
         "paystack_secret_key": "sk_live_" + "z" * 30,
+        "payment_provider": "paystack",
         "sms_provider": "twilio",
         "twilio_account_sid": "AC" + "1" * 30,
         "twilio_auth_token": "t" * 30,

@@ -90,6 +90,35 @@ export type Me = {
   absolute_expires_at: string;
 };
 
+export type PaymentQuote = {
+  kuid: string;
+  purpose: string;
+  /** Whole kobo. Formatted for people in one place: lib/money.ts. */
+  amount_kobo: number;
+  already_paid: boolean;
+};
+
+export type StartedPayment = {
+  reference: string;
+  /** Where Paystack takes the card details. We never see them. */
+  authorization_url: string;
+  amount_kobo: number;
+};
+
+/**
+ * What the person is told, decided by the API from its own record — never by
+ * anything the browser reports. `review` is a payment our team is checking.
+ */
+export type PaymentState = "checking" | "confirmed" | "failed" | "review";
+
+export type Payment = {
+  reference: string;
+  purpose: string;
+  state: PaymentState;
+  amount_kobo: number;
+  created_at: string;
+};
+
 /** Where the person is, forwarded so the audit log records them, not us. */
 export type ClientMeta = { ip?: string; userAgent?: string };
 
@@ -241,6 +270,23 @@ export function resetPassword(
 
 export function getMe(token: string): Promise<Me> {
   return call<Me>("/v1/me", { token });
+}
+
+export function getPaymentQuote(token: string): Promise<PaymentQuote> {
+  return call<PaymentQuote>("/v1/payments/quote", { token });
+}
+
+export function startPayment(token: string, meta: ClientMeta): Promise<StartedPayment> {
+  return call<StartedPayment>("/v1/payments", {
+    method: "POST",
+    body: JSON.stringify({ purpose: "stage2_athlete" }),
+    token,
+    meta,
+  });
+}
+
+export function getPayment(token: string, reference: string): Promise<Payment> {
+  return call<Payment>(`/v1/payments/${encodeURIComponent(reference)}`, { token });
 }
 
 /** Raw SVG for an athlete's QR code, fetched server-side and inlined. */
