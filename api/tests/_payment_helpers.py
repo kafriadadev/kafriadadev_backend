@@ -165,3 +165,18 @@ def state(reference: str) -> dict[str, object]:
         "seen": len(seen),
         "audit": [str(a["action"]) for a in actions],
     }
+
+
+def charge_success_event(reference: str, **overrides: object):  # type: ignore[no-untyped-def]
+    """The parsed ChargeEvent for a matching delivery (settle_charge's input)."""
+    from kafriada.contexts.payments.rules import ChargeEvent
+
+    fields: dict[str, object] = {
+        "reference": reference,
+        "amount_kobo": PRICE,
+        "currency": "NGN",
+        "status": "success",
+        "fees_kobo": FEE,
+    }
+    fields.update(overrides)
+    return ChargeEvent(**fields)  # type: ignore[arg-type]

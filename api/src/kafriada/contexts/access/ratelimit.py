@@ -172,6 +172,7 @@ def limits_for(bucket: str) -> tuple[Limit, ...]:
         ),
         # Starting a checkout calls Paystack and adds a row that is never deleted.
         "start_payment": (Limit(cfg.payments_started_per_ip_hourly, HOUR),),
+        "media_upload": (Limit(cfg.uploads_per_ip_hourly, HOUR),),
     }
     # Look the name up first, so an unknown bucket raises even when limits are
     # switched off — otherwise a typo in a route would read as "no limits" in

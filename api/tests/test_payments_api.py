@@ -26,6 +26,7 @@ from kafriada.contexts.payments import service
 from kafriada.contexts.payments.provider import FakeProvider, NoProvider, ProviderError
 from kafriada.main import create_app
 from tests._access_helpers import bearer, make_user, sql
+from tests._media_helpers import athlete_with_files, use_local_store
 from tests._payment_helpers import (
     PRICE,
     charge_success,
@@ -54,6 +55,12 @@ def client() -> Iterator[TestClient]:
         yield c
 
 
+@pytest.fixture(autouse=True)
+def _store(monkeypatch: pytest.MonkeyPatch, tmp_path):  # type: ignore[no-untyped-def]
+    """Paying needs a photo and a document first, so every test has somewhere to put them."""
+    return use_local_store(monkeypatch, tmp_path)
+
+
 @pytest.fixture
 def fake(monkeypatch: pytest.MonkeyPatch) -> FakeProvider:
     provider = FakeProvider()
@@ -63,7 +70,7 @@ def fake(monkeypatch: pytest.MonkeyPatch) -> FakeProvider:
 
 class TestQuote:
     def test_it_names_the_record_and_our_price(self, client: TestClient) -> None:
-        athlete = new_athlete()
+        athlete = athlete_with_files(client)
         body = client.get("/v1/payments/quote", headers=athlete.headers).json()
         assert body == {
             "kuid": athlete.kuid,
@@ -84,7 +91,7 @@ class TestStarting:
     def test_it_records_our_price_first_and_returns_only_the_providers_address(
         self, client: TestClient, fake: FakeProvider
     ) -> None:
-        athlete = new_athlete()
+        athlete = athlete_with_files(client)
         response = client.post("/v1/payments", json=BODY, headers=athlete.headers)
 
         assert response.status_code == 201, response.text
@@ -108,7 +115,7 @@ class TestStarting:
     def test_the_amount_a_caller_sends_is_ignored(
         self, client: TestClient, fake: FakeProvider
     ) -> None:
-        athlete = new_athlete()
+        athlete = athlete_with_files(client)
         response = client.post(
             "/v1/payments", json={**BODY, "amount_kobo": 1_000, "amount": 10}, headers=athlete.headers
         )
@@ -122,7 +129,7 @@ class TestStarting:
     def test_an_athlete_without_an_email_gets_a_placeholder_that_cannot_receive_mail(
         self, client: TestClient, fake: FakeProvider
     ) -> None:
-        athlete = new_athlete()
+        athlete = athlete_with_files(client)
         client.post("/v1/payments", json=BODY, headers=athlete.headers)
         email = str(fake.calls[-1]["email"])
         assert email.endswith(".invalid")
@@ -131,7 +138,7 @@ class TestStarting:
     def test_only_the_athletes_own_price_can_be_started_here(
         self, client: TestClient, fake: FakeProvider
     ) -> None:
-        athlete = new_athlete()
+        athlete = athlete_with_files(client)
         assert client.post("/v1/payments", json={"purpose": "stage2_org"}, headers=athlete.headers).status_code == 422
         assert client.post("/v1/payments", json={}, headers=athlete.headers).status_code == 422
         assert fake.calls == []
@@ -150,7 +157,7 @@ class TestReadingBack:
     def test_the_caller_sees_checking_and_then_confirmed_when_the_webhook_says_so(
         self, client: TestClient, fake: FakeProvider, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        athlete = new_athlete()
+        athlete = athlete_with_files(client)
         ref = client.post("/v1/payments", json=BODY, headers=athlete.headers).json()["reference"]
 
         first = client.get(f"/v1/payments/{ref}", headers=athlete.headers).json()
@@ -166,7 +173,7 @@ class TestReadingBack:
     def test_a_frozen_payment_reads_as_under_review_not_as_frozen(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        athlete = new_athlete()
+        athlete = athlete_with_files(client)
         ref = pending_payment(athlete)
         use_webhook_key(monkeypatch)
         raw = charge_success(ref, amount=1_000, fees=15)
@@ -192,7 +199,7 @@ class TestReadingBack:
     def test_a_payment_that_was_given_up_on_reads_as_failed(
         self, client: TestClient, db_status: str, shown: str
     ) -> None:
-        athlete = new_athlete()
+        athlete = athlete_with_files(client)
         ref = pending_payment(athlete, status=db_status)
         assert client.get(f"/v1/payments/{ref}", headers=athlete.headers).json()["state"] == shown
 
@@ -201,7 +208,7 @@ class TestOnceIsEnough:
     def test_a_paid_athlete_cannot_start_another(
         self, client: TestClient, fake: FakeProvider, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        athlete = new_athlete()
+        athlete = athlete_with_files(client)
         ref = client.post("/v1/payments", json=BODY, headers=athlete.headers).json()["reference"]
         use_webhook_key(monkeypatch)
         raw = charge_success(ref)
@@ -217,7 +224,7 @@ class TestOnceIsEnough:
     def test_an_athlete_whose_payment_is_frozen_waits_for_a_person(
         self, client: TestClient, fake: FakeProvider, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        athlete = new_athlete()
+        athlete = athlete_with_files(client)
         ref = pending_payment(athlete)
         use_webhook_key(monkeypatch)
         raw = charge_success(ref, amount=1_000, fees=15)
@@ -240,7 +247,7 @@ class TestWhenTheProviderIsNotThere:
                 raise ProviderError("paystack unreachable: ConnectTimeout", transient=True)
 
         monkeypatch.setattr(service, "build_provider", lambda _s=None: Broken())
-        athlete = new_athlete()
+        athlete = athlete_with_files(client)
         response = client.post("/v1/payments", json=BODY, headers=athlete.headers)
 
         assert response.status_code == 503
@@ -259,6 +266,6 @@ class TestWhenTheProviderIsNotThere:
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(service, "build_provider", lambda _s=None: NoProvider())
-        athlete = new_athlete()
+        athlete = athlete_with_files(client)
         assert client.post("/v1/payments", json=BODY, headers=athlete.headers).status_code == 503
         assert sql("SELECT 1 FROM money.payments WHERE paid_by = :u", u=athlete.user_id) == []

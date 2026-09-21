@@ -86,9 +86,15 @@ export default async function MePage() {
             My public profile
           </a>
           {me.phone_verified ? (
-            <a href="/pay" className="btn btn--ghost">Get verified</a>
+            <a href="/verify" className="btn btn--ghost">Get verified</a>
           ) : null}
         </div>
+      ) : null}
+
+      {staffRoles.some((r) => r.role === "lga_coordinator" || r.role === "state_coordinator") ? (
+        <p>
+          <a href="/review" className="btn btn--ghost">Review verifications</a>
+        </p>
       ) : null}
 
       {staffRoles.length ? (

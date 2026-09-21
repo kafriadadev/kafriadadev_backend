@@ -44,6 +44,7 @@ from kafriada.contexts.payments.rules import (
     is_our_reference,
     transition,
 )
+from kafriada.contexts.verification import service as verification
 from kafriada.db.engine import money_transaction
 
 log = structlog.get_logger(__name__)
@@ -68,6 +69,9 @@ class Settlement:
     outcome: Outcome
     payment_id: UUID | None = None
     reason: str | None = None
+    # Only for SETTLED: did the payer's verification move to review? False means money
+    # arrived for someone with no draft to move, which a person must look at.
+    verification_moved: bool = True
 
 
 def _event_key(event: ChargeEvent) -> str:
@@ -142,7 +146,9 @@ def settle_charge(event: ChargeEvent, *, request_id: str | None = None) -> Settl
                             "amount": line.amount_kobo,
                         },
                     )
-                action, result = "payment.settled", Settlement(Outcome.SETTLED, payment_id)
+                moved = verification.mark_paid(session, payment_id) is not None
+                action = "payment.settled"
+                result = Settlement(Outcome.SETTLED, payment_id, verification_moved=moved)
             else:
                 new_status = transition(PaymentStatus(row.status), PaymentStatus.FROZEN)
                 details["reason"] = decision.reason
@@ -171,6 +177,12 @@ def settle_charge(event: ChargeEvent, *, request_id: str | None = None) -> Settl
             payment_id=str(result.payment_id),
             paid_kobo=event.amount_kobo,
             reason=result.reason,
+        )
+    elif result.outcome is Outcome.SETTLED and not result.verification_moved:
+        log.error(
+            "payment_without_submission",
+            reference=event.reference,
+            payment_id=str(result.payment_id),
         )
     elif result.outcome is Outcome.UNKNOWN:
         log.error("payment_reference_unknown", reference=event.reference)

@@ -61,7 +61,7 @@ export default async function ProfilePage({
               <div className="portrait">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={profile.photo_url}
+                  src={`/photo/${encodeURIComponent(profile.kuid)}`}
                   alt={`Photograph of ${profile.full_name}`}
                   width={96}
                   height={116}
@@ -138,6 +138,8 @@ export default async function ProfilePage({
               <dd>
                 {profile.is_verified ? (
                   "Verified"
+                ) : profile.verification_withdrawn ? (
+                  "Verification withdrawn"
                 ) : (
                   <span style={{ color: "var(--plate-muted)", fontWeight: 400 }}>
                     Not yet added

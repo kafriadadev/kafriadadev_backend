@@ -5,6 +5,7 @@ import {
   ApiError,
   getPayment,
   getPaymentQuote,
+  getVerification,
   type Payment,
   type PaymentQuote,
 } from "@/lib/api";
@@ -61,6 +62,10 @@ async function start(token: string, error: string) {
   let problem = error;
   try {
     quote = await getPaymentQuote(token);
+    // Nothing to pay for until there is something for a reviewer to look at: the
+    // API would refuse the payment anyway, and saying so here saves the trip.
+    const verification = await getVerification(token);
+    if (!quote.already_paid && !verification.ready_to_pay) redirect("/verify");
   } catch (caught) {
     // No athlete record, or the API is away: say so, and do not offer a button.
     if (!(caught instanceof ApiError) || caught.status === 401) throw caught;
@@ -152,7 +157,7 @@ async function returned(token: string, reference: string) {
           <p>
             We received <span className="amount">{amount}</span>. Thank you.
           </p>
-          <a href="/me" className="btn btn--primary">Back to my account</a>
+          <a href="/verify" className="btn btn--primary">See my verification</a>
         </div>
       ) : payment.state === "checking" ? (
         <div className="notice" role="status">

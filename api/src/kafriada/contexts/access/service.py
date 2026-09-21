@@ -1112,6 +1112,21 @@ def _reauthenticate(
         raise AccessError("That password is not right.", field="current_password")
 
 
+def reauthenticate(
+    actor: Principal,
+    raw_password: str,
+    *,
+    request_id: str | None = None,
+    ip_address: str | None = None,
+) -> None:
+    """The actor proves it is still them, for an action that asks for it.
+
+    Public so other contexts (withdrawing a verification) use the same check, with
+    the same lockout accounting, rather than growing their own.
+    """
+    _reauthenticate(actor, raw_password, request_id=request_id, ip_address=ip_address)
+
+
 def _mark_reauthenticated(session: Session, actor: Principal) -> None:
     session.execute(
         text("UPDATE ops.sessions SET reauthenticated_at = now() WHERE id = :id"),

@@ -83,6 +83,8 @@ class PublicProfileResponse(BaseModel):
     age: int
     is_verified: bool
     photo_url: str | None
+    # An approved badge that was later withdrawn. Shown so nobody trusts a stale card.
+    verification_withdrawn: bool = False
     # Whether the link carried a signature we issued. It proves the QR code came
     # from KAFRIADA — not that the person holding the card is the person shown.
     issued_by_kafriada: bool
@@ -199,6 +201,7 @@ def public_profile(kuid: str, s: str | None = None) -> PublicProfileResponse:
         # The photo is the paid product. Until a verification is approved there
         # is nothing to show, and the absence is the paywall.
         photo_url=profile.photo_url if profile.is_verified else None,
+        verification_withdrawn=profile.verification_withdrawn,
         issued_by_kafriada=signature.valid,
     )
 

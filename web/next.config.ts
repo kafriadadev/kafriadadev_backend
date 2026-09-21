@@ -12,7 +12,12 @@ const config: NextConfig = {
   // Every launch screen must work with JavaScript disabled: Opera Mini in proxy
   // mode is common in northern Nigeria and runs almost none. Server Components
   // and server actions give us that for free, and this keeps us honest about it.
-  experimental: { optimizePackageImports: [] },
+  // A photograph is up to 10MB and, with JavaScript off, arrives as a plain form POST
+  // to a server action; the default limit (1MB) would refuse every phone camera.
+  experimental: {
+    optimizePackageImports: [],
+    serverActions: { bodySizeLimit: "12mb" },
+  },
 
   async headers() {
     return [

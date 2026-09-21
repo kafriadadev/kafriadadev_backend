@@ -39,6 +39,7 @@ from kafriada.contexts.payments.rules import (
     new_reference,
     transition,
 )
+from kafriada.contexts.verification import service as verification
 from kafriada.db.engine import money_transaction, transaction
 from kafriada.settings import get_settings
 
@@ -141,6 +142,12 @@ def start_payment(
                 "Your earlier payment is being checked by our team. "
                 "Please wait for us to contact you before paying again.",
                 code="under_review",
+            )
+        if not verification.ready_for_payment(session, user_id):
+            # Paying for a review nobody can perform is a refund waiting to happen.
+            raise Refused(
+                "Add your photo and your ID document first. We will bring you back here to pay.",
+                code="no_submission",
             )
         payment_id = session.execute(
             text(

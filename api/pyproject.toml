@@ -17,6 +17,8 @@ dependencies = [
     # QR card generation (api/v1/athletes.py). It was imported but never declared,
     # so a fresh install failed at collection — found on a second machine.
     "segno>=1.6",
+    # Re-encoding uploaded photographs (contexts/media/service.py): strips EXIF, bounds size.
+    "pillow>=11",
     "structlog>=24.4",
     # Required for HTML form POSTs. Every launch screen must work without
     # JavaScript, so form-encoded bodies are a first-class input, not a fallback.

@@ -29,6 +29,12 @@ class PaymentProviderKind(StrEnum):
     PAYSTACK = "paystack"
 
 
+class MediaStoreKind(StrEnum):
+    NONE = "none"
+    LOCAL = "local"
+    R2 = "r2"
+
+
 class Environment(StrEnum):
     LOCAL = "local"
     STAGING = "staging"
@@ -156,6 +162,19 @@ class Settings(BaseSettings):
     # receipt sent to it goes nowhere instead of to a stranger.
     payment_placeholder_email_domain: str = "payments.kafriada.invalid"
 
+    # -- Media (photographs and identity documents) ------------------------
+    # Where the bytes live. 'none' refuses uploads with "not available yet";
+    # 'local' is a directory on this machine, for development and tests, and is
+    # refused outside local; 'r2' is a PRIVATE Cloudflare R2 bucket.
+    media_store: MediaStoreKind = MediaStoreKind.NONE
+    media_local_dir: str = ".media"
+    media_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=25 * 1024 * 1024)
+    r2_account_id: str | None = None
+    r2_access_key_id: str | None = None
+    r2_secret_access_key: SecretStr | None = None
+    r2_bucket: str | None = None
+    media_timeout_seconds: float = Field(default=15.0, gt=0, le=60)
+
     # -- SMS --------------------------------------------------------------
     # Which adapter sends a queued message. 'none' leaves messages in the
     # outbox, which is exactly what an unconfigured environment should do: the
@@ -202,6 +221,8 @@ class Settings(BaseSettings):
     registrations_per_ip_daily: int = Field(default=200, ge=5, le=100_000)
     # Each one is a Paystack call and a permanent row in money.payments.
     payments_started_per_ip_hourly: int = Field(default=30, ge=2, le=10_000)
+    # Each slot is a database row and, soon after, up to 10MB of somebody's bandwidth.
+    uploads_per_ip_hourly: int = Field(default=60, ge=2, le=10_000)
 
     # -- Redis ------------------------------------------------------------
     # Unused. Rate limits count in Postgres (contexts/access/ratelimit.py):
@@ -257,6 +278,20 @@ class Settings(BaseSettings):
         return upper
 
     @model_validator(mode="after")
+    def _media_store_is_complete(self) -> Self:
+        if self.media_store is MediaStoreKind.LOCAL and self.environment is not Environment.LOCAL:
+            raise ValueError("media_store 'local' is for local development only")
+        if self.media_store is MediaStoreKind.R2:
+            missing = [
+                name
+                for name in ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
+                if not getattr(self, name)
+            ]
+            if missing:
+                raise ValueError(f"media_store is r2 but {', '.join(missing)} is not set")
+        return self
+
+    @model_validator(mode="after")
     def _paystack_needs_its_key(self) -> Self:
         if (
             self.payment_provider is PaymentProviderKind.PAYSTACK
@@ -292,6 +327,11 @@ class Settings(BaseSettings):
             problems.append("paystack_secret_key is required in production")
         elif self.paystack_secret_key.get_secret_value().startswith("sk_test_"):
             problems.append("refusing a Paystack TEST key in production")
+        if self.media_store is not MediaStoreKind.R2:
+            problems.append(
+                "media_store must be 'r2' in production — 'local' and 'none' keep no "
+                "photographs anywhere durable"
+            )
         if self.payment_provider is not PaymentProviderKind.PAYSTACK:
             problems.append(
                 "payment_provider must be 'paystack' in production — 'fake' and 'none' "

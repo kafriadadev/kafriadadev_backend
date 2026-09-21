@@ -87,6 +87,9 @@ def _url(route: RouteContext, target_user: uuid.UUID) -> str:
         "grant_id": str(uuid.uuid4()),
         "kuid": "not-a-kuid",
         "reference": f"KAF-{uuid.uuid4()}",
+        "request_id": str(uuid.uuid4()),
+        "media_id": str(uuid.uuid4()),
+        "kind": "photo",
     }
     path = route.path
     for name, value in values.items():

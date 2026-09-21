@@ -36,6 +36,8 @@ export type PublicProfile = {
   photo_url: string | null;
   /** The link carried a signature we issued: this QR came from KAFRIADA. */
   issued_by_kafriada: boolean;
+  /** An approved badge that was later taken back. */
+  verification_withdrawn: boolean;
 };
 
 export type RegistrationResult = {
@@ -117,6 +119,56 @@ export type Payment = {
   state: PaymentState;
   amount_kobo: number;
   created_at: string;
+};
+
+/** Where an athlete's verification stands, as the API recorded it. */
+export type VerificationState =
+  | "none"
+  | "draft"
+  | "under_review"
+  | "approved"
+  | "rejected"
+  | "escalated"
+  | "revoked";
+
+/** A file's own progress: `ready` means the safe copy exists. */
+export type FileStatus = "pending" | "uploaded" | "ready" | "unreadable" | "deleted" | null;
+
+export type Verification = {
+  state: VerificationState;
+  attempt: number;
+  attempts_left: number;
+  photo: FileStatus;
+  document: FileStatus;
+  /** The reviewer's own words, exactly as written. */
+  reason: string | null;
+  submitted_at: string | null;
+  paid_amount_kobo: number | null;
+  paid_at: string | null;
+  can_replace: boolean;
+  ready_to_pay: boolean;
+  price_kobo: number;
+};
+
+export type QueueItem = {
+  request_id: string;
+  kuid: string;
+  full_name: string;
+  submitted_at: string;
+  attempt: number;
+};
+
+export type ReviewCase = {
+  request_id: string;
+  kuid: string;
+  full_name: string;
+  date_of_birth: string;
+  age: number;
+  attempt: number;
+  submitted_at: string | null;
+  paid_kobo: number | null;
+  paid_at: string | null;
+  waiting: number;
 };
 
 /** Where the person is, forwarded so the audit log records them, not us. */
@@ -283,6 +335,88 @@ export function startPayment(token: string, meta: ClientMeta): Promise<StartedPa
     token,
     meta,
   });
+}
+
+export function getVerification(token: string): Promise<Verification> {
+  return call<Verification>("/v1/verification", { token });
+}
+
+/** Open a slot, send the bytes through the API, confirm. The no-JavaScript upload. */
+export async function uploadFile(
+  token: string,
+  kind: "photo" | "document",
+  file: { type: string; size: number; bytes: ArrayBuffer },
+  meta: ClientMeta,
+): Promise<void> {
+  const slot = await call<{ media_id: string }>("/v1/verification/uploads", {
+    method: "POST",
+    body: JSON.stringify({ kind, content_type: file.type, size_bytes: file.size }),
+    token,
+    meta,
+  });
+  await call<void>(`/v1/verification/uploads/${slot.media_id}/content`, {
+    method: "PUT",
+    body: file.bytes,
+    headers: { "content-type": "application/octet-stream" },
+    token,
+    meta,
+  });
+  await call<void>(`/v1/verification/uploads/${slot.media_id}/confirm`, {
+    method: "POST",
+    token,
+    meta,
+  });
+}
+
+export function resubmitVerification(token: string, meta: ClientMeta): Promise<void> {
+  return call<void>("/v1/verification/resubmit", { method: "POST", token, meta });
+}
+
+export function getReviewQueue(token: string, lga: string): Promise<QueueItem[]> {
+  return call<QueueItem[]>(`/v1/lgas/${encodeURIComponent(lga)}/verification/queue`, { token });
+}
+
+export function getReviewCase(token: string, lga: string, id: string): Promise<ReviewCase> {
+  return call<ReviewCase>(
+    `/v1/lgas/${encodeURIComponent(lga)}/verification/${encodeURIComponent(id)}`,
+    { token },
+  );
+}
+
+export function decideCase(
+  token: string,
+  lga: string,
+  id: string,
+  decision: { approve: true } | { reject: string },
+  meta: ClientMeta,
+): Promise<{ outcome: string }> {
+  const base = `/v1/lgas/${encodeURIComponent(lga)}/verification/${encodeURIComponent(id)}`;
+  return "approve" in decision
+    ? call(`${base}/approve`, { method: "POST", token, meta })
+    : call(`${base}/reject`, {
+        method: "POST",
+        body: JSON.stringify({ reason: decision.reject }),
+        token,
+        meta,
+      });
+}
+
+/** An image the API would only give to someone allowed to see it. Bytes, or null. */
+export async function getImage(path: string, token?: string): Promise<Response | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      signal: controller.signal,
+      cache: "no-store",
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+    });
+    return response.ok ? response : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export function getPayment(token: string, reference: string): Promise<Payment> {

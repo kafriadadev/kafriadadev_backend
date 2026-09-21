@@ -365,6 +365,8 @@ class PublicProfile:
     age: int
     is_verified: bool
     photo_url: str | None
+    # An approved badge was later taken back. Shown so nobody trusts a stale card.
+    verification_withdrawn: bool = False
 
 
 def get_public_profile(kuid_text: str) -> PublicProfile | None:
@@ -380,7 +382,16 @@ def get_public_profile(kuid_text: str) -> PublicProfile | None:
                 """
                 SELECT a.kuid, a.sport, a.playing_position, a.date_of_birth,
                        a.kuid_year, u.full_name,
-                       lga.name AS lga_name, st.name AS state_name
+                       lga.name AS lga_name, st.name AS state_name,
+                       EXISTS (SELECT 1 FROM identity.verification_requests v
+                                WHERE v.athlete_id = a.id AND v.status = 'approved')
+                           AS is_verified,
+                       EXISTS (SELECT 1 FROM identity.verification_requests v
+                                WHERE v.athlete_id = a.id AND v.status = 'approved'
+                                  AND v.photo_media_id IS NOT NULL) AS has_photo,
+                       EXISTS (SELECT 1 FROM identity.verification_requests v
+                                WHERE v.athlete_id = a.id AND v.status = 'revoked')
+                           AS was_revoked
                   FROM identity.athletes a
                   JOIN ops.users u       ON u.id = a.user_id
                   JOIN ops.locations lga ON lga.id = a.current_lga_id
@@ -403,11 +414,11 @@ def get_public_profile(kuid_text: str) -> PublicProfile | None:
         state_name=row["state_name"],
         registered_year=row["kuid_year"],
         age=age_on(row["date_of_birth"]),
-        # Verification arrives in Stage 2 with its own context, which owns this
-        # answer. Until then nobody is verified, which is truthful rather than
-        # a placeholder — no athlete has paid yet.
-        is_verified=False,
-        photo_url=None,
+        is_verified=row["is_verified"],
+        # An address on OUR API that serves the safe copy of an approved photo and
+        # nothing else — never a bucket URL, which would be a way round the paywall.
+        photo_url=f"/v1/public/athletes/{row['kuid']}/photo" if row["has_photo"] else None,
+        verification_withdrawn=row["was_revoked"] and not row["is_verified"],
     )
 
 

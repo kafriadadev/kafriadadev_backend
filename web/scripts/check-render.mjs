@@ -313,9 +313,12 @@ try {
       check(`${scheme}: session cookie is httpOnly and SameSite=Lax`, !!cookie && cookie.httpOnly && cookie.sameSite === "Lax");
       await report(page, "me", 200, `${scheme}-${width}`);
 
-      // VER-03, the start view. Looked at, never submitted: submitting creates a payment.
-      await page.goto(BASE + "/pay", { waitUntil: "load", timeout: 90_000 });
-      await report(page, "pay", 200, `${scheme}-${width}`);
+      // VER-03 and VER-01/02, the start views. Looked at, never submitted: submitting
+      // creates a payment or a file.
+      for (const [name, path] of [["pay", "/pay"], ["verify", "/verify"]]) {
+        await page.goto(BASE + path, { waitUntil: "load", timeout: 90_000 });
+        await report(page, name, 200, `${scheme}-${width}`);
+      }
       await page.goto(BASE + "/me", { waitUntil: "load", timeout: 90_000 });
 
       await Promise.all([page.waitForLoadState("load"), page.click("button[type=submit]")]);
@@ -327,6 +330,30 @@ try {
     }
   } else {
     console.log("\n  skip  signed-in checks (set SIGNIN_PHONE and SIGNIN_PASSWORD to run them)");
+  }
+
+  // -- Other people's screens, by session token -------------------------------------
+  // Screens that only exist in a certain state (under review, rejected, a reviewer's
+  // queue) cannot be reached by signing in as one throwaway athlete. Hand this a list
+  // of sessions already in those states and it audits each page they name.
+  //   EXTRA_SESSIONS='[{"token":"...","paths":["/verify"]}]'
+  if (process.env.EXTRA_SESSIONS) {
+    console.log("\n=== SCREENS THAT DEPEND ON STATE ===");
+    for (const [scheme, width] of [["light", PHONE.width], ["dark", 320]]) {
+      for (const { token, paths } of JSON.parse(process.env.EXTRA_SESSIONS)) {
+        const ctx = await browser.newContext({
+          viewport: { width, height: PHONE.height }, isMobile: true,
+          javaScriptEnabled: false, colorScheme: scheme,
+        });
+        await ctx.addCookies([{ name: "kaf_session", value: token, url: BASE }]);
+        const page = await ctx.newPage();
+        for (const path of paths) {
+          const res = await page.goto(BASE + path, { waitUntil: "load", timeout: 90_000 });
+          await report(page, path.replace(/[^a-z]/gi, "").slice(0, 9) || "page", res?.status() ?? 0, `${scheme}-${width}`);
+        }
+        await ctx.close();
+      }
+    }
   }
 } finally {
   await browser.close();

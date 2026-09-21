@@ -102,3 +102,7 @@ desktop.ini
 scratch/
 tmp/
 .cache/
+
+# Local media store (photographs and ID documents) - never commit
+.media/
+api/.media/

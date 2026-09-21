@@ -383,7 +383,7 @@ p { margin: 0 0 var(--s4); max-width: 62ch; }
 .field .hint {
   display: block; font-size: .84rem; color: var(--muted); margin: var(--s1) 0 var(--s2);
 }
-.field input, .field select {
+.field input, .field select, .field textarea {
   width: 100%;
   min-height: var(--tap);
   padding: var(--s3);
@@ -394,7 +394,8 @@ p { margin: 0 0 var(--s4); max-width: 62ch; }
   /* Native select, native date input. A custom widget would need JavaScript
      and would fail on the exact phones this has to work on. */
 }
-.field input:focus-visible, .field select:focus-visible,
+.field textarea { min-height: 7rem; resize: vertical; }
+.field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible,
 a:focus-visible, button:focus-visible {
   outline: 3px solid var(--green);
   outline-offset: 2px;
@@ -407,6 +408,22 @@ a:focus-visible, button:focus-visible {
   display: block; margin-top: var(--s2);
   color: var(--plate-red); font-weight: 700; font-size: .88rem;
 }
+
+/* A file the reviewer is deciding on. Never wider than the screen. */
+.evidence { margin: 0 0 var(--s5); }
+.evidence img {
+  display: block; max-width: 100%; height: auto;
+  border: 1.5px solid var(--plate-strong); border-radius: var(--radius);
+  background: var(--plate-bg);
+}
+.evidence figcaption { font-weight: 700; font-size: .92rem; margin-bottom: var(--s2); color: var(--plate-ink); }
+.steps { list-style: none; margin: var(--s4) 0; padding: 0; }
+.steps li { padding: var(--s2) 0; color: var(--plate-ink); }
+.steps li[data-done="true"]::before { content: "\2713  "; color: var(--plate-green); font-weight: 700; }
+.steps li[data-now="true"] { font-weight: 700; }
+.steps li[data-now="true"]::before { content: "\25B8  "; }
+.steps li[data-todo="true"] { color: var(--plate-muted); }
+.quote { margin: var(--s3) 0; padding: var(--s3) var(--s4); border-left: 4px solid var(--plate-strong); color: var(--plate-ink); }
 
 .consent {
   display: flex; gap: var(--s3); align-items: flex-start;
@@ -436,6 +453,14 @@ a:focus-visible, button:focus-visible {
 .btn--ghost { background: transparent; color: var(--green); border-color: var(--green); }
 .btn--ghost:hover { background: var(--green-soft); }
 .btn--block { width: 100%; }
+
+/* A button on a document or a notice. The paper never inverts in dark mode, so a
+   button drawn there must not take its colours from the theme: a ghost button
+   would be light green on cream, and `.doc a` would paint a filled link button in
+   the same green as its own fill. Both were found by check:render, not by eye. */
+.doc a.btn--primary, .notice a.btn--primary { color: var(--on-green); }
+.doc .btn--ghost, .notice .btn--ghost { color: var(--plate-green); border-color: var(--plate-green); }
+.doc .btn--ghost:hover, .notice .btn--ghost:hover { background: var(--plate-soft); }
 
 /* ---------------------------------------------------------------------------
    Notices
