@@ -17,10 +17,10 @@ database item on the strength of tests that skipped.
 
 ## Where we are
 
-Stage 0 and Stage 1 are done. Stage 2 has started: 2.1 (ledger and payments) is
-built end to end on `main` against the fake provider — rules, money tables,
-settlement, webhook route, checkout start, VER-03. Nothing has touched real
-Paystack yet. **12 of 46 screens are built**
+Stage 0 and Stage 1 are done. Stage 2 is two-thirds built on `main`: 2.1 (ledger and
+payments) and 2.2 (media and verification) work end to end against fakes — a local
+object store and a fake payment provider. Nothing has touched real Paystack or real
+R2 yet. **12 of 46 screens are built**
 (37 are for launch, 9 wait for Slice 2). Five contexts are still empty:
 `clubs`, `feed`, `media`, `transfers`, `verification`.
 
@@ -106,20 +106,35 @@ start and VER-03 (f7269e9).
 
 ### 2.2 Media and verification (4–5 days)
 
-- [ ] **Migration 0007:** `media_files`, `verification_requests` (state machine incl.
+- [x] **Migration 0007** (b94dbed): `media_files`, `verification_requests` (state machine incl.
   `revoked` and `escalated`, resubmission capped at three, links to `payments`).
-- [ ] **Media pipeline:** private R2 bucket, presigned PUT, the asset row written
-  only after the object is confirmed to exist, a worker that re-encodes and
-  **strips EXIF**, and a permission-checked signed read. Photos and documents
-  never touch the API server. `[ACCT]`
-- [ ] **Verification service:** payment success → `under_review`. The **reviewer
-  rule lives in the service, not the UI**: no approving your own record, or an
-  athlete of a club you administer.
-- [ ] `[UI]` **VER-01** what it gets you (cash route must be prominent), **VER-02**
-  upload, **VER-04** under review, **VER-05** rejected — fix and resubmit.
-- [ ] `[UI]` **CRD-02** review queue: deliberately plain — a list, a document
-  viewer, approve, reject with a reason.
-- [ ] `[UI]` **ADM-03** withdraw a verification (the `revoked` path).
+- [x] **Media pipeline** (b94dbed): object-store port (local + R2), the row becomes `uploaded`
+  only after the object is confirmed to exist, a worker that re-encodes and **strips
+  EXIF** (orientation applied first), decompression-bomb and format guards, a 30-day
+  document purge, permission-checked reads. R2 adapter's SigV4 signer is proved
+  against Amazon's published vector.
+  **Still open, `[ACCT]`:** run against a real private R2 bucket (never done); the web
+  tier uploads through the API (the wireframe's no-JS fallback) — the direct-to-bucket
+  presigned PUT exists in the API (`upload_url`) but no JavaScript enhancement uses it
+  yet, so today photos DO touch the API server; reads are streamed through the API
+  after the permission check, not by presigned GET; the worker is started by hand
+  (`python -m kafriada.contexts.media.worker --once`, scheduling is 2.3).
+- [x] **Verification service** (b94dbed): payment success → `under_review` (in the ledger
+  transaction, guarded so it can never fail it). The reviewer rule lives in the
+  service: no seeing or deciding your own record. **Still open:** the "athlete of a
+  club you administer" half — needs clubs (0008); `_conflict_with_club` is the marked
+  place and is tested as absent. SMS on every decision is queued, but nothing sends
+  it until an SMS provider is configured.
+- [x] `[UI]` **VER-01** what it gets you, **VER-02** upload, **VER-04** under review,
+  **VER-05** rejected — fix and resubmit (b94dbed, all at `/verify`). **Missing: the cash
+  route** VER-01 says must be prominent — it needs CRD-04 (2.4), and a button that
+  promises a coordinator flow that does not exist would be worse than none. The
+  wireframe's "coordinator's contact details" on escalation are not shown either.
+- [x] `[UI]` **CRD-02** review queue (b94dbed, `/review`): one case at a time, the two safe
+  images, approve, reject with a reason, skip.
+- [ ] `[UI]` **ADM-03** withdraw a verification (the `revoked` path). The API is done
+  and tested (`POST /v1/admin/verification/{id}/revoke`: reason + password, super_admin
+  only); the screen is not built, and nothing yet lets a super_admin find a request id.
 - [ ] `[UI]` **ATH-02** edit my details (gender, dominant side, secondary sport,
   years of experience are in the spec but not in registration) and **ATH-04** my
   payments. Public profile already shows the photo once verified.
