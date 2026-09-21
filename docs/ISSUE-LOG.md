@@ -43,29 +43,28 @@ instead of guessing>
 
 ---
 
-### 2026-09-19 — Database unreachable on /readyz probe: Direct Supabase host is IPv6-only
+### 2026-09-20 — Database unreachable: Supabase project is paused (Host Not Found)
 
 **Reported by:** developer / agent
 **Where:** `/readyz` probe, `db.slwlefnfdsjfeimyjhag.supabase.co:5432`
 
 **What was expected:**
-`curl http://127.0.0.1:8010/readyz` returns 200 OK once `api/.env` is configured with Supabase credentials.
+`db.slwlefnfdsjfeimyjhag.supabase.co` resolves to an IP address and connects.
 
 **What actually happened:**
-    `[error] db_unreachable error_type=OperationalError method=GET path=/readyz pool=app duration_ms=30364`
-    `[error] not_ready app=False money=False read=False status=503`
-Connection timed out after 30 seconds across all 3 pools.
+Running `python -c "import socket; socket.getaddrinfo('db.slwlefnfdsjfeimyjhag.supabase.co', 5432)"` returns:
+`socket.gaierror: [Errno 11001] getaddrinfo failed` (Host not found).
 
 **What was tried, in order:**
-1. Verified `api/.env` exists and contains the valid Supabase direct host: `db.slwlefnfdsjfeimyjhag.supabase.co:5432`.
-2. Verified `CLAUDE.md` and `TEAM-AGENT-BRIEF.md` notes: this machine's network lacks stable IPv6 routing to Frankfurt Supabase. Direct `db.*.supabase.co` addresses are IPv6-only.
+1. Ran `nslookup db.slwlefnfdsjfeimyjhag.supabase.co` on local and public resolvers.
+2. Ran Python `socket.getaddrinfo` via `.venv\Scripts\python.exe`. Both proved hostname does not exist.
+3. This disproved the earlier IPv6 network speculation: the hostname itself is not published in DNS because the free-tier Supabase project was paused after inactivity.
 
 **Root cause:**
-Direct Supabase connection endpoints (`db.<project-ref>.supabase.co`) resolve only to IPv6 AAAA records. When the local network does not support IPv6 routing or drops IPv6 packets, PostgreSQL connections time out.
+Supabase free tier automatically pauses projects after 7 days of inactivity, removing the DNS records until unpaused in the Supabase dashboard.
 
-**Fix (or: still open):**
-Option 1: Connect via Supabase IPv4 connection pooler (e.g. `aws-0-eu-central-1.pooler.supabase.com:6543` / `aws-0-eu-central-1.pooler.supabase.com:5432` with username format `kaf_app.slwlefnfdsjfeimyjhag`).
-Option 2: Re-enable / verify IPv6 routing on the local internet connection / hotspot.
+**Fix (still open, handed off to project lead):**
+Project lead must log into the Supabase web dashboard and click "Unpause Project" on `slwlefnfdsjfeimyjhag`. Once active, DNS records will restore and `/readyz` will connect. Testing is paused per project lead instructions until unpaused.
 
 ---
 

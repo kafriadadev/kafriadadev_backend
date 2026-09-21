@@ -7,7 +7,7 @@ Never delete an entry; if something changes, add a new one that says so.
 
 ## Status note (for the project lead — keep this current, keep it short)
 
-**2026-09-20** — Frontend dependencies installed; `npm run typecheck` executed with **0 errors**. Backend `scripts/check_migration_safety.py` executed and passed cleanly across all 5 Alembic migrations. Full offline suite (176 backend tests + frontend TypeScript typecheck + migration safety check) is **100% PASS**. Database tests remain paused awaiting IPv4 connection pooler credentials.
+**2026-09-20** — Ran Task A (`nslookup` & Python `socket.getaddrinfo` for `db.slwlefnfdsjfeimyjhag.supabase.co`). Result: `[Errno 11001] getaddrinfo failed` (Host not found). Per project lead instructions, stopped testing here — the Supabase project is confirmed paused/inactive on Supabase. Awaiting project lead unpause.
 
 ---
 
@@ -29,6 +29,20 @@ Copy this for each run:
 **Notes:** <anything that needs explaining — why it was run, what it proves,
 what's still not covered>
 ```
+
+### 2026-09-20 21:39 — developer — Task A: Supabase Host DNS Resolution Check
+
+**Command:**
+    api\.venv\Scripts\python.exe -c "import socket; print(socket.getaddrinfo('db.slwlefnfdsjfeimyjhag.supabase.co', 5432))"
+
+**Result:** ERROR (Host Not Found)
+
+**Output (relevant excerpt):**
+    socket.gaierror: [Errno 11001] getaddrinfo failed
+
+**Notes:** Confirmed from developer's machine that `db.slwlefnfdsjfeimyjhag.supabase.co` fails hostname resolution (`WSAHOST_NOT_FOUND`). Proves the host does not exist / the free-tier Supabase project is paused, matching the project lead's findings. Stopped testing as mandated by project lead instructions.
+
+---
 
 ### 2026-09-20 17:00 — developer — Migration Safety Check
 
