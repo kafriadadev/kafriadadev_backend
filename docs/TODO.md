@@ -17,10 +17,11 @@ database item on the strength of tests that skipped.
 
 ## Where we are
 
-Stage 0 and Stage 1 are done. Stage 2 is two-thirds built on `main`: 2.1 (ledger and
-payments) and 2.2 (media and verification) work end to end against fakes — a local
-object store and a fake payment provider. Nothing has touched real Paystack or real
-R2 yet. **12 of 46 screens are built**
+Stage 0 and Stage 1 are done. Stage 2 is mostly built on `main`: 2.1 (ledger and
+payments), 2.2 (media and verification) and the backend of 2.3 (the safety net) work
+end to end against fakes — a local object store and a fake payment provider. Nothing
+has touched real Paystack or real R2 yet. Left: 2.3's screen and notification
+generalisation, then all of 2.4. **12 of 46 screens are built**
 (37 are for launch, 9 wait for Slice 2). Five contexts are still empty:
 `clubs`, `feed`, `media`, `transfers`, `verification`.
 
@@ -141,28 +142,42 @@ start and VER-03 (f7269e9).
 
 ### 2.3 Outbox, workers, safety net (3–4 days)
 
-- [ ] **Scheduling.** The SMS worker is started by hand today. Decide how jobs run
-  (cron or a worker process) and make every job below use it.
+- [x] **Scheduling** (858feb0): `python -m kafriada.jobs` — one small process, no broker.
+  "When did it last run" is in `ops.job_runs`, each recorded job takes a Postgres
+  advisory lock, a failing job never stops the others, `--once` exits non-zero on a dirty
+  run (for cron to page on). **Not deployed anywhere:** it needs a process supervisor
+  on whichever host is chosen (`docs/deploy-runbook.md`); the standalone `outbox.dispatch`
+  and `media.worker` still work and the runner subsumes them.
 - [ ] **Outbox for every notification**, not only SMS (`FOR UPDATE SKIP LOCKED`
-  consumer exists; extend it). Add retention.
-- [ ] **Hourly reconciliation** against Paystack's verify API, sharing the exact
-  code path the webhook uses. It may only ever *confirm* a credit — never
-  reverse, refund or cancel. Mismatches freeze for a human.
-- [ ] **72-hour expiry** — only for payments with no successful charge.
-- [ ] **Nightly integrity check:** every ledger balances, every athlete has exactly
-  one KUID, no KUID appears twice, every media row points at a real object. Pages
-  someone on failure.
-- [ ] **Expired-session sweep** (listed as not built).
-- [ ] `wallet.record_reversal()` — super_admin, password re-entered, mandatory
-  reason; records a refund made by hand in Paystack. **No endpoint moves money.**
-  `[UI]` **ADM-04**.
+  consumer exists; extend it). **Retention is done** (858feb0: delivered rows after 30 days,
+  failed after 90, waiting never). Generalising beyond SMS is not: no other kind of
+  notification exists yet to generalise for.
+- [x] **Reconciliation** (858feb0, every 10 minutes rather than hourly — a missed webhook
+  is a customer waiting): asks Paystack's verify API and hands only a `success` to the
+  same `settle_charge`, same idempotency key. Never reverses, refunds or cancels;
+  mismatches freeze. **Never run against the real Paystack:** the verify adapter's
+  request and response shapes are from memory.
+- [x] **72-hour expiry** (858feb0) — only for payments Paystack has been asked about and
+  has not said were paid; a payment it could not ask about is left alone.
+- [x] **Nightly integrity check** (858feb0, `kafriada/integrity.py`, 02:00 Nigeria time):
+  ledger shape and totals, KUID uniqueness and the counter (never behind, no gaps),
+  verification consistency, media objects exist. Writes `ops.job_runs`, so "green" is a
+  query. **"Pages someone" is only an error-level log plus a non-zero `--once` exit**;
+  turning that into a real page needs a Sentry alert rule `[ACCT]`.
+- [x] **Expired-session sweep** (858feb0): sessions dead for 30 days, hourly.
+- [x] **`record_reversal`** (858feb0, `POST /v1/admin/payments/{reference}/reversal`) —
+  super_admin, password re-entered, mandatory reason, once per payment, never more
+  than was paid; makes no call to Paystack. Ledger line `source='reversal'` with
+  `recorded_by` and `note` enforced by CHECK. (There are no wallets, so it is against
+  the payment.)
+- [ ] `[UI]` **ADM-04** — the screen for the above. The API is done and tested.
 
 ### 2.4 Assisted payment, clubs and the admin console (3–4 days)
 
 - [ ] **Coordinator pays on behalf** (`[UI]` **CRD-04**): the ledger lands on the athlete,
   `coordinator_id` is tagged on the payment, daily caps by count and by naira
   (`[USER]` numbers), and an **SMS receipt to the athlete's phone** at confirmation.
-- [ ] **Migration 0008 — clubs:** organizations, teams, roster members, with the
+- [ ] **Migration 0009 — clubs** (0008 is the safety net): organizations, teams, roster members, with the
   *at-most-one-open-membership* rule as a **partial unique index** — the database
   enforces it, not the code.
 - [ ] **Clubs** `[UI]`: **CLB-01** register, **CLB-02** dashboard (scope is the

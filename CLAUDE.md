@@ -32,6 +32,7 @@ cd web && npm run check:render              # needs both tiers up; see below
 python scripts/demo_security.py             # live demo of what the DB refuses to do
 cd api && .venv/Scripts/python.exe -m kafriada.outbox.dispatch --once   # send queued SMS
 cd api && .venv/Scripts/python.exe -m kafriada.contexts.media.worker --once   # re-encode uploads, purge old documents
+cd api && .venv/Scripts/python.exe -m kafriada.jobs --once    # every background job now (reconcile, expire, integrity...); exits 1 if any was not clean
 python scripts/check_migration_safety.py    # refuses data loss in an upgrade()
 bash scripts/release.sh plan staging        # pending migrations + the SQL
 bash scripts/release.sh migrate staging     # apply, after typing the name
@@ -241,8 +242,33 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   Pillow's behaviour on HEIC (refused as "not JPEG/PNG/WebP" — iPhones may be common);
   SMS delivery of decisions (needs Twilio); the wireframe's coordinator contact on
   escalation and the cash route are absent (see docs/TODO.md).
-  Next: 2.3 (scheduling, reconciliation against Paystack's verify API, 72h expiry,
-  nightly integrity check) or 2.4 (assisted payment, clubs, the admin console).
+- 2.3 the safety net — backend done 2026-09-21 (858feb0). **Migration 0008**:
+  `ops.job_runs` (insert-only proof of every run), `GRANT DELETE ON ops.outbox`, ledger
+  `reversal` source + `note`/`recorded_by` (CHECK: a reversal is a positive debit with an
+  author and a reason). **`kafriada.jobs`**: `python -m kafriada.jobs [--once] [--only a,b]`
+  runs outbox drain (5s), media (10s), reconcile (10min), expire, sessions, rate counters,
+  documents (hourly), outbox retention (03:00), integrity (02:00 Nigeria time); last-run
+  is read from `ops.job_runs`, each recorded job holds a Postgres advisory lock (session
+  level, committed straight away — the engine kills idle-in-transaction after 30s), a
+  failure is recorded and logged and never stops the others. `contexts/payments/reconcile.py`:
+  `reconcile()` asks `provider.verify()` (new on the port; `PaystackProvider` calls
+  `GET /transaction/verify/{ref}`, parsed by the webhook's own strict reader) and calls
+  `settle_charge(event, source="reconciliation")` ONLY for `status == "success"`;
+  `expire_stale()` asks first, expires only `pending` older than 72h that Paystack does
+  not say was paid, leaves unreachable ones alone. `integrity.py`: findings, not verdicts;
+  tests corrupt data inside rolled-back sessions via `integrity.reading_from(session)`
+  (the ledger is append-only, so committed corruption could never be cleaned up).
+  `contexts/ledger/reversal.py`: RECORD a refund made in the Paystack dashboard.
+  Sweeps: `access.sweep_sessions()`, `outbox.prune_delivered()`. Suite: 681 passed / 0
+  skipped. Mutations proved red: verify status ignored, expiry without asking, other-
+  reference answer accepted, integrity checks removed, no lock, no password, no cap,
+  sweeps too greedy. Found and fixed on the way: `amount_kobo` accepted `"100000"` and
+  `true` (pydantic lax) — now `StrictInt`; the `kuid_counters.next_serial` column holds
+  the LAST serial issued, not the next (a wrong first integrity check flagged it).
+  **Not verified:** real Paystack verify; the runner has never run under a supervisor on
+  a host; nothing pages anyone (needs a Sentry alert rule); ADM-04 screen not built.
+  Next: 2.4 (assisted cash payment, clubs = migration 0009, the admin console, the first
+  super_admin) — or 2.3's remaining screen.
 - **Not built:** expired-session sweep, outbox retention/scheduling (0.6 — the
   worker is started by hand today), admin UI (ADM-02 is API only), a way to
   appoint the first super_admin (today: SQL insert into `ops.user_roles`).
@@ -266,7 +292,7 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
 7. Stage 2 (ledger & Paystack, media & verification, outbox jobs, assisted cash
    payment & clubs) — do not compress. Then Stage 3 launch readiness.
    **The full, ordered list — every remaining item, screen and decision — is
-   `docs/TODO.md`. Start there.** Next in line: 2.3 or 2.4.
+   `docs/TODO.md`. Start there.** Next in line: 2.4.
 
 ## Outside the code (block launch, not build)
 Paystack business verification needs current CAC registration (1–3 weeks; nobody
