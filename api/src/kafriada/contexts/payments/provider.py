@@ -21,11 +21,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Protocol
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import httpx
 import structlog
 
+from kafriada.contexts.payments.rules import ChargeEvent, MalformedEvent, parse_charge_event
 from kafriada.settings import PaymentProviderKind, Settings, get_settings
 
 log = structlog.get_logger(__name__)
@@ -61,6 +62,16 @@ class PaymentProvider(Protocol):
         self, *, reference: str, amount_kobo: int, email: str, callback_url: str
     ) -> Initialised: ...
 
+    def verify(self, reference: str) -> ChargeEvent | None:
+        """What the provider itself says happened to one reference (reconciliation).
+
+        ``None`` means the provider has never heard of it. The returned event carries
+        the provider's own status — ``success``, ``abandoned``, ``failed`` — and it is
+        the caller's job to act only on ``success``: reconciliation may *confirm* a
+        credit, and must never reverse, refund or cancel anything.
+        """
+        ...
+
 
 class NoProvider:
     name = "none"
@@ -68,6 +79,9 @@ class NoProvider:
     def initialise(
         self, *, reference: str, amount_kobo: int, email: str, callback_url: str
     ) -> Initialised:
+        raise NotConfigured()
+
+    def verify(self, reference: str) -> ChargeEvent | None:
         raise NotConfigured()
 
 
@@ -82,6 +96,9 @@ class FakeProvider:
 
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
+        # What verify() answers, per reference. Anything not listed is "never heard of it".
+        self.results: dict[str, ChargeEvent | None] = {}
+        self.verified: list[str] = []
 
     def initialise(
         self, *, reference: str, amount_kobo: int, email: str, callback_url: str
@@ -92,6 +109,11 @@ class FakeProvider:
         return Initialised(
             authorization_url=f"{callback_url}?reference={reference}", access_code="fake"
         )
+
+
+    def verify(self, reference: str) -> ChargeEvent | None:
+        self.verified.append(reference)
+        return self.results.get(reference)
 
 
 class PaystackProvider:
@@ -111,6 +133,7 @@ class PaystackProvider:
             raise NotConfigured()
         self._key = cfg.paystack_secret_key.get_secret_value()
         self._url = f"{cfg.paystack_base_url.rstrip('/')}/transaction/initialize"
+        self._verify_url = f"{cfg.paystack_base_url.rstrip('/')}/transaction/verify"
         self._timeout = cfg.paystack_timeout_seconds
 
     def initialise(
@@ -152,6 +175,38 @@ class PaystackProvider:
             raise ProviderError("paystack answered without a usable address", transient=False)
         code = data.get("access_code") if isinstance(data, dict) else None
         return Initialised(authorization_url=url, access_code=code if isinstance(code, str) else None)
+
+
+    def verify(self, reference: str) -> ChargeEvent | None:
+        try:
+            response = httpx.get(
+                f"{self._verify_url}/{quote(reference, safe='')}",
+                headers={"authorization": f"Bearer {self._key}"},
+                timeout=self._timeout,
+            )
+        except httpx.HTTPError as exc:
+            raise ProviderError(
+                f"paystack unreachable: {type(exc).__name__}", transient=True
+            ) from exc
+
+        if response.status_code == 404:
+            return None
+        body = _json_or_empty(response)
+        if not response.is_success:
+            transient = response.status_code == 429 or response.status_code >= 500
+            raise ProviderError(
+                f"paystack {response.status_code}: {body.get('message') or response.reason_phrase}",
+                transient=transient,
+            )
+        data = body.get("data")
+        if body.get("status") is not True or not isinstance(data, dict):
+            raise ProviderError("paystack answered a verify without a transaction", transient=False)
+        try:
+            # The same strict reader the webhook uses, so both paths agree on what
+            # a well-formed transaction is.
+            return parse_charge_event({"event": "charge.success", "data": data})
+        except MalformedEvent as exc:
+            raise ProviderError(f"paystack verify was not readable: {exc}", transient=False) from exc
 
 
 def _is_https(url: str) -> bool:

@@ -186,6 +186,28 @@ def _mark_failed(session: Session, message_id: int, attempts: int, error: str) -
     )
 
 
+def prune_delivered(*, keep_days: int = 30, keep_failed_days: int = 90) -> int:
+    """Delete delivered messages after ``keep_days`` and given-up ones after ``keep_failed_days``.
+
+    A delivered row was already scrubbed of its body; what remains is only the evidence
+    that a message went out, which stops being useful within a month. Failed rows are kept
+    longer because each one is a support case. Rows still waiting to be sent are never
+    touched, however old.
+    """
+    with transaction() as session:
+        result = session.execute(
+            text(
+                """
+                DELETE FROM ops.outbox
+                 WHERE (processed_at IS NOT NULL AND processed_at < now() - make_interval(days => :ok))
+                    OR (failed_at IS NOT NULL AND failed_at < now() - make_interval(days => :bad))
+                """
+            ),
+            {"ok": keep_days, "bad": keep_failed_days},
+        )
+        return int(getattr(result, "rowcount", 0) or 0)
+
+
 def pending_count() -> int:
     """How many messages are waiting. For the dispatcher and for support."""
     with transaction() as session:

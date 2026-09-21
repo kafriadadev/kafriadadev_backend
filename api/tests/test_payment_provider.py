@@ -146,3 +146,94 @@ class TestChoosingAProvider:
 
     def test_production_with_paystack_starts(self) -> None:
         assert production().payment_provider.value == "paystack"
+
+
+class TestPaystackVerify:
+    """The read-only question reconciliation asks: what does Paystack say happened?"""
+
+    @staticmethod
+    def answered(monkeypatch: pytest.MonkeyPatch, response: httpx.Response | Exception) -> list[str]:
+        asked: list[str] = []
+
+        def get(url: str, **kwargs: object) -> httpx.Response:
+            asked.append(url)
+            if isinstance(response, Exception):
+                raise response
+            return response
+
+        monkeypatch.setattr(provider_mod.httpx, "get", get)
+        return asked
+
+    def test_a_successful_transaction_is_read_with_the_same_strict_parser_as_the_webhook(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        asked = self.answered(monkeypatch, httpx.Response(200, json={
+            "status": True,
+            "data": {"reference": REF, "amount": 250000, "currency": "NGN", "status": "success", "fees": 3750},
+        }))
+        event = PaystackProvider(settings()).verify(REF)
+        assert event is not None
+        assert (event.reference, event.amount_kobo, event.currency, event.status, event.fees_kobo) == (
+            REF, 250000, "NGN", "success", 3750,
+        )
+        assert asked == [f"https://api.paystack.co/transaction/verify/{REF}"]
+
+    def test_the_providers_own_status_is_passed_through_not_assumed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self.answered(monkeypatch, httpx.Response(200, json={
+            "status": True,
+            "data": {"reference": REF, "amount": 250000, "currency": "NGN", "status": "abandoned"},
+        }))
+        event = PaystackProvider(settings()).verify(REF)
+        assert event is not None and event.status == "abandoned" and event.fees_kobo is None
+
+    def test_a_reference_paystack_does_not_know_is_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.answered(monkeypatch, httpx.Response(404, json={"status": False, "message": "not found"}))
+        assert PaystackProvider(settings()).verify(REF) is None
+
+    def test_the_reference_is_url_encoded_so_it_cannot_change_the_path(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        asked = self.answered(monkeypatch, httpx.Response(404))
+        PaystackProvider(settings()).verify("KAF-x/../../secret?a=b")
+        assert asked == ["https://api.paystack.co/transaction/verify/KAF-x%2F..%2F..%2Fsecret%3Fa%3Db"]
+
+    @pytest.mark.parametrize(("status", "transient"), [(500, True), (429, True), (401, False), (400, False)])
+    def test_failures_are_sorted_by_whether_trying_again_can_help(
+        self, monkeypatch: pytest.MonkeyPatch, status: int, transient: bool
+    ) -> None:
+        self.answered(monkeypatch, httpx.Response(status, json={"status": False, "message": "no"}))
+        with pytest.raises(ProviderError) as caught:
+            PaystackProvider(settings()).verify(REF)
+        assert caught.value.transient is transient
+        assert KEY not in str(caught.value)
+
+    def test_an_unreachable_paystack_is_transient(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.answered(monkeypatch, httpx.ConnectTimeout("slow"))
+        with pytest.raises(ProviderError) as caught:
+            PaystackProvider(settings()).verify(REF)
+        assert caught.value.transient is True
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {"status": False, "data": {}},
+            {"status": True},
+            {"status": True, "data": {"reference": REF, "amount": "lots", "currency": "NGN", "status": "success"}},
+            {"status": True, "data": {"reference": REF, "amount": 100.5, "currency": "NGN", "status": "success"}},
+        ],
+    )
+    def test_an_answer_we_cannot_read_is_refused_rather_than_guessed_at(
+        self, monkeypatch: pytest.MonkeyPatch, body: dict
+    ) -> None:  # type: ignore[type-arg]
+        self.answered(monkeypatch, httpx.Response(200, json=body))
+        with pytest.raises(ProviderError) as caught:
+            PaystackProvider(settings()).verify(REF)
+        assert caught.value.transient is False
+
+    def test_the_fake_and_the_absent_provider_answer_predictably(self) -> None:
+        fake = FakeProvider()
+        assert fake.verify(REF) is None and fake.verified == [REF]
+        with pytest.raises(NotConfigured):
+            NoProvider().verify(REF)

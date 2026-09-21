@@ -78,8 +78,15 @@ def _event_key(event: ChargeEvent) -> str:
     return f"charge.success:{event.reference}"
 
 
-def settle_charge(event: ChargeEvent, *, request_id: str | None = None) -> Settlement:
-    """Act on one delivery of a ``charge.success``. Safe to call any number of times."""
+def settle_charge(
+    event: ChargeEvent, *, request_id: str | None = None, source: str = "paystack_webhook"
+) -> Settlement:
+    """Act on one delivery of a ``charge.success``. Safe to call any number of times.
+
+    ``source`` names who is asking, for the audit row: the webhook, or the hourly
+    reconciliation. Both go through this one function and the same idempotency key, so
+    a payment confirmed by both is still settled exactly once.
+    """
     if not is_our_reference(event.reference):
         return Settlement(Outcome.IGNORED)
 
@@ -116,7 +123,7 @@ def settle_charge(event: ChargeEvent, *, request_id: str | None = None) -> Settl
                 {"id": payment_id},
             ).one()
             decision = decide(event, expected_kobo=row.expected_kobo)
-            actor = Actor.system("paystack_webhook")
+            actor = Actor.system(source)
             details = {
                 "reference": event.reference,
                 "paid_kobo": event.amount_kobo,

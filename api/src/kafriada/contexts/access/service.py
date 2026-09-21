@@ -1112,6 +1112,29 @@ def _reauthenticate(
         raise AccessError("That password is not right.", field="current_password")
 
 
+def sweep_sessions(*, keep_days: int = 30) -> int:
+    """Delete sessions that have been dead for ``keep_days`` — expired on either clock, or revoked.
+
+    A dead session already grants nothing (``authenticate`` refuses it on every request),
+    so this is housekeeping, not security. The grace period exists so "your session ended"
+    can still be told apart from "you were never signed in" for a while, and so a sweep can
+    never race a session that has only just lapsed. What happened is kept where it belongs:
+    in the audit log, which is not swept.
+    """
+    with transaction() as session:
+        result = session.execute(
+            text(
+                """
+                DELETE FROM ops.sessions
+                 WHERE least(idle_expires_at, absolute_expires_at) < now() - make_interval(days => :d)
+                    OR revoked_at < now() - make_interval(days => :d)
+                """
+            ),
+            {"d": keep_days},
+        )
+        return int(getattr(result, "rowcount", 0) or 0)
+
+
 def reauthenticate(
     actor: Principal,
     raw_password: str,

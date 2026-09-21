@@ -34,10 +34,13 @@ class Direction(StrEnum):
 
 
 class Source(StrEnum):
-    # The specification also lists 'reward' and 'reversal'. They arrive with the
-    # features that need them; an unused member is a value nothing has tested.
+    # The specification also lists 'reward'. It arrives with the feature that needs
+    # it; an unused member is a value nothing has tested.
     PAYSTACK = "paystack"
     FEE = "fee"
+    # A refund made by hand in the Paystack dashboard and recorded here afterwards.
+    # KAFRIADA never performs one (see contexts/ledger/reversal.py).
+    REVERSAL = "reversal"
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +86,23 @@ def plan_settlement(*, gross_kobo: int, provider_fee_kobo: int) -> tuple[LedgerL
         LedgerLine(Direction.CREDIT, Source.PAYSTACK, gross),
         LedgerLine(Direction.DEBIT, Source.FEE, fee),
     )
+
+
+def plan_reversal(*, gross_kobo: int, amount_kobo: int) -> LedgerLine:
+    """The one debit that records a refund of ``amount_kobo`` against a payment of ``gross_kobo``.
+
+    Never more than was paid: a refund larger than the payment is not a refund, it is a
+    mistyped amount (or naira read as kobo), and the ledger exists to refuse exactly that.
+    """
+    gross = _kobo("gross_kobo", gross_kobo)
+    amount = _kobo("amount_kobo", amount_kobo)
+    if gross <= 0:
+        raise InvalidAmount(f"gross_kobo must be positive, got {gross}")
+    if amount <= 0:
+        raise InvalidAmount(f"a reversal must be for a positive amount, got {amount}")
+    if amount > gross:
+        raise InvalidAmount(f"cannot reverse {amount} kobo of a payment of {gross} kobo")
+    return LedgerLine(Direction.DEBIT, Source.REVERSAL, amount)
 
 
 def net_kobo(lines: tuple[LedgerLine, LedgerLine]) -> int:

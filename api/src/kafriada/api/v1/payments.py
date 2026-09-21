@@ -18,11 +18,12 @@ from typing import Literal
 import structlog
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StrictInt
 
 from kafriada.api.client import client_ip, request_id
 from kafriada.api.security import Public, Requires, current_principal
 from kafriada.api.throttle import Throttle
+from kafriada.contexts.ledger import reversal
 from kafriada.contexts.payments import service
 from kafriada.contexts.payments.rules import (
     IllegalTransition,
@@ -165,6 +166,53 @@ def read(reference: str, request: Request) -> PaymentResponse:
         state=_STATE[found.status],
         amount_kobo=found.amount_kobo,
         created_at=found.created_at,
+    )
+
+
+class ReversalRequest(BaseModel):
+    # Strict: money is whole kobo and nothing else. Lax parsing would accept "100000" and
+    # True (as 1) and quietly turn a typo into a ledger line.
+    amount_kobo: StrictInt
+    reason: str = Field(min_length=1, max_length=reversal.MAX_REASON_CHARS)
+    current_password: str = Field(min_length=1, max_length=1024)
+
+
+class ReversalResponse(BaseModel):
+    reference: str
+    amount_kobo: int
+    gross_kobo: int
+
+
+@router.post(
+    "/admin/payments/{reference}/reversal",
+    response_model=ReversalResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Requires("payment.record_reversal")],
+    summary="Record a refund that was already made in the Paystack dashboard",
+)
+def record_reversal(reference: str, body: ReversalRequest, request: Request) -> ReversalResponse:
+    """RECORD, not perform. Nothing here can move money: there is no call to Paystack."""
+    try:
+        done = reversal.record_reversal(
+            current_principal(request), reference, body.amount_kobo, body.reason,
+            body.current_password, request_id=request_id(request), ip_address=client_ip(request),
+        )
+    except reversal.NotFound:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, detail={"message": "We could not find that payment.", "field": None}
+        ) from None
+    except reversal.Refused as exc:
+        fields = {"reason": "reason", "amount": "amount_kobo", "password": "current_password"}
+        if exc.code in fields:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"message": exc.message, "field": fields[exc.code]},
+            ) from None
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, detail={"message": exc.message, "field": None}
+        ) from None
+    return ReversalResponse(
+        reference=done.reference, amount_kobo=done.amount_kobo, gross_kobo=done.gross_kobo
     )
 
 
