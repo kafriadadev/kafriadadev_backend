@@ -31,6 +31,7 @@ cd web && npm run typecheck && npm run build
 cd web && npm run check:render              # needs both tiers up; see below
 python scripts/demo_security.py             # live demo of what the DB refuses to do
 cd api && .venv/Scripts/python.exe -m kafriada.outbox.dispatch --once   # send queued SMS
+cd api && .venv/Scripts/python.exe -m kafriada.contexts.media.worker --once   # re-encode uploads, purge old documents
 python scripts/check_migration_safety.py    # refuses data loss in an upgrade()
 bash scripts/release.sh plan staging        # pending migrations + the SQL
 bash scripts/release.sh migrate staging     # apply, after typing the name
@@ -97,6 +98,12 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `tests/_payment_helpers.record_logs`, which swaps the module's `log`. And build the
   app once before spawning threads: `create_app()` racing itself breaks sentry's
   lazy imports.
+- **`tests/test_codes_and_outbox.py::test_a_message_is_sent_once…` can fail once** when
+  the local `ops.outbox` holds dozens of rows in long retry backoff (an earlier run of the
+  retry test pushes every due row 30 s–30 min out). It passed twice in a row on the next
+  runs. The verification tests queue a few SMS per run and add to that pile.
+- **Never `git stash` in this repo mid-session** — untracked new files are not stashed and
+  the round trip is pointless; commit instead.
 - The API must be restarted to pick up new routes — it runs without `--reload`.
 - Disk C: runs near full; `npm cache clean --force` frees several GB.
 
@@ -207,8 +214,35 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `fees` present?, whether Paystack accepts the `.invalid` placeholder email for an
   athlete with no email); the return-state screens (confirmed/failed/review) were
   read as text but not contrast-audited; no SMS on confirmation (2.4).
-  Next: 2.2 (media and verification) — or 2.3's reconciliation/72h expiry, which
-  share `settle_charge`.
+- 2.2 media and verification — done 2026-09-21 (b94dbed). **Migration 0007**:
+  `identity.media_files`, `verification_requests` (one live request per athlete as a
+  partial unique index; attempt 1..3; no review without both files and a payment, by
+  CHECK), append-only `verification_decisions`. `contexts/media/`: `store.py` (port:
+  `LocalStore`, `R2Store` with a hand-built SigV4 presigner proved against Amazon's
+  vector, `NoStore`), `service.py` (slot → relay/direct PUT → confirm-only-if-the-object-
+  exists → re-encode to a fresh JPEG with no EXIF, orientation applied; bomb/format
+  guards; 30-day document purge), `worker.py`. `contexts/verification/service.py`: the
+  state machine and the reviewer rules; `payments.settlement` calls `mark_paid` inside
+  the ledger transaction. API `api/v1/verification.py`: athlete (`/v1/verification`,
+  `/uploads`, `.../content` relay, `.../confirm`, `/resubmit`), reviewer
+  (`/v1/lgas/{lga}/verification/queue|{id}|{id}/media/{kind}|approve|reject`, scope =
+  LGA), `POST /v1/admin/verification/{id}/revoke` (reason + password), public
+  `GET /v1/public/athletes/{kuid}/photo` (approved only). Payment start now REQUIRES a
+  draft with both files ready. Settings: `MEDIA_STORE=none|local|r2` (local refused
+  outside local, production must be r2) + `R2_*`. Web: `/verify`, `/review`,
+  `/photo/[kuid]`, `/review-media/...` proxies (images never have a bucket URL);
+  server-action body limit raised to 12mb. Suite: 565 passed / 0 skipped, twice.
+  Mutations proved red: EXIF kept, own record allowed, LGA scope dropped, photo public
+  before approval, no escalation, no password on withdraw, granted UPDATE + trigger off
+  on decisions. `check:render` audits every state's screen via
+  `EXTRA_SESSIONS='[{"token":"…","paths":["/verify"]}]'` and found two real contrast bugs
+  (ghost/filled buttons on documents in dark/light), fixed in `globals.css`.
+  **Not verified:** real R2 (never run); the direct-to-bucket upload (no JS uses it);
+  Pillow's behaviour on HEIC (refused as "not JPEG/PNG/WebP" — iPhones may be common);
+  SMS delivery of decisions (needs Twilio); the wireframe's coordinator contact on
+  escalation and the cash route are absent (see docs/TODO.md).
+  Next: 2.3 (scheduling, reconciliation against Paystack's verify API, 72h expiry,
+  nightly integrity check) or 2.4 (assisted payment, clubs, the admin console).
 - **Not built:** expired-session sweep, outbox retention/scheduling (0.6 — the
   worker is started by hand today), admin UI (ADM-02 is API only), a way to
   appoint the first super_admin (today: SQL insert into `ops.user_roles`).
@@ -232,7 +266,7 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
 7. Stage 2 (ledger & Paystack, media & verification, outbox jobs, assisted cash
    payment & clubs) — do not compress. Then Stage 3 launch readiness.
    **The full, ordered list — every remaining item, screen and decision — is
-   `docs/TODO.md`. Start there.** Next in line: 2.2 (media and verification).
+   `docs/TODO.md`. Start there.** Next in line: 2.3 or 2.4.
 
 ## Outside the code (block launch, not build)
 Paystack business verification needs current CAC registration (1–3 weeks; nobody
