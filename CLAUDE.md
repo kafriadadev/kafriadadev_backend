@@ -114,6 +114,32 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   the round trip is pointless; commit instead.
 - The API must be restarted to pick up new routes — it runs without `--reload`.
 - Disk C: runs near full; `npm cache clean --force` frees several GB.
+- **A live `outbox.dispatch` running for manual testing races DB tests that read
+  outbox bodies.** `sms_to()`/similar helpers read `payload->>'body'`, but a
+  delivered row is scrubbed to `{to, purpose, provider, provider_message_id,
+  scrubbed:true}` — no `body`. If a dispatcher you started earlier is still
+  running against the same database, it can drain and scrub a test's row before
+  the test reads it, failing on `body == 'None'`/`assert False` with no code
+  bug behind it. Stop the dispatcher before running `test_verification.py` or
+  anything else that inspects outbox content; restart it after.
+- **`OTP_CHANNEL=email` (or any interim setting) left in `api/.env` leaks into
+  every DB test**, since `create_app()`/`Settings()` load `.env` normally —
+  unlike `test_settings_refuses_insecure_config.py`'s `build()`, which passes
+  `_env_file=None` for exactly this reason. With it set, every test that
+  registers an athlete without an email fails at `identity.register()`. Export
+  the real value as an env var when running the suite (env vars win over
+  `.env`): `OTP_CHANNEL=sms` — or unset the pilot lines in `.env` first.
+- **`money_transaction()` (the `kaf_money` role) cannot read `ops.users` or
+  `identity.athletes`** — it only has grants inside the `money` schema (plus
+  `ops.audit_log`). A lookup that joins payer/athlete names onto a payment
+  needs the ordinary `transaction()` (`kaf_app`), which already has SELECT on
+  `money.payments` and `money.ledger_entries` (0006's append-only grants).
+  `money_transaction()` is for the *write* in `record_reversal`, not a read.
+- **A free-tier Supabase project's connection limit is easy to exhaust** when
+  the API, the outbox dispatcher, a live curl session and a heavy DB test file
+  (`test_permission_matrix.py`, `test_verification.py`) all hold pooled
+  connections at once — surfaces as `psycopg.errors.ConnectionTimeout` on an
+  otherwise-correct request. Not a bug; stop what you can before diagnosing.
 
 ## Invariants — do not weaken
 - Audit log is append-only (grants + trigger). The app role cannot write the ledger;
@@ -301,14 +327,29 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   ring instead of illustrated icons, three font families vendored into
   `assets/fonts/` (OFL). `GET /v1/public/athletes/{kuid}/card.png|pdf`,
   proxied from the web tier the same way the QR code is.
-- **ADM-03, withdraw a verification — built 2026-09-22, not yet DB-verified**
-  (00565a6). `find_by_kuid()` + `GET /v1/admin/verification/by-kuid/{kuid}`
-  is the missing piece the API-only `revoke` route needed; `/admin/revoke`
-  is the screen. The permission-matrix test and a live signed-in walkthrough
-  did not run — Supabase dropped mid-session (TCP-level, not just a query
-  timeout; DNS and general internet were both fine). Repeat both once it is
-  reachable, per this file's own rule: never tick a database item on the
-  strength of tests that skipped.
+- **ADM-03, withdraw a verification — done and verified 2026-09-22** (00565a6).
+  `find_by_kuid()` + `GET /v1/admin/verification/by-kuid/{kuid}` is the
+  missing piece the API-only `revoke` route needed; `/admin/revoke` is the
+  screen. Permission-matrix test passed against Supabase; the lookup itself
+  live-checked with a real super_admin token against a real approved request
+  and a draft one, correct in both. `revoke()` is covered by
+  `test_verification.py::TestApprovalAndWithdrawal` (passed). A live curl of
+  the revoke POST specifically was inconclusive — the Supabase link dropped
+  mid-attempt (see Gotchas) — not a failure.
+- **ADM-04, record a refund — built and verified 2026-09-22** (pending commit).
+  `GET /v1/admin/payments/{reference}` is a lookup the API never had (the
+  reversal route only ever took a reference from Paystack's own dashboard,
+  with nothing to preview it against first); `/admin/reversal` is the screen.
+  Full live loop against Supabase with a real super_admin token: looked up a
+  settled payment, recorded a refund, confirmed `already_reversed` on
+  re-lookup, a second attempt correctly refused (409). One real bug found and
+  fixed on the way: the lookup used `money_transaction()` (`kaf_money`),
+  which has no grant on `ops.users`/`identity.athletes` — switched to the
+  ordinary `transaction()` (`kaf_app`), which already has SELECT on
+  `money.payments` and `money.ledger_entries`. **Not yet re-run through
+  `test_verification.py`/`test_settlement.py`** — Supabase's link dropped
+  mid-session (a bare, unloaded connection attempt timed out); repeat once
+  it's back.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
@@ -329,10 +370,11 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
    payment & clubs) — do not compress. Then Stage 3 launch readiness.
    **The full, ordered list — every remaining item, screen and decision — is
    `docs/TODO.md`. Start there.**
-8. ~~ADM-03, withdraw a verification~~ Built 2026-09-22 (see Status); not yet
-   DB-verified — Supabase was unreachable. Verify, then tick it in
-   `docs/TODO.md` with the commit. Next in line after that: ATH-02/ATH-04,
-   the outbox's notification-type generalisation, ADM-04, or 2.4.
+8. ~~ADM-03, withdraw a verification~~ Built and verified 2026-09-22 (see
+   Status). ~~ADM-04, record a refund~~ Built and live-verified the same day;
+   the automated suite re-run is what's left, blocked on Supabase's link.
+   Next in line: ATH-02/ATH-04, the outbox's notification-type
+   generalisation, or 2.4.
 
 ## Outside the code (block launch, not build)
 Paystack business verification needs current CAC registration (1–3 weeks; nobody

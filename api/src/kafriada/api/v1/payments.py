@@ -183,6 +183,42 @@ class ReversalResponse(BaseModel):
     gross_kobo: int
 
 
+class AdminPaymentLookupResponse(BaseModel):
+    reference: str
+    purpose: str
+    status: str
+    expected_kobo: int
+    payer_name: str
+    athlete_kuid: str | None
+    athlete_name: str | None
+    gross_kobo: int | None
+    already_reversed: bool
+    # What the reversal screen actually cares about — settled, and not already
+    # refunded once.
+    reversible: bool
+
+
+@router.get(
+    "/admin/payments/{reference}",
+    response_model=AdminPaymentLookupResponse,
+    dependencies=[Requires("payment.record_reversal")],
+    summary="Look up a payment by reference, to record a refund against it (ADM-04)",
+)
+def find_payment(reference: str) -> AdminPaymentLookupResponse:
+    found = reversal.find_by_reference(reference)
+    if found is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, detail={"message": "We could not find that payment.", "field": None}
+        )
+    return AdminPaymentLookupResponse(
+        reference=found.reference, purpose=found.purpose, status=found.status,
+        expected_kobo=found.expected_kobo, payer_name=found.payer_name,
+        athlete_kuid=found.athlete_kuid, athlete_name=found.athlete_name,
+        gross_kobo=found.gross_kobo, already_reversed=found.already_reversed,
+        reversible=found.status == "success" and not found.already_reversed,
+    )
+
+
 @router.post(
     "/admin/payments/{reference}/reversal",
     response_model=ReversalResponse,

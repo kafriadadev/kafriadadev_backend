@@ -33,7 +33,7 @@ from kafriada.contexts.access import service as access
 from kafriada.contexts.access.service import Principal
 from kafriada.contexts.audit.service import Actor, record
 from kafriada.contexts.ledger.entries import InvalidAmount, plan_reversal
-from kafriada.db.engine import money_transaction
+from kafriada.db.engine import money_transaction, transaction
 
 log = structlog.get_logger(__name__)
 
@@ -58,6 +58,80 @@ class Recorded:
     reference: str
     amount_kobo: int
     gross_kobo: int
+
+
+@dataclass(frozen=True, slots=True)
+class AdminPaymentLookup:
+    """What a super_admin needs to see before recording a refund."""
+
+    reference: str
+    purpose: str
+    status: str
+    expected_kobo: int
+    payer_name: str
+    athlete_kuid: str | None
+    athlete_name: str | None
+    # None until the payment has settled — there is nothing to reverse yet.
+    gross_kobo: int | None
+    already_reversed: bool
+
+
+def find_by_reference(reference: str) -> AdminPaymentLookup | None:
+    """A payment by its reference, for the reversal screen (ADM-04).
+
+    Unlike ADM-03's verification lookup, this is not filling a genuine gap —
+    the reference is what a refund made in Paystack's own dashboard already
+    carries. This exists so the screen shows what it is about to touch before
+    an amount is typed in, on the one path that writes an amount into the
+    ledger by hand.
+
+    A plain read, on the app role: kaf_app already has SELECT on
+    money.payments and money.ledger_entries (0006's append-only grants), and
+    the money role has no grant on ops.users or identity.athletes at all —
+    money_transaction() is for the write in record_reversal, not this.
+    """
+    with transaction() as session:
+        payment = session.execute(
+            text(
+                """
+                SELECT p.id, p.reference, p.purpose, p.status, p.expected_kobo,
+                       payer.full_name AS payer_name,
+                       a.kuid AS athlete_kuid, athlete_user.full_name AS athlete_name
+                  FROM money.payments p
+                  JOIN ops.users payer ON payer.id = p.paid_by
+                  LEFT JOIN identity.athletes a ON a.id = p.on_behalf_of
+                  LEFT JOIN ops.users athlete_user ON athlete_user.id = a.user_id
+                 WHERE p.reference = :ref
+                """
+            ),
+            {"ref": reference.strip()},
+        ).mappings().one_or_none()
+        if payment is None:
+            return None
+
+        gross = session.execute(
+            text(
+                "SELECT amount_kobo FROM money.ledger_entries "
+                "WHERE payment_id = :p AND source = 'paystack'"
+            ),
+            {"p": payment["id"]},
+        ).scalar_one_or_none()
+        already_reversed = session.execute(
+            text("SELECT 1 FROM money.ledger_entries WHERE payment_id = :p AND source = 'reversal'"),
+            {"p": payment["id"]},
+        ).first() is not None
+
+    return AdminPaymentLookup(
+        reference=payment["reference"],
+        purpose=payment["purpose"],
+        status=payment["status"],
+        expected_kobo=payment["expected_kobo"],
+        payer_name=payment["payer_name"],
+        athlete_kuid=payment["athlete_kuid"],
+        athlete_name=payment["athlete_name"],
+        gross_kobo=gross,
+        already_reversed=already_reversed,
+    )
 
 
 def record_reversal(

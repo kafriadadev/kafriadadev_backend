@@ -135,10 +135,14 @@ start and VER-03 (f7269e9).
   images, approve, reject with a reason, skip.
 - [ ] `[UI]` **ADM-03** withdraw a verification (the `revoked` path). Built 2026-09-22
   (00565a6): `find_by_kuid()` + `GET /v1/admin/verification/by-kuid/{kuid}` is the
-  lookup that was missing, `/admin/revoke` is the screen. **Not yet DB-verified** —
-  Supabase was unreachable (TCP-level, not just a query timeout). Run the
-  permission-matrix test and a live signed-in walkthrough once it's back, then tick
-  this box with that result, per this file's own rule.
+  lookup that was missing, `/admin/revoke` is the screen. **Verified 2026-09-22**:
+  permission-matrix test passed against Supabase; the new lookup live-checked with a
+  real super_admin token against a real approved request (`revocable: true`) and a
+  draft one (`revocable: false`). `revoke()` itself is covered by
+  `test_verification.py::TestApprovalAndWithdrawal`, which passed the same session —
+  a live curl of the POST specifically was inconclusive (Supabase's link dropped
+  mid-attempt; see Gotchas), not a failure. Tick this box once that one POST is
+  confirmed live too.
 - [ ] `[UI]` **ATH-02** edit my details (gender, dominant side, secondary sport,
   years of experience are in the spec but not in registration) and **ATH-04** my
   payments. Public profile already shows the photo once verified.
@@ -173,7 +177,15 @@ start and VER-03 (f7269e9).
   than was paid; makes no call to Paystack. Ledger line `source='reversal'` with
   `recorded_by` and `note` enforced by CHECK. (There are no wallets, so it is against
   the payment.)
-- [ ] `[UI]` **ADM-04** — the screen for the above. The API is done and tested.
+- [ ] `[UI]` **ADM-04** — the screen for the above. Built 2026-09-22: `GET
+  /v1/admin/payments/{reference}` (a lookup the API didn't have — reversal only ever
+  took a reference an admin already had from Paystack's dashboard, but nothing let
+  them preview it first) plus `/admin/reversal`. Live-verified end to end against
+  Supabase: looked up a settled payment, recorded a refund, confirmed
+  `already_reversed`, a second attempt correctly refused (409). **Not yet re-run
+  through the full test suite** — the Supabase link went down mid-session (a bare,
+  unloaded connection attempt timed out; see CLAUDE.md Gotchas). Run
+  `test_verification.py` and `test_settlement.py` once it's back, then tick this box.
 
 ### 2.4 Assisted payment, clubs and the admin console (3–4 days)
 

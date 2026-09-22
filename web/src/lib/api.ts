@@ -420,6 +420,43 @@ export function revokeVerification(
   });
 }
 
+export type AdminPaymentLookup = {
+  reference: string;
+  purpose: string;
+  status: string;
+  expected_kobo: number;
+  payer_name: string;
+  athlete_kuid: string | null;
+  athlete_name: string | null;
+  gross_kobo: number | null;
+  already_reversed: boolean;
+  reversible: boolean;
+};
+
+/** ADM-04: look up a payment by reference, before recording a refund against it. */
+export function findPaymentByReference(
+  token: string,
+  reference: string,
+): Promise<AdminPaymentLookup> {
+  return call<AdminPaymentLookup>(`/v1/admin/payments/${encodeURIComponent(reference)}`, { token });
+}
+
+export function recordReversal(
+  token: string,
+  reference: string,
+  amountKobo: number,
+  reason: string,
+  currentPassword: string,
+  meta: ClientMeta,
+): Promise<{ reference: string; amount_kobo: number; gross_kobo: number }> {
+  return call(`/v1/admin/payments/${encodeURIComponent(reference)}/reversal`, {
+    method: "POST",
+    body: JSON.stringify({ amount_kobo: amountKobo, reason, current_password: currentPassword }),
+    token,
+    meta,
+  });
+}
+
 export function decideCase(
   token: string,
   lga: string,
