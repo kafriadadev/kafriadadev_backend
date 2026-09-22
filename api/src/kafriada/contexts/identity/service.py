@@ -34,6 +34,7 @@ ceiling is the round-trip time to the database.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import date
 from uuid import UUID
@@ -50,17 +51,23 @@ from kafriada.contexts.audit import service as audit
 from kafriada.contexts.identity import kuid as kuid_mod
 from kafriada.db.engine import transaction
 from kafriada.security.passwords import get_password_service, password_policy_error
+from kafriada.settings import OtpChannel, get_settings
 
 log = structlog.get_logger(__name__)
 
 MINIMUM_AGE = 18
 
-# The partial unique index on ops.users (migration 0001).
+# The partial unique indexes on ops.users (migration 0001).
 PHONE_UNIQUE_INDEX = "users_phone_unique"
+EMAIL_UNIQUE_INDEX = "users_email_unique"
 DUPLICATE_PHONE_MESSAGE = (
     "This number is already registered. "
     "Sign in instead, or ask your LGA coordinator for help."
 )
+
+# Shape only, same spirit as the phone check: rejects what plainly is not an
+# email without pretending to know the full grammar of one.
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class RegistrationError(Exception):
@@ -82,6 +89,10 @@ class RegistrationInput:
     sport: str
     playing_position: str | None = None
     consent_notice_version: str | None = None
+    # Optional in general — the identity anchor is the phone. Required only
+    # while settings.otp_channel is 'email' (see there): a pilot stand-in for
+    # SMS, which is not registered yet.
+    email: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,6 +126,17 @@ def register(
     except phone_mod.InvalidPhoneNumberError as exc:
         raise RegistrationError(str(exc), field="phone") from exc
 
+    email = (data.email or "").strip().lower() or None
+    cfg = get_settings()
+    if email is not None and not _EMAIL_RE.match(email):
+        raise RegistrationError("Enter a valid email address.", field="email")
+    if email is None and cfg.otp_channel is OtpChannel.EMAIL:
+        # The pilot stand-in for SMS (settings.otp_channel) — see there.
+        raise RegistrationError(
+            "Enter your email. Codes are sent there while SMS is being set up.",
+            field="email",
+        )
+
     if (problem := password_policy_error(data.password)) is not None:
         raise RegistrationError(problem, field="password")
 
@@ -147,6 +169,7 @@ def register(
                 session,
                 full_name=full_name,
                 phone_e164=phone_e164,
+                email=email,
                 password_hash=password_hash,
                 consent_version=data.consent_notice_version,
             )
@@ -156,9 +179,16 @@ def register(
             # told anyone who typed a phone number whose it was. The same answer
             # now goes to the owner retrying and to a stranger probing.
             session.rollback()
-            if _violated_constraint(exc) == PHONE_UNIQUE_INDEX:
+            violated = _violated_constraint(exc)
+            if violated == PHONE_UNIQUE_INDEX:
                 log.info("registration_refused_duplicate_phone")
                 raise RegistrationError(DUPLICATE_PHONE_MESSAGE, field="phone") from None
+            if violated == EMAIL_UNIQUE_INDEX:
+                log.info("registration_refused_duplicate_email")
+                raise RegistrationError(
+                    "This email is already registered. Use a different one.",
+                    field="email",
+                ) from None
             raise RegistrationError(
                 "We could not complete your registration. Please try again."
             ) from None
@@ -168,7 +198,7 @@ def register(
         # that rolls back sends nobody a code, and a code that is queued belongs
         # to a registration that really happened. Before the mint, so it costs
         # no time on the counter lock.
-        access.send_registration_code(session, user_id, phone_e164)
+        access.send_registration_code(session, user_id, phone_e164, email=email)
 
         # -- the mint ----------------------------------------------------
         # One statement allocates the serial, creates the athlete and records
@@ -304,6 +334,7 @@ def _insert_user(
     *,
     full_name: str,
     phone_e164: str,
+    email: str | None,
     password_hash: str,
     consent_version: str | None,
 ) -> UUID:
@@ -318,10 +349,10 @@ def _insert_user(
         text(
             """
             INSERT INTO ops.users
-                (full_name, phone_e164, password_hash,
+                (full_name, phone_e164, email, password_hash,
                  consent_notice_version, consent_given_at)
             VALUES
-                (:full_name, :phone_e164, :password_hash,
+                (:full_name, :phone_e164, :email, :password_hash,
                  :consent_version, :consent_given_at)
             RETURNING id
             """
@@ -329,6 +360,7 @@ def _insert_user(
         {
             "full_name": full_name,
             "phone_e164": phone_e164,
+            "email": email,
             "password_hash": password_hash,
             "consent_version": consent_version,
             "consent_given_at": consent_given_at,

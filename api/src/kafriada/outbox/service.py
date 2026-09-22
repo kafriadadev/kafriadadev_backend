@@ -28,11 +28,15 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from kafriada.db.engine import transaction
+from kafriada.outbox import email_providers
+from kafriada.outbox.email_providers import EmailError
+from kafriada.outbox.email_providers import Sender as EmailSender
 from kafriada.outbox.providers import Sender, SmsError, build_sender
 
 log = structlog.get_logger(__name__)
 
 SMS_REQUESTED = "sms.requested"
+EMAIL_REQUESTED = "email.requested"
 
 MAX_ATTEMPTS = 5
 # Seconds before each retry. A one-time code is worth nothing in an hour, so the
@@ -77,13 +81,48 @@ def queue_sms(
     return message_id
 
 
-def drain(*, limit: int = 20, sender: Sender | None = None) -> DrainResult:
-    """Send up to ``limit`` due messages. Returns what happened."""
+def queue_email(
+    session: Session,
+    *,
+    to_email: str,
+    subject: str,
+    body: str,
+    purpose: str,
+    html: str | None = None,
+) -> int:
+    """Queue one email inside the caller's transaction. See ``queue_sms``."""
+    message_id: int = session.execute(
+        text(
+            """
+            INSERT INTO ops.outbox (event_type, payload)
+            VALUES (:event_type, CAST(:payload AS jsonb))
+            RETURNING id
+            """
+        ),
+        {
+            "event_type": EMAIL_REQUESTED,
+            "payload": json.dumps(
+                {"to": to_email, "subject": subject, "body": body, "html": html,
+                 "purpose": purpose}
+            ),
+        },
+    ).scalar_one()
+    return message_id
+
+
+def drain(
+    *,
+    limit: int = 20,
+    sender: Sender | None = None,
+    email_sender: EmailSender | None = None,
+) -> DrainResult:
+    """Send up to ``limit`` due messages, of either channel. Returns what happened."""
     post = sender or build_sender()
+    email_post = email_sender or email_providers.build_sender()
     sent = retried = failed = 0
 
     for _ in range(limit):
-        outcome = _send_one(post)
+        outcome = _send_one(post, email_post)
         if outcome is None:
             return DrainResult(sent=sent, retried=retried, failed=failed, empty=sent == 0)
         sent += outcome == "sent"
@@ -93,7 +132,7 @@ def drain(*, limit: int = 20, sender: Sender | None = None) -> DrainResult:
     return DrainResult(sent=sent, retried=retried, failed=failed)
 
 
-def _send_one(post: Sender) -> str | None:
+def _send_one(post: Sender, email_post: EmailSender) -> str | None:
     """Take one due row, send it, and record the outcome. None if none is due."""
     with transaction() as session:
         row = session.execute(
@@ -115,15 +154,25 @@ def _send_one(post: Sender) -> str | None:
 
         payload: dict[str, Any] = row["payload"]
         attempts = int(row["attempts"]) + 1
+        event_type = row["event_type"]
 
-        if row["event_type"] != SMS_REQUESTED:
-            _mark_failed(session, row["id"], attempts, f"unknown event {row['event_type']}")
-            log.error("outbox_unknown_event", event_type=row["event_type"])
+        if event_type not in (SMS_REQUESTED, EMAIL_REQUESTED):
+            _mark_failed(session, row["id"], attempts, f"unknown event {event_type}")
+            log.error("outbox_unknown_event", event_type=event_type)
             return "failed"
 
         try:
-            result = post.send(to=str(payload["to"]), body=str(payload["body"]))
-        except SmsError as exc:
+            if event_type == SMS_REQUESTED:
+                result = post.send(to=str(payload["to"]), body=str(payload["body"]))
+            else:
+                html = payload.get("html")
+                result = email_post.send(
+                    to=str(payload["to"]),
+                    subject=str(payload["subject"]),
+                    body=str(payload["body"]),
+                    html=str(html) if html is not None else None,
+                )
+        except (SmsError, EmailError) as exc:
             if exc.transient and attempts < MAX_ATTEMPTS:
                 delay = BACKOFF_SECONDS[min(attempts, len(BACKOFF_SECONDS)) - 1]
                 session.execute(
@@ -145,7 +194,8 @@ def _send_one(post: Sender) -> str | None:
             log.error("outbox_gave_up", attempts=attempts, transient=exc.transient)
             return "failed"
 
-        # Delivered. The body carried a one-time code, so it does not stay here.
+        # Delivered. The body may have carried a one-time code, so it does not stay here.
+        # The subject line is kept for email — it holds nothing a code or password would.
         session.execute(
             text(
                 """
@@ -155,6 +205,7 @@ def _send_one(post: Sender) -> str | None:
                        last_error = NULL,
                        payload = jsonb_build_object(
                            'to', payload -> 'to',
+                           'subject', payload -> 'subject',
                            'purpose', payload -> 'purpose',
                            'provider', CAST(:provider AS text),
                            'provider_message_id', CAST(:message_id AS text),

@@ -23,8 +23,9 @@ import structlog
 from kafriada.contexts.access import ratelimit
 from kafriada.main import configure_logging
 from kafriada.outbox import service
+from kafriada.outbox import email_providers
 from kafriada.outbox.providers import build_sender
-from kafriada.settings import SmsProvider, get_settings
+from kafriada.settings import EmailProvider, SmsProvider, get_settings
 
 log = structlog.get_logger(__name__)
 
@@ -47,19 +48,23 @@ def main(argv: list[str] | None = None) -> int:
     cfg = get_settings()
     configure_logging(cfg)
 
-    if cfg.sms_provider is SmsProvider.NONE:
+    if cfg.sms_provider is SmsProvider.NONE and cfg.email_provider is EmailProvider.NONE:
         pending = service.pending_count()
         print(  # noqa: T201 — a command-line tool talking to its operator
-            "No SMS provider is configured (SMS_PROVIDER=none), so nothing can be sent.\n"
+            "No SMS or email provider is configured, so nothing can be sent.\n"
             f"{pending} message(s) are waiting in ops.outbox and will go out once\n"
-            "SMS_PROVIDER and the provider's credentials are set."
+            "SMS_PROVIDER or EMAIL_PROVIDER and its credentials are set."
         )
         return 1
 
     sender = build_sender(cfg)
+    email_sender = email_providers.build_sender(cfg)
     signal.signal(signal.SIGINT, _stop)
     signal.signal(signal.SIGTERM, _stop)
-    log.info("outbox_started", provider=sender.name, once=args.once)
+    log.info(
+        "outbox_started", sms_provider=sender.name, email_provider=email_sender.name,
+        once=args.once,
+    )
 
     # Closed rate-limit windows are swept here rather than by a second worker:
     # this loop already runs continuously, and the sweep is one indexed DELETE.
@@ -68,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     PRUNE_EVERY = 3_600.0
 
     while not _stopping:
-        result = service.drain(limit=args.batch, sender=sender)
+        result = service.drain(limit=args.batch, sender=sender, email_sender=email_sender)
         if result.sent or result.retried or result.failed:
             log.info("outbox_pass", sent=result.sent, retried=result.retried,
                      failed=result.failed)

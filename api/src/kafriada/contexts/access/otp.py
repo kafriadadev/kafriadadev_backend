@@ -27,9 +27,10 @@ import structlog
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from kafriada.contexts.access.email_templates import otp_email_html
 from kafriada.outbox import service as outbox
 from kafriada.security.tokens import OTP_MAX_ATTEMPTS, hash_otp, new_otp, tokens_equal
-from kafriada.settings import get_settings
+from kafriada.settings import OtpChannel, get_settings
 
 log = structlog.get_logger(__name__)
 
@@ -47,6 +48,11 @@ BODIES = {
         "{code} is your KAFRIADA password reset code. It expires in {minutes} "
         "minutes. If you did not ask for it, ignore this message."
     ),
+}
+
+EMAIL_SUBJECTS = {
+    PHONE_VERIFICATION: "Your KAFRIADA code",
+    PASSWORD_RESET: "Your KAFRIADA password reset code",
 }
 
 
@@ -75,6 +81,7 @@ def send_code(
     user_id: UUID,
     purpose: str,
     phone_e164: str,
+    email: str | None = None,
     enforce_limits: bool = True,
 ) -> None:
     """Issue a code and queue the message, inside the caller's transaction.
@@ -117,13 +124,20 @@ def send_code(
             "sent_to": phone_e164,
         },
     )
-    outbox.queue_sms(
-        session,
-        to_phone=phone_e164,
-        body=BODIES[purpose].format(code=code, minutes=cfg.otp_minutes_valid),
-        purpose=purpose,
-    )
-    log.info("otp_queued", purpose=purpose)
+    body = BODIES[purpose].format(code=code, minutes=cfg.otp_minutes_valid)
+    # 'email' is a pilot stand-in for SMS (see settings.otp_channel). An account
+    # with no email on file still gets its code the ordinary way — there is
+    # nowhere else to send it.
+    if cfg.otp_channel is OtpChannel.EMAIL and email:
+        html = otp_email_html(code=code, minutes=cfg.otp_minutes_valid, purpose=purpose)
+        outbox.queue_email(
+            session, to_email=email, subject=EMAIL_SUBJECTS[purpose], body=body,
+            html=html, purpose=purpose,
+        )
+        log.info("otp_queued", purpose=purpose, channel="email")
+    else:
+        outbox.queue_sms(session, to_phone=phone_e164, body=body, purpose=purpose)
+        log.info("otp_queued", purpose=purpose, channel="sms")
 
 
 def _guard_rate(session: Session, *, user_id: UUID, purpose: str) -> None:

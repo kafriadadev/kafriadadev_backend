@@ -23,6 +23,17 @@ class SmsProvider(StrEnum):
     TWILIO = "twilio"
 
 
+class EmailProvider(StrEnum):
+    NONE = "none"
+    CONSOLE = "console"
+    RESEND = "resend"
+
+
+class OtpChannel(StrEnum):
+    SMS = "sms"
+    EMAIL = "email"
+
+
 class PaymentProviderKind(StrEnum):
     NONE = "none"
     FAKE = "fake"
@@ -197,11 +208,28 @@ class Settings(BaseSettings):
     termii_api_key: SecretStr | None = None
     termii_sender_id: str = "KAFRIADA"
 
+    # -- Email --------------------------------------------------------------
+    email_provider: EmailProvider = EmailProvider.NONE
+    resend_api_key: SecretStr | None = None
+    # onboarding@resend.dev only delivers to the Resend account's own address
+    # (sandbox mode) — a real send needs a verified sending domain's address.
+    email_from: str = "onboarding@resend.dev"
+    resend_base_url: str = "https://api.resend.com"
+    email_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
+
     # -- One-time codes ---------------------------------------------------
     # Six digits is only safe because of these three numbers. See contexts/access/otp.py.
     otp_minutes_valid: int = Field(default=10, ge=2, le=60)
     otp_resend_seconds: int = Field(default=60, ge=15, le=600)
     otp_sends_per_day: int = Field(default=5, ge=1, le=20)
+    # A pilot stand-in for Twilio, which is not registered yet (see CLAUDE.md,
+    # "Outside the code"). 'email' sends the phone-verification and reset codes
+    # to the athlete's email instead of their phone — the phone itself is still
+    # the identity anchor and still gets marked verified when the code is right.
+    # Meant to be switched back to 'sms' the day a real SMS route exists; an
+    # account with no email on file still gets its code by SMS regardless of
+    # this setting, since there is nowhere else to send it.
+    otp_channel: OtpChannel = OtpChannel.SMS
 
     # -- Per-address rate limits ------------------------------------------
     # These count what one SOURCE is doing. The per-person limits (account
@@ -292,6 +320,17 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def _resend_needs_its_key(self) -> Self:
+        if self.email_provider is EmailProvider.RESEND and self.resend_api_key is None:
+            raise ValueError("resend_api_key is required when email_provider is resend")
+        if self.otp_channel is OtpChannel.EMAIL and self.email_provider is EmailProvider.NONE:
+            raise ValueError(
+                "otp_channel is 'email' but email_provider is 'none' — codes would "
+                "queue forever for anyone who gave an email"
+            )
+        return self
+
+    @model_validator(mode="after")
     def _paystack_needs_its_key(self) -> Self:
         if (
             self.payment_provider is PaymentProviderKind.PAYSTACK
@@ -348,6 +387,16 @@ class Settings(BaseSettings):
             )
         if self.sms_provider is SmsProvider.TWILIO:
             problems.extend(self._twilio_problems())
+        if self.email_provider is EmailProvider.CONSOLE:
+            problems.append(
+                "email_provider must not be 'console' outside local development — "
+                "it writes message bodies to the log"
+            )
+        if self.otp_channel is OtpChannel.EMAIL:
+            problems.append(
+                "otp_channel must not be 'email' in production — it is a pilot "
+                "stand-in for SMS, not a permanent second channel"
+            )
         if self.database_url_app == self.database_url_money:
             problems.append(
                 "database_url_app and database_url_money must use different roles — "

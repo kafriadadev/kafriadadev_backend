@@ -114,6 +114,7 @@ class _Found:
     id: UUID
     full_name: str
     phone_e164: str
+    email: str | None
     password_hash: str | None
     phone_verified_at: datetime | None
 
@@ -438,7 +439,9 @@ def _record_failed_attempt(
 # ---------------------------------------------------------------------------
 # One-time codes: confirming a phone, and resetting a password
 # ---------------------------------------------------------------------------
-def send_registration_code(session: Session, user_id: UUID, phone_e164: str) -> None:
+def send_registration_code(
+    session: Session, user_id: UUID, phone_e164: str, *, email: str | None = None,
+) -> None:
     """Queue the confirmation code, inside the registration's own transaction.
 
     Called before the KUID is minted, so it adds nothing to the time the counter
@@ -451,6 +454,7 @@ def send_registration_code(session: Session, user_id: UUID, phone_e164: str) -> 
         user_id=user_id,
         purpose=otp.PHONE_VERIFICATION,
         phone_e164=phone_e164,
+        email=email,
         enforce_limits=False,
     )
 
@@ -479,6 +483,7 @@ def request_phone_code(
                 user_id=user.id,
                 purpose=otp.PHONE_VERIFICATION,
                 phone_e164=user.phone_e164,
+                email=user.email,
             )
         except otp.TooSoon as exc:
             return CodeRequested(resend_in=exc.seconds)
@@ -575,6 +580,7 @@ def request_password_reset(
                 user_id=user.id,
                 purpose=otp.PASSWORD_RESET,
                 phone_e164=user.phone_e164,
+                email=user.email,
             )
         except (otp.TooSoon, otp.TooMany):
             # Also silent: a cooling-off message would answer the same question.
@@ -674,7 +680,7 @@ def _user_for_phone(raw_phone: str) -> _Found | None:
         row = session.execute(
             text(
                 """
-                SELECT id, full_name, phone_e164, password_hash, phone_verified_at
+                SELECT id, full_name, phone_e164, email, password_hash, phone_verified_at
                   FROM ops.users
                  WHERE phone_e164 = :phone
                    AND anonymised_at IS NULL
@@ -689,6 +695,7 @@ def _user_for_phone(raw_phone: str) -> _Found | None:
         id=row["id"],
         full_name=row["full_name"],
         phone_e164=row["phone_e164"],
+        email=row["email"],
         password_hash=row["password_hash"],
         phone_verified_at=row["phone_verified_at"],
     )
