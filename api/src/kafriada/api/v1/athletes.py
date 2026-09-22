@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import io
 from datetime import date
+from typing import Literal
 
 import segno
 from fastapi import APIRouter, HTTPException, Request, Response, status
@@ -24,6 +25,7 @@ from kafriada.api.client import client_ip, request_id
 from kafriada.api.security import Public, Requires
 from kafriada.api.throttle import Throttle
 from kafriada.contexts.geography import jigawa
+from kafriada.contexts.identity import card
 from kafriada.contexts.identity import service as identity
 from kafriada.security.signing import build_qr_signer
 from kafriada.settings import get_settings
@@ -50,6 +52,9 @@ class RegistrationRequest(BaseModel):
     lga_id: str = Field(min_length=3, max_length=32)
     sport: str = Field(min_length=2, max_length=40)
     playing_position: str | None = Field(default=None, max_length=40)
+    # Whether this is required is a business rule (settings.otp_channel), not a
+    # shape rule, so it is enforced in the service, not here.
+    email: str | None = Field(default=None, max_length=254)
     accept_privacy_notice: bool
 
 
@@ -140,6 +145,7 @@ def register_athlete(body: RegistrationRequest, request: Request) -> Registratio
                 lga_id=body.lga_id,
                 sport=body.sport,
                 playing_position=body.playing_position,
+                email=body.email,
                 consent_notice_version=PRIVACY_NOTICE_VERSION,
             ),
             request_id=request_id(request),
@@ -240,6 +246,65 @@ def athlete_qr(kuid: str) -> Response:
             "Content-Disposition": f'inline; filename="{profile.kuid}.svg"',
         },
     )
+
+
+_CARD_MEDIA_TYPES = {"png": "image/png", "pdf": "application/pdf"}
+
+
+def _athlete_card(kuid: str, fmt: Literal["png", "pdf"]) -> Response:
+    profile = identity.get_public_profile(kuid)
+    if profile is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found.")
+
+    subject = card.CardSubject(
+        kuid=profile.kuid,
+        full_name=profile.full_name,
+        sport=profile.sport,
+        playing_position=profile.playing_position,
+        lga_name=profile.lga_name,
+        state_name=profile.state_name,
+        registered_year=profile.registered_year,
+    )
+    content = card.render_card(subject, profile_url=_profile_url(profile.kuid, signed=True), fmt=fmt)
+
+    return Response(
+        content=content,
+        media_type=_CARD_MEDIA_TYPES[fmt],
+        headers={
+            "Cache-Control": "public, max-age=86400",
+            "Content-Disposition": f'attachment; filename="{profile.kuid}.{fmt}"',
+        },
+    )
+
+
+@router.get(
+    "/public/athletes/{kuid}/card.png",
+    dependencies=[Public("the wallet card is downloaded from the public card page")],
+    summary="The athlete's wallet card, as a PNG image",
+    response_class=Response,
+)
+def athlete_card_png(kuid: str) -> Response:
+    """The same card shown on-screen, rendered as a single branded image.
+
+    A plain download link, on purpose — an image someone can save from a
+    proxy browser with JavaScript off needs no more than that.
+    """
+    return _athlete_card(kuid, "png")
+
+
+@router.get(
+    "/public/athletes/{kuid}/card.pdf",
+    dependencies=[Public("the wallet card is downloaded from the public card page")],
+    summary="The athlete's wallet card, as a one-page PDF",
+    response_class=Response,
+)
+def athlete_card_pdf(kuid: str) -> Response:
+    """The same drawing as ``card.png``, saved as a one-page PDF.
+
+    A print dialog's own "save as PDF" is not available in every browser this
+    project targets, so this is generated directly rather than assumed.
+    """
+    return _athlete_card(kuid, "pdf")
 
 
 # ---------------------------------------------------------------------------

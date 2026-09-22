@@ -117,8 +117,14 @@ export default async function CardPage({
         <a href={`/a/${encodeURIComponent(profile.kuid)}`} className="btn btn--primary">
           View my public profile
         </a>
-        <a href={`/qr/${encodeURIComponent(profile.kuid)}`} className="btn btn--ghost" download>
-          Download QR code
+        {/* The full card — name, QR and KUID in one image — not just the code
+            on its own. Plain downloads, so a PDF exists even on a browser
+            with no "print to PDF" of its own (Opera Mini among them). */}
+        <a href={`/card/${encodeURIComponent(profile.kuid)}/card.png`} className="btn btn--ghost" download>
+          Download card (PNG)
+        </a>
+        <a href={`/card/${encodeURIComponent(profile.kuid)}/card.pdf`} className="btn btn--ghost" download>
+          Download card (PDF)
         </a>
       </div>
 

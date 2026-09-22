@@ -259,6 +259,7 @@ export function register(input: {
   lga_id: string;
   sport: string;
   playing_position: string | null;
+  email: string | null;
   accept_privacy_notice: boolean;
 }): Promise<RegistrationResult> {
   return call<RegistrationResult>("/v1/register", {
@@ -383,6 +384,42 @@ export function getReviewCase(token: string, lga: string, id: string): Promise<R
   );
 }
 
+export type AdminVerificationLookup = {
+  request_id: string;
+  kuid: string;
+  full_name: string;
+  status: string;
+  attempt: number;
+  decided_at: string | null;
+  revocable: boolean;
+};
+
+/** ADM-03: find an athlete's verification request by KUID, to withdraw it. */
+export function findVerificationByKuid(
+  token: string,
+  kuid: string,
+): Promise<AdminVerificationLookup> {
+  return call<AdminVerificationLookup>(
+    `/v1/admin/verification/by-kuid/${encodeURIComponent(kuid)}`,
+    { token },
+  );
+}
+
+export function revokeVerification(
+  token: string,
+  requestId: string,
+  reason: string,
+  currentPassword: string,
+  meta: ClientMeta,
+): Promise<void> {
+  return call<void>(`/v1/admin/verification/${encodeURIComponent(requestId)}/revoke`, {
+    method: "POST",
+    body: JSON.stringify({ reason, current_password: currentPassword }),
+    token,
+    meta,
+  });
+}
+
 export function decideCase(
   token: string,
   lga: string,
@@ -436,6 +473,26 @@ export async function getQrSvg(kuid: string): Promise<string | null> {
   } catch {
     // A missing QR must not take the card page down with it — the KUID itself
     // is the thing that matters, and it is printed beside the code.
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** The wallet card — name, KUID and QR in one image — as PNG or PDF bytes. */
+export async function getCardFile(
+  kuid: string,
+  format: "png" | "pdf",
+): Promise<ArrayBuffer | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const response = await fetch(
+      `${API_BASE}/v1/public/athletes/${encodeURIComponent(kuid)}/card.${format}`,
+      { signal: controller.signal, cache: "no-store" },
+    );
+    return response.ok ? await response.arrayBuffer() : null;
+  } catch {
     return null;
   } finally {
     clearTimeout(timer);
