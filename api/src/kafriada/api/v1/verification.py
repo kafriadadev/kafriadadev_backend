@@ -317,9 +317,38 @@ def reject(lga_id: str, request_id: UUID, body: RejectRequest, request: Request)
 # ---------------------------------------------------------------------------
 # A super administrator
 # ---------------------------------------------------------------------------
+class AdminLookupResponse(BaseModel):
+    request_id: UUID
+    kuid: str
+    full_name: str
+    status: str
+    attempt: int
+    decided_at: datetime | None
+    # What the revoke screen actually cares about — spares it from knowing
+    # the state machine's other five statuses.
+    revocable: bool
+
+
 class RevokeRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=service.MAX_REASON_CHARS)
     current_password: str = Field(min_length=1, max_length=1024)
+
+
+@router.get(
+    "/admin/verification/by-kuid/{kuid}",
+    response_model=AdminLookupResponse,
+    dependencies=[Requires("verification.revoke")],
+    summary="Find an athlete's verification request, to withdraw it (ADM-03)",
+)
+def find_by_kuid(kuid: str) -> AdminLookupResponse:
+    found = service.find_by_kuid(kuid)
+    if found is None:
+        raise NOT_FOUND
+    return AdminLookupResponse(
+        request_id=found.request_id, kuid=found.kuid, full_name=found.full_name,
+        status=found.status, attempt=found.attempt, decided_at=found.decided_at,
+        revocable=found.status == "approved",
+    )
 
 
 @router.post(

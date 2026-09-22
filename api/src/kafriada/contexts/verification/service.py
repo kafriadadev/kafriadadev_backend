@@ -539,6 +539,45 @@ def reject(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class AdminLookup:
+    """What a super_admin needs to decide whether — and what — to revoke."""
+
+    request_id: UUID
+    kuid: str
+    full_name: str
+    status: str
+    attempt: int
+    decided_at: datetime | None
+
+
+def find_by_kuid(kuid: str) -> AdminLookup | None:
+    """The current verification request for an athlete, by KUID (ADM-03).
+
+    The only way today a super_admin gets from "which athlete" to the request
+    id ``revoke`` needs. Returns whatever exists, at whatever status — the
+    caller decides what, if anything, can be done with it; ``revoke`` itself
+    still refuses anything that is not ``approved``.
+    """
+    with transaction() as session:
+        row = session.execute(
+            text(
+                "SELECT v.id, v.status, v.attempt, v.decided_at, a.kuid, u.full_name "
+                "FROM identity.verification_requests v "
+                "JOIN identity.athletes a ON a.id = v.athlete_id "
+                "JOIN ops.users u ON u.id = a.user_id "
+                "WHERE a.kuid = :k"
+            ),
+            {"k": kuid.strip()},
+        ).mappings().one_or_none()
+    if row is None:
+        return None
+    return AdminLookup(
+        request_id=row["id"], kuid=row["kuid"], full_name=row["full_name"],
+        status=row["status"], attempt=row["attempt"], decided_at=row["decided_at"],
+    )
+
+
 def revoke(
     actor: Principal,
     request_id: UUID,
