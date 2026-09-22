@@ -497,6 +497,11 @@ export function getPayment(token: string, reference: string): Promise<Payment> {
   return call<Payment>(`/v1/payments/${encodeURIComponent(reference)}`, { token });
 }
 
+/** ATH-04: every payment the caller has ever started, newest first. */
+export function listPayments(token: string): Promise<Payment[]> {
+  return call<Payment[]>("/v1/payments", { token });
+}
+
 /** Raw SVG for an athlete's QR code, fetched server-side and inlined. */
 export async function getQrSvg(kuid: string): Promise<string | null> {
   const controller = new AbortController();

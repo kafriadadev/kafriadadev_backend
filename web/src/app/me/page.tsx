@@ -88,6 +88,7 @@ export default async function MePage() {
           {me.phone_verified ? (
             <a href="/verify" className="btn btn--ghost">Get verified</a>
           ) : null}
+          <a href="/payments" className="btn btn--ghost">My payments</a>
         </div>
       ) : null}
 

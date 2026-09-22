@@ -220,6 +220,32 @@ def get_payment(user_id: UUID, reference: str) -> PaymentView | None:
     )
 
 
+def list_payments(user_id: UUID) -> list[PaymentView]:
+    """Every payment the caller has ever started, newest first (ATH-04)."""
+    with transaction() as session:
+        rows = session.execute(
+            text(
+                """
+                SELECT reference, purpose, status, expected_kobo, created_at
+                  FROM money.payments
+                 WHERE paid_by = :user_id
+                 ORDER BY created_at DESC
+                """
+            ),
+            {"user_id": user_id},
+        ).all()
+    return [
+        PaymentView(
+            reference=row.reference,
+            purpose=row.purpose,
+            status=PaymentStatus(row.status),
+            amount_kobo=row.expected_kobo,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
+
+
 def _has_payment(session, user_id: UUID, purpose: Purpose, status: PaymentStatus) -> bool:  # type: ignore[no-untyped-def]
     return bool(
         session.execute(

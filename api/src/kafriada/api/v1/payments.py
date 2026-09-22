@@ -146,6 +146,23 @@ def start(body: StartRequest, request: Request) -> StartResponse:
 
 
 @router.get(
+    "/payments",
+    response_model=list[PaymentResponse],
+    dependencies=[Requires("payment.read_self")],
+    summary="Every payment the caller has ever started, newest first (ATH-04)",
+)
+def list_mine(request: Request) -> list[PaymentResponse]:
+    principal = current_principal(request)
+    return [
+        PaymentResponse(
+            reference=p.reference, purpose=p.purpose, state=_STATE[p.status],
+            amount_kobo=p.amount_kobo, created_at=p.created_at,
+        )
+        for p in service.list_payments(principal.user_id)
+    ]
+
+
+@router.get(
     "/payments/{reference}",
     response_model=PaymentResponse,
     dependencies=[Requires("payment.read_self")],

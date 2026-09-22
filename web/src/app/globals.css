@@ -519,6 +519,7 @@ a:focus-visible, button:focus-visible {
 }
 .pill--issued { color: var(--plate-green); background: var(--plate-soft); }
 .pill--pending { color: var(--plate-ochre); background: var(--plate-gold); }
+.pill--bad { color: var(--plate-red); background: var(--plate-redsoft); }
 
 /* ---------------------------------------------------------------------------
    Print — the card is meant to be printed and cut out
