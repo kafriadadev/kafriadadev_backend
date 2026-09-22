@@ -30,6 +30,40 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-09-22 — ATH-04: my payments
+**Commit(s):** `a2db088`
+
+**Built:** `list_payments()` — every payment the caller has ever started,
+newest first, same shape as the existing single-payment lookup. `GET
+/v1/payments` (same `payment.read_self` permission the single-payment route
+already uses). `/payments`: one card per payment — purpose, reference, date,
+amount, and the same confirmed/checking/needs-a-check/not-completed language
+`/pay` already uses, never the internal status. Linked from `/me`. New
+`.pill--bad` CSS variant, for "not completed".
+
+**Verified:** full non-DB suite (no regressions), `npm run typecheck`,
+`npm run build`. `check:render`'s other failures (profile/card 404, register
+JS-off) are the same Supabase-outage signature as the ADM-03/ADM-04 entries
+below — confirmed unrelated (TCP-level).
+
+**Not done / open:** not yet checked signed-in against live data — Supabase
+was still down. Repeat once it's back.
+
+---
+
+## 2026-09-22 — This file
+**Commit(s):** `7270af8`
+
+**Built:** `docs/BUILD-LOG.md` itself, at the project lead's direct request:
+a standing, chronological, append-only record of every piece of engineering
+work, kept distinct from the developer's own `TEST-LOG.md`/`ISSUE-LOG.md`/
+`DEVELOPER-PROGRESS.md`. Backfilled 17 entries from `git log` and
+`CLAUDE.md`'s Status section, covering Stage 0 (2026-09-09) through that
+day's ADM-04. `CLAUDE.md` now points here and carries the going-forward
+rule: an entry per build session, alongside its commit(s).
+
+---
+
 ## 2026-09-22 — ADM-04: record a refund
 **Commit(s):** `f287008`
 
