@@ -280,6 +280,35 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   worker is started by hand today), admin UI (ADM-02 is API only), a way to
   appoint the first super_admin (today: SQL insert into `ops.user_roles`).
   `docs/KAFRIADA-CORE-Build-Tracker.pdf` predates most of this — update it.
+- **Email delivery (Resend) and an OTP pilot channel — done 2026-09-22**
+  (356c78b). Twilio still has no Nigerian sender ID (see "Outside the code"),
+  so `OTP_CHANNEL=sms|email` is a stand-in: with `email` set and an email on
+  file, phone-verification and password-reset codes go by email instead —
+  refused in production. `outbox/email_providers.py` (Resend adapter, same
+  transient/permanent split as Twilio's), `contexts/access/email_templates.py`
+  (branded HTML). Registration takes an optional email, required only under
+  the pilot channel. **Not built:** email as a trigger for anything besides
+  OTP (verification decisions, payment receipts still only queue SMS).
+- **A branded Flash component and a live resend countdown — done 2026-09-22**
+  (ee812a2). `web/src/components/Flash.tsx` replaces the copy-pasted
+  `.notice` divs on register, sign-in, forgot and confirm; `ResendCountdown.tsx`
+  ticks the "ask again" wait down live and re-enables the button at zero, both
+  inert without JavaScript. Caught and fixed a real bug on the way (the
+  warn/bad/good icon was invisible — `currentColor` resolving to itself).
+- **A downloadable wallet card, PNG and PDF — done 2026-09-22** (30900a9).
+  `contexts/identity/card.py` renders it server-side with Pillow (already a
+  dependency) — the same information as the on-screen card, a faint repeating
+  ring instead of illustrated icons, three font families vendored into
+  `assets/fonts/` (OFL). `GET /v1/public/athletes/{kuid}/card.png|pdf`,
+  proxied from the web tier the same way the QR code is.
+- **ADM-03, withdraw a verification — built 2026-09-22, not yet DB-verified**
+  (00565a6). `find_by_kuid()` + `GET /v1/admin/verification/by-kuid/{kuid}`
+  is the missing piece the API-only `revoke` route needed; `/admin/revoke`
+  is the screen. The permission-matrix test and a live signed-in walkthrough
+  did not run — Supabase dropped mid-session (TCP-level, not just a query
+  timeout; DNS and general internet were both fine). Repeat both once it is
+  reachable, per this file's own rule: never tick a database item on the
+  strength of tests that skipped.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
@@ -299,7 +328,11 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
 7. Stage 2 (ledger & Paystack, media & verification, outbox jobs, assisted cash
    payment & clubs) — do not compress. Then Stage 3 launch readiness.
    **The full, ordered list — every remaining item, screen and decision — is
-   `docs/TODO.md`. Start there.** Next in line: 2.4.
+   `docs/TODO.md`. Start there.**
+8. ~~ADM-03, withdraw a verification~~ Built 2026-09-22 (see Status); not yet
+   DB-verified — Supabase was unreachable. Verify, then tick it in
+   `docs/TODO.md` with the commit. Next in line after that: ATH-02/ATH-04,
+   the outbox's notification-type generalisation, ADM-04, or 2.4.
 
 ## Outside the code (block launch, not build)
 Paystack business verification needs current CAC registration (1–3 weeks; nobody

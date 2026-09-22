@@ -133,9 +133,12 @@ start and VER-03 (f7269e9).
   wireframe's "coordinator's contact details" on escalation are not shown either.
 - [x] `[UI]` **CRD-02** review queue (b94dbed, `/review`): one case at a time, the two safe
   images, approve, reject with a reason, skip.
-- [ ] `[UI]` **ADM-03** withdraw a verification (the `revoked` path). The API is done
-  and tested (`POST /v1/admin/verification/{id}/revoke`: reason + password, super_admin
-  only); the screen is not built, and nothing yet lets a super_admin find a request id.
+- [ ] `[UI]` **ADM-03** withdraw a verification (the `revoked` path). Built 2026-09-22
+  (00565a6): `find_by_kuid()` + `GET /v1/admin/verification/by-kuid/{kuid}` is the
+  lookup that was missing, `/admin/revoke` is the screen. **Not yet DB-verified** —
+  Supabase was unreachable (TCP-level, not just a query timeout). Run the
+  permission-matrix test and a live signed-in walkthrough once it's back, then tick
+  this box with that result, per this file's own rule.
 - [ ] `[UI]` **ATH-02** edit my details (gender, dominant side, secondary sport,
   years of experience are in the spec but not in registration) and **ATH-04** my
   payments. Public profile already shows the photo once verified.
