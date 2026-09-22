@@ -1,0 +1,423 @@
+# Build log
+
+Every piece of engineering work done on KAFRIADA, in one place, newest entry
+first. Not the same thing as [`TEST-LOG.md`](./TEST-LOG.md) (the developer's
+test runs) or [`ISSUE-LOG.md`](./ISSUE-LOG.md) (their stuck points) — this is
+the build itself: what was shipped, why it was built that way, what was
+verified and how, and what is still open. `CLAUDE.md`'s Status section is the
+current-state summary distilled from this; this file is the history that
+summary is distilled from. `docs/TODO.md` is what's left, in order.
+
+Never delete or rewrite an entry. If something turns out to be wrong, say so
+in a new entry and link back to the old one.
+
+## Entry template
+
+```
+## <YYYY-MM-DD> — <title>
+**Commit(s):** `<hash>` [, `<hash>` ...]
+
+**Built:** what exists now that didn't before, in plain terms.
+
+**Why:** the decision behind it, if it wasn't the obvious choice.
+
+**Verified:** how, specifically — which tests, against which database, what
+was checked live and what the result was. Say plainly when something is
+"code done, not run for real" rather than implying more than was checked.
+
+**Not done / open:** gaps, deferred pieces, follow-ups.
+```
+
+---
+
+## 2026-09-22 — ADM-04: record a refund
+**Commit(s):** `f287008`
+
+**Built:** `GET /v1/admin/payments/{reference}` — a lookup the reversal API
+never had (the existing `POST .../reversal` only ever took a reference an
+admin already had from Paystack's own dashboard, with nothing to preview it
+against first) — and `/admin/reversal`, the screen: look up by reference,
+then an amount, reason and password to confirm. Same two-step shape as
+ADM-03, since this is the one screen that writes an amount into the ledger
+by hand.
+
+**Why:** `record_reversal()` itself was untouched — it already re-checks the
+password, refuses anything not settled or already refunded, and caps the
+amount at what was actually paid. The gap was purely "how does an admin see
+what they're about to touch before typing a number in."
+
+**Verified:** live, end to end, against Supabase with a real minted
+super_admin token: looked up a settled payment (`reversible: true`), looked
+up a pending one (`reversible: false`), recorded a refund, confirmed
+`already_reversed: true` on re-lookup, and a second attempt was correctly
+refused (409). One real bug found and fixed in the process: the lookup used
+`money_transaction()` (the `kaf_money` role), which has no grant on
+`ops.users` or `identity.athletes` at all — switched to the ordinary
+`transaction()` (`kaf_app`), which already has SELECT on `money.payments`
+and `money.ledger_entries` (migration 0006's append-only grants). Permission-
+matrix test passed the same session (it discovers routes automatically, so
+the new one needed no manual entry). `npm run typecheck` and `npm run build`
+pass.
+
+**Not done / open:** `test_verification.py` and `test_settlement.py` were
+not re-run against this specific change — Supabase's link dropped mid-
+session (a bare, unloaded connection attempt timed out; not contention, see
+`CLAUDE.md` Gotchas). Run both once it's back.
+
+---
+
+## 2026-09-22 — ADM-03: withdraw a verification
+**Commit(s):** `00565a6`
+
+**Built:** `find_by_kuid()` + `GET /v1/admin/verification/by-kuid/{kuid}` —
+the API-only `revoke` route (built in 2.2) had no way for a super_admin to
+get from a KUID to the request id it needs. `/admin/revoke` is the screen:
+look up by KUID, see the athlete and current status, and if it's approved,
+a reason and password form to withdraw it.
+
+**Verified:** permission-matrix test passed against Supabase. The lookup
+live-checked with a real super_admin token against a real approved request
+(`revocable: true`) and a real draft one (`revocable: false`) — both
+correct. `revoke()` itself is covered by
+`test_verification.py::TestApprovalAndWithdrawal`, which passed. A live curl
+of the revoke POST specifically was inconclusive — Supabase's link dropped
+mid-attempt — not a failure.
+
+**Not done / open:** the revoke POST itself has not been confirmed by a live
+curl call (only via the pre-existing automated test and the in-app flow).
+
+---
+
+## 2026-09-22 — Downloadable wallet card, PNG and PDF
+**Commit(s):** `30900a9`
+
+**Built:** `contexts/identity/card.py` draws the card — wordmark, KUID,
+name, sport, LGA, the same signed QR the on-screen card uses — with Pillow
+(already a dependency), saved as either PNG or a one-page PDF from the same
+drawing. `GET /v1/public/athletes/{kuid}/card.png` and `.../card.pdf`, same
+`Public`/404 shape as the existing `qr.svg` route, proxied from the web tier
+the same way. Three font families (Instrument Serif, Atkinson Hyperlegible,
+JetBrains Mono — the same ones the website uses) vendored into
+`assets/fonts/` from Google's font repository, OFL licence files included.
+
+**Why:** generated server-side rather than in the browser, because a print
+dialog's own "save as PDF" isn't available on every browser this project
+targets (Opera Mini among them), so the file needed to be produced directly
+rather than assumed. The background is a faint repeating ring — the same
+idea as a certificate's security pattern — rather than illustrated icons:
+this is a permanent ID, and restraint suited it better than decoration.
+
+**Verified:** rendered and visually inspected; both formats generate
+correctly through the live API and the web proxy for a real athlete
+(headers, filenames, content-type all correct). Full API test suite,
+`npm run typecheck`, `npm run build` and `check:render` all pass.
+
+**Not done / open:** no photo on the card even for verified athletes (the
+public profile only exposes one after Stage-2 approval — could be composited
+in as a follow-up).
+
+---
+
+## 2026-09-22 — Email at registration, branded Flash + live resend countdown
+**Commit(s):** `ee812a2`
+
+**Built:** the register form gained an email field (required only while the
+interim email OTP channel is on — see the entry below); the confirm page
+says "Sent by email to …" when that's what happened. `components/Flash.tsx`
+replaced copy-pasted `.notice` divs on register, sign-in, forgot and confirm
+with one component: entrance animation, auto-dismiss on success, focus-on-
+error, all inert without JavaScript (renders the same static markup either
+way). `components/ResendCountdown.tsx` makes "ask again in N seconds" tick
+live and disables the button, re-enabling automatically at zero — with JS
+off, the real, always-clickable form is what's there from first paint, and
+the server still enforces the wait either way.
+
+**Why:** house rule written down the same day (see `CLAUDE.md`, "Working
+style"): copy must read as plain product writing, not AI-generated filler —
+prompted by a hint here needing rephrasing.
+
+**Verified:** `npm run typecheck`, `npm run build`, and `check:render`
+(contrast, overflow, JS-off round trips) all pass. `check:render` also
+caught a real bug mid-build: the Flash bad/warn/good icon was invisible
+(`#fffdf7` on `#fffdf7`, a `currentColor` mistake) — found, fixed, confirmed
+at 0 low-contrast.
+
+---
+
+## 2026-09-22 — Email delivery via Resend, OTP pilot channel
+**Commit(s):** `356c78b`
+
+**Built:** a second, independent notification channel alongside SMS, since
+Twilio still has no Nigerian sender ID (see `CLAUDE.md`, "Outside the
+code"). `outbox/email_providers.py`: a `Sender` port (`NoSender` /
+`ConsoleSender` / `ResendSender`), same transient/permanent failure split as
+the Twilio SMS adapter. `contexts/access/email_templates.py`: branded HTML
+for the OTP email, table-based and inline-styled so it survives Gmail and
+Outlook, using the same document colour tokens as the web app. The outbox
+(`outbox/service.py`, `outbox/dispatch.py`) now routes `sms.requested` and
+`email.requested` rows to their own sender in one worker. New
+`OTP_CHANNEL` setting (`sms`/`email`) — a pilot stand-in, refused in
+production — that sends phone-verification and password-reset codes by
+email instead of SMS when the account has an email on file; the phone
+stays the identity anchor and still gets marked verified. No email on file
+still falls back to SMS.
+
+**Verified:** 13 new unit tests plus the full non-DB suite pass; the DB-
+backed OTP/outbox tests pass against Supabase; a real registration
+delivered a real HTML-templated code to a real inbox via Resend.
+
+**Not done / open:** email is not yet a trigger for anything besides OTP —
+verification decisions and payment confirmations still only queue SMS.
+
+---
+
+## 2026-09-21 — 2.3, the safety net: jobs runner, reconciliation, expiry, integrity, refunds
+**Commit(s):** `858feb0`, `a801e42` (status)
+
+**Built:** migration 0008 (`ops.job_runs`, an insert-only record of every
+background job's run; `GRANT DELETE ON ops.outbox`; a ledger `reversal`
+source with `note`/`recorded_by`). `python -m kafriada.jobs` — one process,
+no broker — running outbox drain, media re-encoding, reconciliation (every
+10 minutes), expiry, session/rate-counter/document sweeps, and a nightly
+integrity check, each holding its own Postgres advisory lock so one failing
+job never stops the others. `contexts/payments/reconcile.py`: asks
+Paystack's verify API and settles only a confirmed `success`, never
+reverses anything itself. `expire_stale()`: only `pending` payments older
+than 72 hours that Paystack does not say were paid. `integrity.py`: findings
+rather than verdicts, checking ledger shape, KUID uniqueness and the
+counter, verification consistency, and that media objects exist.
+`contexts/ledger/reversal.py`: `record_reversal()` — recording a refund made
+by hand in Paystack's dashboard, never calling Paystack itself.
+
+**Verified:** 681 passed / 0 skipped on the local DB. Mutations proved red:
+verify status ignored, expiry without asking, wrong-reference acceptance,
+integrity checks disabled, missing lock, missing password, no cap, sweeps
+too greedy. Found and fixed on the way: `amount_kobo` accepted `"100000"`
+and `true` under pydantic's lax parsing — now `StrictInt`; the
+`kuid_counters.next_serial` column held the last serial issued, not the
+next one (caught by a first, wrong integrity check).
+
+**Not done / open:** never run against real Paystack; the job runner has
+never run under a process supervisor on an actual host; nothing pages a
+human yet (needs a Sentry alert rule); ADM-04's screen was still unbuilt at
+this point (see the 2026-09-22 entry above).
+
+---
+
+## 2026-09-21 — 2.2: media pipeline, verification service and screens
+**Commit(s):** `b94dbed`, `aca04f4`, `5c550ae` (status)
+
+**Built:** migration 0007 (`identity.media_files`, `verification_requests`
+with the full state machine including `revoked` and `escalated`, resubmission
+capped at three attempts; append-only `verification_decisions`).
+`contexts/media/`: an object-store port (local disk, R2, or none), a slot →
+upload → confirm-only-if-the-object-exists → re-encode-to-a-fresh-JPEG
+pipeline that strips EXIF and applies orientation first, with bomb/format
+guards and a 30-day document purge. `contexts/verification/service.py`: the
+reviewer rules (never your own record) and the state machine; payment
+success moves a request to `under_review` inside the same ledger
+transaction. Web: `/verify` (upload, status, resubmit), `/review` (one case
+at a time, approve/reject/skip), `/photo/[kuid]` and proxied review-media
+routes so images never carry a bucket URL.
+
+**Why (R2 signer):** hand-built rather than borrowed, and proved against
+Amazon's own published SigV4 test vector before trusting it with real
+uploads.
+
+**Verified:** 565 passed / 0 skipped, twice. Mutations proved red: EXIF
+kept, own-record review allowed, LGA scope dropped, a photo public before
+approval, no escalation on the third rejection, no password required to
+withdraw, direct `UPDATE` grants and the decisions trigger disabled.
+`check:render` audited every state's screen and found two real contrast
+bugs (ghost/filled buttons on documents in dark/light) — fixed in
+`globals.css`.
+
+**Not done / open:** never run against a real R2 bucket; the direct-to-
+bucket presigned upload exists but no JavaScript path uses it yet; Pillow's
+handling of HEIC untested (refused as "not JPEG/PNG/WebP" — iPhones may be
+common); SMS on a decision is queued but nothing sends it without a
+configured provider; the wireframe's cash route and coordinator-contact-on-
+escalation are both absent.
+
+---
+
+## 2026-09-20 — 2.1 complete: payment webhook, checkout start, VER-03
+**Commit(s):** `f7269e9`, `2497d1b` (status)
+
+**Built:** `POST /v1/payments/webhook/paystack` (raw body → HMAC signature
+check → parse → settle; a bad or missing signature changes nothing; always
+200 after a valid signature, even for events it doesn't act on, so Paystack
+never needlessly redelivers). `POST /v1/payments` (starts a charge; the
+price is the server's, never the client's), `GET /v1/payments/quote`,
+`GET /v1/payments/{reference}` (own payments only). `contexts/payments/
+provider.py`: a port with `PaystackProvider` (https-only, an 8-second
+deadline), `FakeProvider` (local only) and `NoProvider`. Web: `/pay` — start
+and return in one address, works with JavaScript off, "Check again" is a
+plain link.
+
+**Verified:** 456 passed / 0 skipped; `check:render` passes for `/pay`'s
+start view. Demonstrated locally by posting a self-signed `charge.success`
+against the fake provider.
+
+**Not done / open:** never run against the real Paystack sandbox (payload
+shapes and whether `fees` is present are both unconfirmed); the confirmed/
+failed/review return states were read as text but not contrast-audited; no
+SMS on confirmation (that's 2.4).
+
+---
+
+## 2026-09-20 — 2.1 core: money tables and the settlement service
+**Commit(s):** `16d02cf`, `ce41809` (pure rules), `8fd22b5` (status)
+
+**Built:** `contexts/payments/rules.py` — strict parsing of a
+`charge.success` event and `decide()`, which approves only on an *exact*
+NGN amount match and freezes everything else, never approving on a
+mismatch. `contexts/ledger/entries.py` — a settled payment is exactly two
+lines, the gross credit and the provider-fee debit. Migration 0006 (the
+`money` schema): `payments` (a guard trigger makes the agreed fields and a
+final `success` immutable), insert-only `ledger_entries` and
+`webhook_events`, both `REVOKE ALL` then `SELECT`/`INSERT` for `kaf_money`
+only, plus the same append-only trigger the audit log uses so not even the
+table owner can edit a row. **Decided: no wallets** — ledger lines belong to
+the payment, not to a per-athlete balance. `contexts/payments/
+settlement.py`: idempotent (`INSERT … ON CONFLICT DO NOTHING RETURNING` on
+`webhook_events`, so a redelivery is a safe no-op), one transaction, one
+commit.
+
+**Verified:** 389 passed / 0 skipped on the local database, including five
+concurrent copies of the same webhook × six rounds → exactly two ledger
+rows every time. Mutations proved red: read-then-insert dedupe (a real
+race), no dedupe at all, always-settle, granting `kaf_app` INSERT or
+`kaf_money` UPDATE/DELETE, the owner trigger disabled.
+
+---
+
+## 2026-09-20 — Per-address rate limits, verified on a real database
+**Commit(s):** `f8db7ff` (code), `4b68ca8` (fixes), `4a8c399`, `e0f605e`
+(status)
+
+**Built:** `contexts/access/ratelimit.py` — counted in Postgres, not Redis
+(six endpoints at pilot volume don't justify a second service).
+`Throttle("bucket")` on sign-in, send-code, confirm-code and register.
+Migration 0005 (`ops.rate_counters`); the sweep of closed windows piggybacks
+on the outbox worker's own loop.
+
+**Why not Redis:** `settings.redis_url` is kept (marked unused) for the day
+Paystack-webhook idempotency might want a cache, but a handful of counters
+at pilot traffic is not that day.
+
+**Verified 2026-09-20 against a private local PostgreSQL 15** (Supabase was
+unreachable that day). Migrations 0001→0005 applied clean; all 9 rate-limit
+tests passed three runs in a row; 360 passed / 0 skipped with the database
+attached. Running it for real found three faults every non-database test
+had missed: (1) the HTTP error handler dropped every response header, so a
+429 lost its `Retry-After`; (2) the tests reused the same source IPs every
+run, so a re-run inside the hour failed on its own first request; (3) the
+local role-bootstrap SQL lacked `GRANT CREATE ON DATABASE` to the migration
+role, so a fresh local database failed its first migration. All three
+fixed the same day.
+
+**Not done / open:** still worth repeating against Supabase once reachable
+(noted repeatedly since — see the 2026-09-22 ADM entries above for what
+"Supabase reachable" looked like weeks later).
+
+---
+
+## 2026-09-17 — A developer's agent, and two logs to keep
+**Commit(s):** `f9a2bf6`, `0ebd747`
+
+**Built:** `docs/TEAM-AGENT-BRIEF.md` — the brief for a separate agent
+coaching a human developer through testing the build, including what
+belongs in `docs/TEST-LOG.md` versus `docs/ISSUE-LOG.md`, and
+`docs/DEVELOPER-PROGRESS.md` to track how that developer is coming along,
+openly.
+
+**Why this file exists too:** those three documents are about the
+developer's own testing sessions. Nothing before this build-log entry
+tracked the engineering work itself, chronologically, in one place — this
+file (added 2026-09-22, backfilled from `git log` and `CLAUDE.md`'s Status
+section) is that record.
+
+---
+
+## 2026-09-12 — OTP through a transactional outbox; Sentry, readiness, gated migrations
+**Commit(s):** `962b3f7`, `bb578ac`, `f8db7ff` (see rate-limits entry above)
+
+**Built:** ADR 0003 — SMS behind a provider port, Twilio first. Migration
+0004: `ops.outbox` and `ops.otp_codes`. A code is queued in the same
+transaction as the record it belongs to; `python -m kafriada.outbox.dispatch`
+drains it. **The KUID is minted before the code is confirmed** (per the
+AUT-02 wireframe), so a provider outage delays a confirmation, never a
+registration. Web: `/register/confirm`, `/forgot`. Separately: Sentry wired
+and scrubbed (inert without a DSN), `/readyz` (checks the database on every
+role, 503 otherwise), `scripts/release.sh` and
+`scripts/check_migration_safety.py` gating migrations, Dockerfiles for both
+tiers.
+
+**Not done / open at the time:** no Twilio credentials yet (`SMS_PROVIDER=
+none` kept codes queued) — still true as of the 2026-09-22 email-pilot-
+channel entry above, which is precisely why that channel exists.
+
+---
+
+## 2026-09-11 — Access: sessions, sign-in, scoped permissions, the permission matrix
+**Commit(s):** `63c8782`; privacy fixes `8efdde4`, `659a608`; handoff `f733fb2`
+
+**Built:** ADR 0002 — a revocable session cookie, not a third-party auth
+service. `POST`/`DELETE /v1/sessions`, `GET /v1/me`, super_admin role grant/
+revoke and end-all-sessions, LGA-scoped athlete search. `access.can()`
+behind `Requires(permission, scope=)`. Migration 0003. Web: `/sign-in`,
+`/me`, sign-out. `test_permission_matrix.py` — 12 principals × 12 routes,
+two tenants, generated from the live app and the database's own role-
+permission table rather than hand-written (this is the same test that
+later verified ADM-03 and ADM-04 without any manual updates).
+
+**Also fixed the same day:** a duplicate phone number no longer reveals
+whose it is (detected only by the unique-index name, so still no second
+KUID minted); registration copy stopped promising an SMS code before any
+provider could send one.
+
+---
+
+## 2026-09-11 — Web: registration, the issued card, the public profile
+**Commit(s):** `192f39e`, `b4172f2` (JS-off fix)
+
+**Built:** the first three real screens — `/register`, the card handed over
+immediately on success, and the public profile a QR code resolves to.
+**Every screen works with JavaScript off**, by design, for the Opera Mini
+proxy-browser reality of the pilot's actual users — caught for real the same
+day, when registration turned out to be broken with JS off, and a render
+check was added on the spot rather than trusted to stay working.
+
+---
+
+## 2026-09-10 — Registration API, public profile, signed QR; the database proved live
+**Commit(s):** `3d6c176`, `d7c2e4e`, `ba69605`, `3c46b6b`
+
+**Built:** the register/public-profile/QR API endpoints. The Supabase
+database connected for the first time and its security guarantees —
+role separation, the audit trigger, KUID immutability — were demonstrated
+live (`scripts/demo_security.py`) rather than only asserted in a test.
+Registration and the KUID mint were proved under real concurrent
+contention: two hundred people registering in the same minute must never
+collide on the counter row for longer than milliseconds.
+
+---
+
+## 2026-09-09 — Stage 0: the foundation
+**Commit(s):** `6e450fd`, `6840572`
+
+**Built:** the repository itself, the four-role database privilege
+boundary (`kaf_app`, `kaf_money`, `kaf_reader`, `kaf_migrate` — the
+architecture every later invariant leans on), the audit log's append-only
+trigger, and the identity anchor: KUID structure, phone normalisation, the
+Jigawa LGA table. Nothing runs yet without a database, but the shape
+everything else was built inside was decided here.
+
+---
+
+*Entries above this line were reconstructed 2026-09-22 from `git log` and
+`CLAUDE.md`'s Status section, to give this log a complete history from the
+project's start rather than only from the day it was created. Going
+forward, add a new entry here — newest at the top — at the end of each
+build session, before or alongside the commit it describes.*

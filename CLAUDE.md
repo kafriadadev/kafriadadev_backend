@@ -3,7 +3,11 @@
 Permanent sports ID for athletes (Jigawa State pilot, Birnin Kudu first). Register
 free → permanent KUID + signed QR card → anyone can scan and verify. Paid Stage-2
 verification (₦2,500) adds a photo. Full context: `docs/README.md` and the PDFs in `docs/`.
-**What is left to build, in order: `docs/TODO.md`.**
+**What is left to build, in order: `docs/TODO.md`.** **Every piece of engineering
+work, from the start of the project: `docs/BUILD-LOG.md`.** Add an entry there —
+newest at the top, its own template inside the file — at the end of every build
+session, alongside its commit(s). This file's Status section is a summary
+distilled from it; the log is the record.
 
 A developer is testing what's built, coached by their own agent. That agent's
 brief is `docs/TEAM-AGENT-BRIEF.md`; test runs land in `docs/TEST-LOG.md`,
