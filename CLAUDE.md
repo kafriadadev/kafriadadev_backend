@@ -15,6 +15,13 @@ those before assuming something untested actually works.
 Be terse. Prefer text checks over reading screenshots. One milestone per session:
 build → verify → commit → stop. Don't expand scope without asking.
 
+**All copy — UI text, hints, error messages, docs, commit messages — must read as
+professional, plainly-worded product writing, never as AI-generated filler.** No
+throat-clearing, no "Note: X is a pilot stand-in for Y, remove once Z" asides in
+user-facing strings, no hedging or over-explaining in a hint. State the fact the
+reader needs, once, and stop. (2026-09-22: flagged on the register form's Email
+hint — removed.)
+
 ## Layout
 - `api/` — FastAPI domain tier, sync SQLAlchemy (see `docs/decisions/0001`). The ONLY
   holder of DB credentials. Code in `api/src/kafriada/contexts/<context>/`.

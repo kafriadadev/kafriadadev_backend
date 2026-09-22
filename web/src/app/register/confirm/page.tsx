@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { Flash } from "@/components/Flash";
+import { ResendCountdown } from "@/components/ResendCountdown";
 import { getMe } from "@/lib/api";
 import { pending, sessionToken } from "@/lib/session";
 import { confirmPhoneAction, resendCodeAction } from "./actions";
@@ -44,27 +46,28 @@ export default async function ConfirmPhonePage({
   const phone = waiting?.phone ?? "";
   const shown = me?.phone ?? phone;
   const kuid = waiting?.kuid || me?.kuid || "";
+  // A pilot stand-in for SMS while Twilio is not yet registered (settings
+  // otp_channel). Remove this branch once codes go by text message again.
+  const emailSentTo = waiting?.email;
 
   return (
     <div className="stack">
       <p className="eyebrow">Step 2 of 3</p>
       <h1>Enter the code we sent</h1>
       <p className="lede">
-        Sent by text message to {shown}.
+        {emailSentTo
+          ? `Sent by email to ${emailSentTo}.`
+          : `Sent by text message to ${shown}.`}
       </p>
 
       {error ? (
-        <div className="notice notice--bad" role="alert" tabIndex={-1}>
-          <p className="notice__title">That did not work</p>
+        <Flash variant="bad" title="That did not work">
           <p style={{ marginBottom: 0 }}>{error}</p>
-        </div>
+        </Flash>
       ) : sent ? (
-        <div className="notice" role="status">
-          <p className="notice__title">Another code is on its way</p>
-          <p style={{ marginBottom: 0 }}>
-            If it does not arrive, you can ask again in about {wait || 60} seconds.
-          </p>
-        </div>
+        <Flash variant="good" title="Another code is on its way" autoDismissMs={8000}>
+          <p style={{ marginBottom: 0 }}>Check your messages — the timer below shows when you can ask again.</p>
+        </Flash>
       ) : null}
 
       <form action={confirmPhoneAction} className="doc" noValidate>
@@ -93,10 +96,12 @@ export default async function ConfirmPhonePage({
         </div>
       </form>
 
-      <form action={resendCodeAction}>
-        <input type="hidden" name="phone" value={phone} />
-        <button type="submit" className="btn btn--ghost">Send another code</button>
-      </form>
+      <ResendCountdown seconds={sent ? Number(wait) || 60 : 0}>
+        <form action={resendCodeAction}>
+          <input type="hidden" name="phone" value={phone} />
+          <button type="submit" className="btn btn--ghost">Send another code</button>
+        </form>
+      </ResendCountdown>
 
       <div className="notice">
         <p className="notice__title">Your ID is already yours</p>

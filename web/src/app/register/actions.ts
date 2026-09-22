@@ -31,6 +31,7 @@ export async function registerAthlete(formData: FormData): Promise<void> {
     lga_id: text("lga_id"),
     sport: text("sport"),
     playing_position: text("playing_position") || null,
+    email: text("email") || null,
   };
 
   const bounceBack = (message: string, field?: string): never => {
@@ -66,6 +67,6 @@ export async function registerAthlete(formData: FormData): Promise<void> {
   // The ID has been minted. Next comes the code that confirms the number
   // (AUT-02); the card is reachable from there either way, because a delayed
   // message must never look like a lost registration.
-  await startPending({ phone: submitted.phone, kuid: result.kuid });
+  await startPending({ phone: submitted.phone, kuid: result.kuid, email: submitted.email });
   redirect("/register/confirm");
 }

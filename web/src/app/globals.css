@@ -482,6 +482,36 @@ a:focus-visible, button:focus-visible {
 .notice--warn .notice__title { color: var(--plate-ochre); }
 .notice--bad  .notice__title { color: var(--plate-red); }
 
+/* The Flash component (components/Flash.tsx): the same .notice, with a small
+   entrance so a message that appears after an action reads as a response to
+   it, not as part of the page that was already there. Skipped for anyone who
+   asked their system to reduce motion. */
+.flash__icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; margin-right: var(--s2);
+  border-radius: 50%; font-size: .62rem; line-height: 1;
+  /* The glyph is always light; the badge behind it carries the variant's
+     colour — set per variant below, never via currentColor on this same
+     element, which would make the two identical and the glyph invisible. */
+  color: var(--plate-bg);
+}
+.notice--good .flash__icon { background: var(--plate-green); }
+.notice--warn .flash__icon { background: var(--plate-ochre); }
+.notice--bad  .flash__icon { background: var(--plate-red); }
+@media (prefers-reduced-motion: no-preference) {
+  .flash { animation: flash-in .22s ease-out; }
+  @keyframes flash-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* The disabled stand-in ResendCountdown shows in place of the real button
+   while it counts down (components/ResendCountdown.tsx). */
+.resend-wait .btn[disabled] {
+  opacity: .6; cursor: not-allowed; font-variant-numeric: tabular-nums;
+}
+
 .pill {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;

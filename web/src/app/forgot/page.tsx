@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { Flash } from "@/components/Flash";
 import { resetPasswordAction, sendResetCodeAction } from "./actions";
 
 export const metadata: Metadata = { title: "Reset your password" };
@@ -32,16 +33,15 @@ export default async function ForgotPage({
       <h1>Reset your password</h1>
 
       {error ? (
-        <div className="notice notice--bad" role="alert" tabIndex={-1}>
-          <p className="notice__title">That did not work</p>
+        <Flash variant="bad" title="That did not work">
           <p style={{ marginBottom: 0 }}>{error}</p>
-        </div>
+        </Flash>
       ) : null}
 
       {!sent ? (
         <>
           <p className="lede">
-            We send a code to your registered phone number.
+            We&apos;ll send a code to confirm it&apos;s you.
           </p>
           <form action={sendResetCodeAction} className="doc" noValidate>
             <div className="doc__body">
@@ -66,13 +66,12 @@ export default async function ForgotPage({
         </>
       ) : (
         <>
-          <div className="notice" role="status">
-            <p className="notice__title">Check your messages</p>
+          <Flash title="Check your messages">
             <p style={{ marginBottom: 0 }}>
               If that number has a KAFRIADA account, a code is on its way to it.
               The code expires in 10 minutes.
             </p>
-          </div>
+          </Flash>
 
           <form action={resetPasswordAction} className="doc" noValidate>
             <div className="doc__body">

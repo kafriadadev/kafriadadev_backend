@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { Flash } from "@/components/Flash";
 import { getMe } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 import { signInAction } from "./actions";
@@ -43,24 +44,21 @@ export default async function SignInPage({
       <h1>Sign in</h1>
 
       {error ? (
-        <div className="notice notice--bad" role="alert" tabIndex={-1}>
-          <p className="notice__title">We could not sign you in</p>
+        <Flash variant="bad" title="We could not sign you in">
           <p style={{ marginBottom: 0 }}>{error}</p>
-        </div>
+        </Flash>
       ) : reset ? (
-        <div className="notice notice--good" role="status">
-          <p className="notice__title">Your password is changed</p>
+        <Flash variant="good" title="Your password is changed">
           <p style={{ marginBottom: 0 }}>
             Sign in with your new password. Every other device was signed out.
           </p>
-        </div>
+        </Flash>
       ) : ended ? (
-        <div className="notice" role="status">
-          <p className="notice__title">You were signed out</p>
+        <Flash title="You were signed out">
           <p style={{ marginBottom: 0 }}>
             Your session ended. Sign in again to continue.
           </p>
-        </div>
+        </Flash>
       ) : null}
 
       <form action={signInAction} className="doc" noValidate>

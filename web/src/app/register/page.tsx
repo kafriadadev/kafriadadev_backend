@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { Flash } from "@/components/Flash";
 import { listLgas } from "@/lib/api";
 import { registerAthlete } from "./actions";
 
@@ -51,27 +52,25 @@ export default async function RegisterPage({
       <p className="eyebrow">Step 1 of 3 · Free</p>
       <h1>Get your KAFRIADA ID</h1>
       <p className="lede">
-        About two minutes. You need a phone that can receive SMS.
+        About two minutes. You need a phone number and an email address.
       </p>
 
       {/* An error summary AND an error beside the field. The summary is what a
           screen reader announces on arrival; the inline message is what tells a
           sighted person which box to fix. Both, not either. */}
       {error ? (
-        <div className="notice notice--bad" role="alert" tabIndex={-1}>
-          <p className="notice__title">We could not register you yet</p>
+        <Flash variant="bad" title="We could not register you yet">
           <p style={{ marginBottom: 0 }}>{error}</p>
-        </div>
+        </Flash>
       ) : null}
 
       {loadFailed ? (
-        <div className="notice notice--bad" role="alert">
-          <p className="notice__title">Cannot reach KAFRIADA</p>
+        <Flash variant="bad" title="Cannot reach KAFRIADA">
           <p style={{ marginBottom: 0 }}>
             We could not load the list of Local Government Areas. Please try
             again in a moment.
           </p>
-        </div>
+        </Flash>
       ) : null}
 
       <form action={registerAthlete} className="doc" noValidate>
@@ -97,7 +96,7 @@ export default async function RegisterPage({
           <div className={errClass("phone")}>
             <label htmlFor="phone">Phone number</label>
             <span className="hint" id="phone-hint">
-              We send a code to this number. One phone, one KAFRIADA ID.
+              One phone, one KAFRIADA ID.
             </span>
             <input
               id="phone"
@@ -111,6 +110,19 @@ export default async function RegisterPage({
               aria-describedby="phone-hint"
             />
             {badField === "phone" ? <span className="error">{error}</span> : null}
+          </div>
+
+          <div className={errClass("email")}>
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              defaultValue={one(params.email)}
+            />
+            {badField === "email" ? <span className="error">{error}</span> : null}
           </div>
 
           <div className={errClass("date_of_birth")}>

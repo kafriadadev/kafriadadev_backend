@@ -53,7 +53,7 @@ export async function endSession(): Promise<void> {
  */
 export const PENDING_COOKIE = "kaf_pending";
 
-export type Pending = { phone: string; kuid: string };
+export type Pending = { phone: string; kuid: string; email?: string | null };
 
 export async function startPending(pending: Pending): Promise<void> {
   (await cookies()).set(PENDING_COOKIE, JSON.stringify(pending), {
