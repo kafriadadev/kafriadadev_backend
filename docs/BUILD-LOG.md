@@ -31,7 +31,7 @@ was checked live and what the result was. Say plainly when something is
 ---
 
 ## 2026-09-23 — Migration 0010: clubs
-**Commit(s):** *(pending)*
+**Commit(s):** `5d8dc5e`
 
 **Built:** three tables in the `identity` schema — `organizations` (a club:
 name, sport, state/LGA, contact phone, `rep_user_id`, `status`
