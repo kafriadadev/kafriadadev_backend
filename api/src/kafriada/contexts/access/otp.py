@@ -130,6 +130,7 @@ def send_code(
     # nowhere else to send it. The rule itself lives in outbox.service, so this
     # path and every other notification cannot drift apart.
     if outbox.prefers_email(email):
+        assert email is not None  # prefers_email() only returns true with one
         html = otp_email_html(code=code, minutes=cfg.otp_minutes_valid, purpose=purpose)
         outbox.queue_email(
             session, to_email=email, subject=EMAIL_SUBJECTS[purpose], body=body,

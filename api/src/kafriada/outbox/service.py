@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from typing import Any
+from uuid import UUID
 
 import structlog
 from sqlalchemy import text
@@ -32,6 +33,7 @@ from kafriada.outbox import email_providers
 from kafriada.outbox.email_providers import EmailError
 from kafriada.outbox.email_providers import Sender as EmailSender
 from kafriada.outbox.providers import Sender, SmsError, build_sender
+from kafriada.outbox.providers import Sent as SmsSent
 from kafriada.settings import OtpChannel, get_settings
 
 log = structlog.get_logger(__name__)
@@ -230,6 +232,7 @@ def _send_one(post: Sender, email_post: EmailSender) -> str | None:
                 return "failed"
             sent_to, by_email = reach
 
+        result: SmsSent | email_providers.Sent
         try:
             if event_type == SMS_REQUESTED:
                 result = post.send(to=str(payload["to"]), body=str(payload["body"]))

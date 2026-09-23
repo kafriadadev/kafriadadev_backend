@@ -12,7 +12,7 @@ statement instead of a table, a foreign key and a seed.
 
 **Choices made here that the spec doesn't pin down, flagged for the project
 lead to confirm before launch:** the four gender options
-(male/female/other/prefer_not_to_say) and the 0–100 bound on years of
+(male/female/other/prefer_not_to_say) and the 0-100 bound on years of
 experience. Both are easy to widen later; narrowing them after real answers
 exist would not be.
 

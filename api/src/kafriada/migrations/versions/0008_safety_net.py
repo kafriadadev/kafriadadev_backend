@@ -90,6 +90,15 @@ def downgrade() -> None:
     op.execute("REVOKE DELETE ON ops.outbox FROM kaf_app")
     op.execute("ALTER TABLE money.ledger_entries DROP CONSTRAINT IF EXISTS ledger_reversal_is_accountable")
     op.execute("ALTER TABLE money.ledger_entries DROP CONSTRAINT IF EXISTS ledger_source_valid")
+    # A reversal recorded under 0008 cannot be expressed once this downgrade
+    # removes the source it needs — the append-only trigger is what stops
+    # everyone else from deleting a ledger row, so it is disabled for this one
+    # statement rather than the constraint being loosened to fit around data
+    # that a downgrade this destructive was never going to keep anyway (0006's
+    # downgrade, next in the chain, drops the table outright).
+    op.execute("ALTER TABLE money.ledger_entries DISABLE TRIGGER ledger_entries_no_update_delete")
+    op.execute("DELETE FROM money.ledger_entries WHERE source = 'reversal'")
+    op.execute("ALTER TABLE money.ledger_entries ENABLE TRIGGER ledger_entries_no_update_delete")
     op.execute(
         "ALTER TABLE money.ledger_entries ADD CONSTRAINT ledger_source_valid "
         "CHECK (source IN ('paystack', 'fee'))"

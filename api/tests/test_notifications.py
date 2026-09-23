@@ -17,12 +17,11 @@ out how to reach them when it sends. What that buys, and what is proved here:
 from __future__ import annotations
 
 import os
+import uuid
 from uuid import UUID
 
 import pytest
 from sqlalchemy import text
-
-import uuid
 
 from kafriada.db.engine import money_transaction, transaction
 from kafriada.outbox import service as outbox
@@ -75,7 +74,7 @@ def queued(user_id: UUID) -> list[dict[str, object]]:
 
 
 def drain_one(sms: Recorder, email: Recorder) -> str | None:
-    return outbox.drain(limit=1, sender=sms, email_sender=email).sent and "sent" or None
+    return (outbox.drain(limit=1, sender=sms, email_sender=email).sent and "sent") or None
 
 
 def test_it_reaches_someone_by_sms_when_that_is_all_they_have() -> None:

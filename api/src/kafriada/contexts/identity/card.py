@@ -164,7 +164,7 @@ def render_card(subject: CardSubject, *, profile_url: str, fmt: Literal["png", "
         fill=(255, 255, 255), outline=_RULE, width=2,
     )
     inner = box_size - 32
-    qr_img = qr_img.resize((inner, inner), Image.NEAREST)
+    qr_img = qr_img.resize((inner, inner), Image.Resampling.NEAREST)
     img.paste(qr_img, (qx0 + 16, qy0 + 16))
     draw.text(
         (qx0 + box_size / 2, qy0 + box_size + 14), "SCAN TO VERIFY",

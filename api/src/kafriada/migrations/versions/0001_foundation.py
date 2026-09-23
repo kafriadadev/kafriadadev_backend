@@ -44,6 +44,24 @@ def downgrade() -> None:
     op.execute("DROP SCHEMA IF EXISTS identity CASCADE")
     op.execute("DROP SCHEMA IF EXISTS money CASCADE")
     op.execute("DROP SCHEMA IF EXISTS ops CASCADE")
+    # alembic's own bookkeeping table lives in ops (env.py's version_table_schema)
+    # for the same reason everything else does: one connection string, one set of
+    # grants. The cascade above just dropped it out from under the migration
+    # runner mid-command, so its own "record base" write has nowhere to land.
+    # An empty table in its exact shape is enough — there is nothing to preserve
+    # a downgrade to base by definition.
+    op.execute("CREATE SCHEMA ops")
+    op.execute(
+        "CREATE TABLE ops.alembic_version ("
+        "  version_num varchar(32) NOT NULL,"
+        "  CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)"
+        ")"
+    )
+    # Alembic's own downgrade step, right after this function returns, deletes
+    # this migration's row and checks that exactly one row was removed — the
+    # row has to be here for that check to pass, the same row the cascade above
+    # just took with it.
+    op.execute("INSERT INTO ops.alembic_version (version_num) VALUES ('0001_foundation')")
 
 
 # ---------------------------------------------------------------------------

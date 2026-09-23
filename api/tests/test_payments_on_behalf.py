@@ -32,7 +32,7 @@ from kafriada.contexts.payments import service
 from kafriada.contexts.payments.provider import FakeProvider
 from kafriada.contexts.payments.settlement import settle_charge
 from kafriada.main import create_app
-from tests._access_helpers import bearer, make_user, sql
+from tests._access_helpers import sql
 from tests._media_helpers import LGA, OTHER_LGA, athlete_with_files, reviewer, use_local_store
 from tests._payment_helpers import PRICE, charge_success_event
 

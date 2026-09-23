@@ -22,8 +22,7 @@ import structlog
 
 from kafriada.contexts.access import ratelimit
 from kafriada.main import configure_logging
-from kafriada.outbox import service
-from kafriada.outbox import email_providers
+from kafriada.outbox import email_providers, service
 from kafriada.outbox.providers import build_sender
 from kafriada.settings import EmailProvider, SmsProvider, get_settings
 
