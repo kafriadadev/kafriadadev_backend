@@ -245,10 +245,19 @@ start and VER-03 (f7269e9).
   round trip against the running server confirmed both the route-level scope refusal
   (403, wrong LGA in the path) and the service-level one (404, wrong-LGA athlete via a
   correct path).
-- [ ] **Migration 0010 — clubs** (0008 is the safety net, 0009 the athlete details added
-  for ATH-02): organizations, teams, roster members, with the
-  *at-most-one-open-membership* rule as a **partial unique index** — the database
-  enforces it, not the code.
+- [x] **Migration 0010 — clubs.** Done 2026-09-23. `organizations`, `teams`,
+  `roster_members`; *at-most-one-open-membership* is
+  `roster_members_one_active_per_athlete`, a partial unique index on
+  `athlete_id` alone (global, not per-team — CLB-03's "accepting moves you"
+  wording needs that, not the spec's per-team sketch). `career_events.club_id`
+  now has its foreign key. `club.create` moved to the `athlete` role (every
+  account holds it), matching CLB-01's "any signed-in user registers a club"
+  — coordinators keep it too, for CLB-01's own manual-entry fallback.
+  Verified against a live Supabase and a from-scratch local PostgreSQL 15
+  (all 10 migrations, up/down/up, full suite clean on the local instance
+  after two pre-existing, migration-unrelated flakes were traced and ruled
+  out — see `docs/BUILD-LOG.md`). Schema only: no service, routes or screens
+  yet.
 - [ ] **Clubs** `[UI]`: **CLB-01** register, **CLB-02** dashboard (scope is the
   security story), **CLB-03** invite by KUID, **CLB-04** verify the club ₦15,000,
   **ATH-05** my clubs and invitations. Club approval by an admin.

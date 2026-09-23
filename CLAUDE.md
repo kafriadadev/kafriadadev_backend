@@ -456,6 +456,21 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   count and "empty contexts" line had both gone stale since 2.2 — corrected
   (22 of 46 screens built, not 12; `media` and `verification` have not been
   empty contexts for a while).
+- **Migration 0010, clubs — done 2026-09-23.** `identity.organizations`,
+  `teams`, `roster_members`. The at-most-one-open-membership rule is a
+  partial unique index on `athlete_id` alone — global, not per-team, because
+  CLB-03's "accepting an invitation moves you" is a system-wide rule, not a
+  per-squad one. `career_events.club_id`, left bare since migration 0002 for
+  exactly this table, now has its foreign key. `club.create` moved to the
+  `athlete` role — the one role every account already holds, which is what
+  CLB-01's "any signed-in user may register a club" actually means here;
+  coordinators keep it too, for CLB-01's own manual-entry fallback.
+  **Verified:** applies, reverses and re-applies cleanly against both a live
+  Supabase (through the pooler) and a from-scratch local PostgreSQL 15; the
+  full suite passed clean on the local instance. Two false alarms chased and
+  ruled out along the way, neither caused by this migration — full detail in
+  `docs/BUILD-LOG.md`. **Schema only:** no service, routes or screens yet —
+  CLB-01 through CLB-04 and ATH-05 are next.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
@@ -479,8 +494,16 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
 8. ~~ADM-03~~ / ~~ADM-04~~ / ~~ATH-04~~ / ~~ATH-02~~ — all built and verified
    2026-09-22/23 (see Status; ATH-02 and ADM-04's suite re-run against a
    private local database, Supabase down the whole stretch — repeat migration
-   0009 there once it's back). Next in line: ATH-05, the outbox's
-   notification-type generalisation, or 2.4.
+   0009 there once it's back).
+9. ~~2.3 outbox generalisation~~ and ~~CRD-04~~ — done and verified
+   2026-09-23 (see Status).
+10. ~~Migration 0010, clubs~~ — done and verified 2026-09-23 (see Status).
+    **Next in line, in order (per the chosen build order):** the clubs UI
+    (CLB-01 register, CLB-02 dashboard, CLB-03 invite, CLB-04 verify the
+    club, ATH-05 my clubs and invitations), then the coordinator console
+    (CRD-01, CRD-03, CRD-06), then the admin console (ADM-01, ADM-02,
+    ADM-06), then a way to appoint the first super_admin — see
+    `docs/TODO.md`.
 
 ## Outside the code (block launch, not build)
 Paystack business verification needs current CAC registration (1–3 weeks; nobody

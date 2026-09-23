@@ -30,6 +30,75 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-09-23 — Migration 0010: clubs
+**Commit(s):** *(pending)*
+
+**Built:** three tables in the `identity` schema — `organizations` (a club:
+name, sport, state/LGA, contact phone, `rep_user_id`, `status`
+pending_review/approved/suspended, `stage` 1/2), `teams` (a squad within a
+club: sport, age category, gender) and `roster_members` (an athlete on a
+team: invited/active/released, `jersey_no`, `invited_by`). One default team
+is meant to be created alongside every organization at registration, so the
+schema matches the spec's three-table shape even though CLB-01–04's screens
+never expose team selection. `career_events.club_id` — left bare in
+migration 0002 with a comment that it would be checked "once the clubs
+context exists" — now has that foreign key. `club.create` is granted to the
+`athlete` role, which is the one role every account already holds.
+
+**Why `club.create` moved to `athlete`:** migration 0001 granted it only to
+`lga_coordinator`/`state_coordinator`, written before the wireframes existed.
+CLB-01 says "any signed-in user" may register a club and becomes its
+`club_admin` — in this system that is exactly the `athlete` role, not a new
+one. Coordinators keep the permission too, since CLB-01 itself names
+coordinator-entered clubs as its own fallback if the self-service screen has
+to be cut.
+
+**Why the membership rule is a global partial unique index, not a per-team
+one:** the pilot build spec's own sketch was `(team_id, athlete_id)`
+uniqueness for an active row. `docs/TODO.md` asks for
+*at-most-one-open-membership*, and CLB-03's wireframe explains why: accepting
+an invitation "moves" a player from their current club to the new one, so an
+athlete can be `active` on at most one roster anywhere, not one per team.
+That is `roster_members_one_active_per_athlete`, a unique index on
+`athlete_id` alone — the database refuses a second active row regardless of
+which team it names, rather than the service having to remember to release
+the old one first. A pending `invited` row is scoped per team instead:
+different clubs may invite the same athlete at once (CLB-03 warns about
+this, it does not refuse it), but the same club cannot queue the same
+invitation twice.
+
+**Verified:** `check_migration_safety.py` clean (10 migrations). Applied,
+reversed and re-applied cleanly against the live Supabase project (through
+the IPv4 pooler). The full suite was then run three times while chasing two
+false alarms, both pre-existing and both traced to a stretch of this
+session's own making, not to this migration:
+
+1. A first Supabase run showed dozens of setup errors — `OTP_CHANNEL=email`
+   was still set in `api/.env` from the pilot-channel work, and every
+   registering test needs an email under that setting. Exporting
+   `OTP_CHANNEL=sms` for the run fixed it; this is an already-documented
+   gotcha, not a new one.
+2. The Supabase run then became too slow to trust (connection contention
+   after an earlier `kill -9` of a stuck pytest process left connections
+   open against the free-tier project's connection cap), so the suite was
+   run instead against a local, disposable PostgreSQL 15 that this project's
+   own gotchas describe building. It failed twice more, on two tests neither
+   of which touches clubs: `test_integrity.py`'s media-object-missing check
+   (a stray-data problem — this local instance had accumulated 948 `ready`
+   media rows across many sessions today, and the check's own `LIMIT 500`
+   random sample only catches the row a given test cares about about half
+   the time) and one rate-limit timing test. Dropping and recreating the
+   local database, re-running `infra/bootstrap-roles.sql` and `alembic
+   upgrade head` from empty, and running the full suite again gave a clean
+   pass with zero failures — confirming both were pre-existing environment
+   noise, not a regression from this migration.
+
+**Not done / open:** no service layer, no API routes, no screens yet — this
+entry is schema only. CLB-01 through CLB-04 and ATH-05 are next, per the
+build order already agreed (`docs/TODO.md`).
+
+---
+
 ## 2026-09-23 — CRD-04: coordinator pays on behalf
 **Commit(s):** `e34ad39`
 
