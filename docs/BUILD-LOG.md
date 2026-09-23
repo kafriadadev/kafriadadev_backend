@@ -31,7 +31,7 @@ was checked live and what the result was. Say plainly when something is
 ---
 
 ## 2026-09-23 — CRD-04: coordinator pays on behalf
-**Commit(s):** *(pending)*
+**Commit(s):** `e34ad39`
 
 **Built:** `POST /v1/lgas/{lga_id}/athletes/{kuid}/payments`
 (`payment.initiate_behalf`, scope `lga`) and `/assist-pay` — a coordinator
