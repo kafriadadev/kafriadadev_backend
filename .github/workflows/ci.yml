@@ -23,6 +23,17 @@ jobs:
   static:
     name: Lint, types, unit tests
     runs-on: ubuntu-latest
+    env:
+      # create_app() builds the real Settings() at import time, which every
+      # "not db" test collects through — these never dial a database, but
+      # Settings() still requires something parseable to exist. Same values
+      # the database job below uses; CI-only, never reused anywhere.
+      DATABASE_URL_APP: postgresql+psycopg://kaf_app:ci_pw@localhost:5432/kafriada
+      DATABASE_URL_MONEY: postgresql+psycopg://kaf_money:ci_pw@localhost:5432/kafriada
+      ENVIRONMENT: local
+      SECRET_KEY: ci_only_secret_key_thirty_two_chars_min
+      QR_SECRET: ci_only_qr_secret_thirty_two_chars_min
+      SMS_PROVIDER: none
     steps:
       - uses: actions/checkout@v4
 
