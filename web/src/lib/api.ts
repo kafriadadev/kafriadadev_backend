@@ -502,6 +502,37 @@ export function listPayments(token: string): Promise<Payment[]> {
   return call<Payment[]>("/v1/payments", { token });
 }
 
+export type AthleteDetails = {
+  kuid: string;
+  sport: string;
+  playing_position: string | null;
+  gender: string | null;
+  dominant_side: string | null;
+  secondary_sport: string | null;
+  years_experience: number | null;
+};
+
+/** ATH-02: the signed-in athlete's own details, for the edit screen. */
+export function getMyAthleteDetails(token: string): Promise<AthleteDetails> {
+  return call<AthleteDetails>("/v1/athletes/me", { token });
+}
+
+export function updateMyAthleteDetails(
+  token: string,
+  input: {
+    gender: string | null;
+    dominant_side: string | null;
+    secondary_sport: string | null;
+    years_experience: number | null;
+  },
+): Promise<AthleteDetails> {
+  return call<AthleteDetails>("/v1/athletes/me", {
+    method: "PUT",
+    body: JSON.stringify(input),
+    token,
+  });
+}
+
 /** Raw SVG for an athlete's QR code, fetched server-side and inlined. */
 export async function getQrSvg(kuid: string): Promise<string | null> {
   const controller = new AbortController();

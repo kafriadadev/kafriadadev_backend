@@ -340,7 +340,7 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `test_verification.py::TestApprovalAndWithdrawal` (passed). A live curl of
   the revoke POST specifically was inconclusive — the Supabase link dropped
   mid-attempt (see Gotchas) — not a failure.
-- **ADM-04, record a refund — built and verified 2026-09-22** (pending commit).
+- **ADM-04, record a refund — built and verified 2026-09-22** (`f287008`).
   `GET /v1/admin/payments/{reference}` is a lookup the API never had (the
   reversal route only ever took a reference from Paystack's own dashboard,
   with nothing to preview it against first); `/admin/reversal` is the screen.
@@ -350,10 +350,31 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   fixed on the way: the lookup used `money_transaction()` (`kaf_money`),
   which has no grant on `ops.users`/`identity.athletes` — switched to the
   ordinary `transaction()` (`kaf_app`), which already has SELECT on
-  `money.payments` and `money.ledger_entries`. **Not yet re-run through
-  `test_verification.py`/`test_settlement.py`** — Supabase's link dropped
-  mid-session (a bare, unloaded connection attempt timed out); repeat once
-  it's back.
+  `money.payments` and `money.ledger_entries`. `test_settlement.py` re-run
+  clean the next day, against a private local PostgreSQL (Supabase's link
+  dropped for the rest of that session — TCP-level, not a query timeout).
+- **ATH-04, my payments — done and verified 2026-09-22** (`a2db088`).
+  `list_payments()`, `GET /v1/payments`, `/payments` — every payment the
+  athlete has ever started, newest first, same confirmed/checking/needs-a-
+  check/not-completed language `/pay` already uses.
+- **ATH-02, edit my details — done and verified 2026-09-23** (migration
+  0009). Gender, dominant side, secondary sport, years of experience — none
+  of them captured at registration, all optional, all CHECK-constrained
+  rather than a lookup table. `GET`/`PUT /v1/athletes/me`, behind
+  `athlete.read_self`/`athlete.update_self` — both already seeded for the
+  `athlete` role since migration 0001, so this closes a gap the schema had
+  been sitting on since Stage 0. `/details`. **Verified against a private
+  local PostgreSQL 15** (Supabase down all session — confirmed at the TCP
+  level with nothing else running, not contention): migration applies and
+  reverses cleanly, `check_migration_safety.py` clean, a live GET → PUT
+  (valid) → PUT (invalid, correctly refused with the right field) → GET
+  loop, `test_permission_matrix.py` and `test_route_manifest.py`, and a full
+  `check:render` including a signed-in contrast/overflow audit of `/details`
+  and `/payments` themselves. Repeat migration 0009 against Supabase once
+  it's reachable. **Also fixed while verifying:** `docs/TODO.md`'s screen
+  count and "empty contexts" line had both gone stale since 2.2 — corrected
+  (22 of 46 screens built, not 12; `media` and `verification` have not been
+  empty contexts for a while).
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
@@ -374,11 +395,11 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
    payment & clubs) — do not compress. Then Stage 3 launch readiness.
    **The full, ordered list — every remaining item, screen and decision — is
    `docs/TODO.md`. Start there.**
-8. ~~ADM-03, withdraw a verification~~ Built and verified 2026-09-22 (see
-   Status). ~~ADM-04, record a refund~~ Built and live-verified the same day;
-   the automated suite re-run is what's left, blocked on Supabase's link.
-   Next in line: ATH-02/ATH-04, the outbox's notification-type
-   generalisation, or 2.4.
+8. ~~ADM-03~~ / ~~ADM-04~~ / ~~ATH-04~~ / ~~ATH-02~~ — all built and verified
+   2026-09-22/23 (see Status; ATH-02 and ADM-04's suite re-run against a
+   private local database, Supabase down the whole stretch — repeat migration
+   0009 there once it's back). Next in line: ATH-05, the outbox's
+   notification-type generalisation, or 2.4.
 
 ## Outside the code (block launch, not build)
 Paystack business verification needs current CAC registration (1–3 weeks; nobody

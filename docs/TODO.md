@@ -18,12 +18,13 @@ database item on the strength of tests that skipped.
 ## Where we are
 
 Stage 0 and Stage 1 are done. Stage 2 is mostly built on `main`: 2.1 (ledger and
-payments), 2.2 (media and verification) and the backend of 2.3 (the safety net) work
-end to end against fakes — a local object store and a fake payment provider. Nothing
-has touched real Paystack or real R2 yet. Left: 2.3's screen and notification
-generalisation, then all of 2.4. **12 of 46 screens are built**
-(37 are for launch, 9 wait for Slice 2). Five contexts are still empty:
-`clubs`, `feed`, `media`, `transfers`, `verification`.
+payments), 2.2 (media and verification, including ADM-03) and the backend of 2.3
+(the safety net, including ADM-04) work end to end against fakes — a local object
+store and a fake payment provider. Nothing has touched real Paystack or real R2 yet.
+2.2's ATH-02/ATH-04 gap is closed. Left: 2.3's notification generalisation, then all
+of 2.4. **22 of 46 screens are built** (15 more are for launch, 9 wait for Slice 2;
+updated 2026-09-23 — this line had gone stale). Three contexts are still empty:
+`clubs`, `feed`, `transfers`.
 
 The pilot exists to answer three numbers: **2,000 registrations, 5% paid
 (100+ payments), 25+ clubs each with 15+ athletes**. Registration can be tested
@@ -143,9 +144,22 @@ start and VER-03 (f7269e9).
   a live curl of the POST specifically was inconclusive (Supabase's link dropped
   mid-attempt; see Gotchas), not a failure. Tick this box once that one POST is
   confirmed live too.
-- [ ] `[UI]` **ATH-02** edit my details (gender, dominant side, secondary sport,
-  years of experience are in the spec but not in registration) and **ATH-04** my
-  payments. Public profile already shows the photo once verified.
+- [x] `[UI]` **ATH-04** my payments. Done and live-verified against Supabase
+  2026-09-22 (`a2db088`): `GET /v1/payments` (every payment, newest first),
+  `/payments`.
+- [x] `[UI]` **ATH-02** edit my details — gender, dominant side, secondary
+  sport, years of experience, none of them in registration. Done 2026-09-23
+  (migration 0009): `GET`/`PUT /v1/athletes/me` (behind `athlete.read_self`/
+  `athlete.update_self`, both already seeded for the `athlete` role since
+  migration 0001 — this was always the intended shape), `/details`.
+  **Verified against a private local PostgreSQL 15** (Supabase was down all
+  session — TCP-level, not just a query timeout): migration 0009 applies and
+  reverses cleanly, `check_migration_safety.py` clean, a full live GET →
+  PUT(valid) → PUT(invalid, refused with the right field) → GET loop, the
+  permission-matrix and route-manifest tests, and `check:render` — including
+  a signed-in audit of `/details` and `/payments` themselves — all pass.
+  Repeat migration 0009 against Supabase once it's reachable. Public profile
+  already shows the photo once verified.
 
 ### 2.3 Outbox, workers, safety net (3–4 days)
 
@@ -316,13 +330,16 @@ works with JavaScript off.
 
 ## 6. Screens — 46 in the wireframes
 
-**Built (12):** PUB-01 profile · PUB-02 home · PUB-03 look-up · PUB-04 privacy ·
-PUB-05 error · AUT-01 register · AUT-02 confirm phone · AUT-03 ID ready · AUT-04
-sign in · AUT-05 forgot password · ATH-01 my profile *(first cut)* · ATH-03 my QR
-card.
+**Built (22, updated 2026-09-23 — this count had gone stale since 2.2):**
+PUB-01 profile · PUB-02 home · PUB-03 look-up · PUB-04 privacy · PUB-05 error ·
+AUT-01 register · AUT-02 confirm phone · AUT-03 ID ready · AUT-04 sign in ·
+AUT-05 forgot password · ATH-01 my profile *(first cut)* · ATH-02 edit my
+details · ATH-03 my QR card · ATH-04 my payments · VER-01 to VER-05 (all at
+`/verify`, VER-03 at `/pay`) · CRD-02 review queue · ADM-03 withdraw a
+verification · ADM-04 record a refund.
 
-**To build for launch (25):** ATH-02, ATH-04, ATH-05 · VER-01 to VER-05 · CLB-01 to
-CLB-04 · CRD-01 to CRD-06 · ADM-01 to ADM-07.
+**To build for launch (15):** ATH-05 · CLB-01 to CLB-04 · CRD-01, CRD-03 to
+CRD-06 · ADM-01, ADM-02, ADM-05 to ADM-07.
 
 **Slice 2 (9):** SCT-01 · CLB-05 · TRF-01 to TRF-05 · FED-01, FED-02.
 

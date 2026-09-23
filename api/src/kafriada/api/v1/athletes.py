@@ -22,7 +22,7 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
 from kafriada.api.client import client_ip, request_id
-from kafriada.api.security import Public, Requires
+from kafriada.api.security import Public, Requires, current_principal
 from kafriada.api.throttle import Throttle
 from kafriada.contexts.geography import jigawa
 from kafriada.contexts.identity import card
@@ -170,6 +170,81 @@ def register_athlete(body: RegistrationRequest, request: Request) -> Registratio
         phone_verified=False,
         code_resend_seconds=get_settings().otp_resend_seconds,
     )
+
+
+# ---------------------------------------------------------------------------
+# My own athlete details (ATH-02) — not the public profile, and not the
+# LGA-scoped register a coordinator sees. Just what registration never asked.
+# ---------------------------------------------------------------------------
+class AthleteDetailsResponse(BaseModel):
+    kuid: str
+    sport: str
+    playing_position: str | None
+    gender: str | None
+    dominant_side: str | None
+    secondary_sport: str | None
+    years_experience: int | None
+
+
+class UpdateAthleteDetailsRequest(BaseModel):
+    gender: str | None = None
+    dominant_side: str | None = None
+    secondary_sport: str | None = Field(default=None, max_length=40)
+    years_experience: int | None = Field(default=None, ge=0, le=100)
+
+
+def _details_response(details: identity.AthleteDetails) -> AthleteDetailsResponse:
+    return AthleteDetailsResponse(
+        kuid=details.kuid, sport=details.sport, playing_position=details.playing_position,
+        gender=details.gender, dominant_side=details.dominant_side,
+        secondary_sport=details.secondary_sport, years_experience=details.years_experience,
+    )
+
+
+@router.get(
+    "/athletes/me",
+    response_model=AthleteDetailsResponse,
+    dependencies=[Requires("athlete.read_self")],
+    summary="The signed-in athlete's own details, for the edit screen (ATH-02)",
+)
+def my_athlete_details(request: Request) -> AthleteDetailsResponse:
+    found = identity.get_athlete_details(current_principal(request).user_id)
+    if found is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail={"message": "This account has no athlete record.", "field": None},
+        )
+    return _details_response(found)
+
+
+@router.put(
+    "/athletes/me",
+    response_model=AthleteDetailsResponse,
+    dependencies=[Requires("athlete.update_self")],
+    summary="Fill in what registration didn't ask for (ATH-02)",
+)
+def update_my_athlete_details(
+    body: UpdateAthleteDetailsRequest, request: Request
+) -> AthleteDetailsResponse:
+    try:
+        updated = identity.update_athlete_details(
+            current_principal(request).user_id,
+            gender=body.gender,
+            dominant_side=body.dominant_side,
+            secondary_sport=body.secondary_sport,
+            years_experience=body.years_experience,
+        )
+    except identity.NoAthleteRecord:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail={"message": "This account has no athlete record.", "field": None},
+        ) from None
+    except identity.DetailsError as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": exc.message, "field": exc.field},
+        ) from None
+    return _details_response(updated)
 
 
 # ---------------------------------------------------------------------------

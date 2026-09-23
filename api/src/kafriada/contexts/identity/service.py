@@ -527,3 +527,104 @@ def athlete_for_user(user_id: UUID) -> OwnAthlete | None:
     if row is None:
         return None
     return OwnAthlete(kuid=row["kuid"], lga_name=row["lga_name"])
+
+
+# ---------------------------------------------------------------------------
+# Athlete details registration never asked for (ATH-02, migration 0009)
+# ---------------------------------------------------------------------------
+GENDERS = ("male", "female", "other", "prefer_not_to_say")
+DOMINANT_SIDES = ("left", "right", "both")
+MAX_SECONDARY_SPORT_CHARS = 40
+
+
+class DetailsError(Exception):
+    """A submitted value is not one of the allowed choices."""
+
+    def __init__(self, message: str, *, field: str) -> None:
+        super().__init__(message)
+        self.message = message
+        self.field = field
+
+
+class NoAthleteRecord(Exception):
+    """The signed-in account has no athlete record — a staff-only account."""
+
+
+@dataclass(frozen=True, slots=True)
+class AthleteDetails:
+    kuid: str
+    sport: str
+    playing_position: str | None
+    gender: str | None
+    dominant_side: str | None
+    secondary_sport: str | None
+    years_experience: int | None
+
+
+def get_athlete_details(user_id: UUID) -> AthleteDetails | None:
+    """The signed-in athlete's own details, for the edit screen (ATH-02)."""
+    with transaction() as session:
+        row = session.execute(
+            text(
+                """
+                SELECT kuid, sport, playing_position, gender, dominant_side,
+                       secondary_sport, years_experience
+                  FROM identity.athletes
+                 WHERE user_id = :id
+                """
+            ),
+            {"id": user_id},
+        ).mappings().one_or_none()
+    return AthleteDetails(**row) if row is not None else None
+
+
+def update_athlete_details(
+    user_id: UUID,
+    *,
+    gender: str | None,
+    dominant_side: str | None,
+    secondary_sport: str | None,
+    years_experience: int | None,
+) -> AthleteDetails:
+    """Fill in what registration didn't ask for. Every field is optional and
+    every field is replaced wholesale — the edit screen always submits its
+    whole form, so there is no "field not sent" to distinguish from "cleared".
+    """
+    if gender is not None and gender not in GENDERS:
+        raise DetailsError("Choose one of the listed options.", field="gender")
+    if dominant_side is not None and dominant_side not in DOMINANT_SIDES:
+        raise DetailsError("Choose one of the listed options.", field="dominant_side")
+    secondary_sport = (secondary_sport or "").strip() or None
+    if secondary_sport is not None and len(secondary_sport) > MAX_SECONDARY_SPORT_CHARS:
+        raise DetailsError(
+            f"Keep it under {MAX_SECONDARY_SPORT_CHARS} characters.", field="secondary_sport"
+        )
+    if years_experience is not None and not (0 <= years_experience <= 100):
+        raise DetailsError("Enter a number between 0 and 100.", field="years_experience")
+
+    with transaction() as session:
+        row = session.execute(
+            text(
+                """
+                UPDATE identity.athletes
+                   SET gender = :gender,
+                       dominant_side = :dominant_side,
+                       secondary_sport = :secondary_sport,
+                       years_experience = :years_experience,
+                       updated_at = now()
+                 WHERE user_id = :user_id
+                RETURNING kuid, sport, playing_position, gender, dominant_side,
+                          secondary_sport, years_experience
+                """
+            ),
+            {
+                "user_id": user_id,
+                "gender": gender,
+                "dominant_side": dominant_side,
+                "secondary_sport": secondary_sport,
+                "years_experience": years_experience,
+            },
+        ).mappings().one_or_none()
+    if row is None:
+        raise NoAthleteRecord()
+    return AthleteDetails(**row)

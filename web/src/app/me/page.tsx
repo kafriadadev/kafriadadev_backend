@@ -89,6 +89,7 @@ export default async function MePage() {
             <a href="/verify" className="btn btn--ghost">Get verified</a>
           ) : null}
           <a href="/payments" className="btn btn--ghost">My payments</a>
+          <a href="/details" className="btn btn--ghost">Edit my details</a>
         </div>
       ) : null}
 
