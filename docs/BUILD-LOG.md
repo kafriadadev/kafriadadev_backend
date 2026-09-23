@@ -30,6 +30,57 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-09-23 — CI's static job could never run its unit tests; a live compliance gate found broken
+**Commit(s):** `8835626`
+
+**Built:** an `env:` block on the `static` job in `.github/workflows/ci.yml`
+(`DATABASE_URL_APP`, `DATABASE_URL_MONEY`, `ENVIRONMENT`, `SECRET_KEY`,
+`QR_SECRET`, `SMS_PROVIDER`), the same values the `database` job already
+uses. `src/kafriada/main.py` builds the real `Settings()` at import time
+(`app = create_app()` at module scope), so importing `kafriada.main` — which
+most test files do, including ones marked `not db` — needs all four of
+`Settings()`'s required fields to exist somewhere. The `static` job set none
+of them, so `pytest -m "not db"` failed to even collect its first file. This
+looks to have been true since the test suite first needed `create_app()` at
+import time; nothing about it is new today.
+
+**Verified:** reproduced the job's exact conditions locally — `api/.env`
+moved aside, only the six new variables set, `pytest -m "not db"` — clean,
+where the same command previously failed collection with four
+`pydantic_core.ValidationError`s.
+
+**Found, not fixed, and worth a decision:** with the two bugs above out of
+the way, the `database` job and the `static` job's own Lint/Types/module-
+boundary/migration-safety steps are all green on GitHub Actions — but
+`security` still fails, on `scripts/check-no-payout-path.sh`. That script is
+a flat `grep -rInE` for `withdraw|payout|...` across `api/src` and `web/src`
+with no allowlist, by design (per its own comment: a keyword the CI can
+check beats a comment nobody reads). ADM-03 (withdraw a *verification*,
+built 2026-09-22) uses exactly this word for an unrelated feature — 37
+matches across 14 files, every one of them "withdraw a badge", not money.
+Two of those matches are `contexts/ledger/reversal.py` and
+`admin/reversal/page.tsx` **explaining that there is no payout path** — the
+check is tripping on its own documentation. This means the gate has almost
+certainly been permanently red since ADM-03 shipped, which is the worst
+failure mode for a check like this: a gate that never passes stops meaning
+anything, and a real money-out path added the same week would have been
+just one more red line nobody looked at.
+
+This one was **not touched**. `CLAUDE.md` lists this exact script under
+"Invariants — do not weaken," and choosing how to scope an allowlist against
+a regulatory gate is the project lead's call, not a lint fix — unlike the
+mechanical fixes above, there's a real way to get this wrong (too narrow
+still blocks nothing new; too broad quietly opens a hole). Flagged for a
+decision: an allowlist inside the script (by file or by phrase), or renaming
+the verification feature's wording away from "withdraw" — the second is a
+UI copy change under the project's own copy-tone rules, not this script's.
+
+**Not done / open:** the payout-path check itself, pending that decision. The
+security job's later steps (secrets scan, `pip-audit`) have not run at all
+yet — they're gated behind this one failing first.
+
+---
+
 ## 2026-09-23 — CI was red on main: lint, mypy, and a migration downgrade bug
 **Commit(s):** `45e01fa`
 
