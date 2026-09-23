@@ -106,3 +106,6 @@ tmp/
 # Local media store (photographs and ID documents) - never commit
 .media/
 api/.media/
+
+# local media store (MEDIA_STORE=local) — uploaded test photos and documents
+.media/
