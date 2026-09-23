@@ -30,6 +30,36 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-09-23 — Payout-path gate's false positive resolved
+**Commit(s):** `1b803ee`
+
+**Built:** a content-based allowlist in `scripts/check-no-payout-path.sh` —
+each of the 38 known "withdraw a verification badge" matches (ADM-03, see
+previous entry) is now listed by its exact `path:line:content` text and
+skipped; anything else still fails the build.
+
+**Why:** the project lead's call, made directly — since the feature isn't a
+money-out path, ignore it in the script rather than rename the feature's
+copy. Also directed: handle the same class of false positive the same way
+going forward, without asking each time.
+
+**Why content-based rather than excluding whole files:** an allowlist entry
+only exempts that exact wording. A real payout line added later to
+`contexts/access/service.py` or `contexts/ledger/reversal.py` — both
+general-purpose files that stay on the search path — still fails the build,
+and editing an allowlisted line's wording makes it fail again until it's
+re-checked and re-added. Excluding the whole file would have been simpler
+but would have gone blind to those files for good.
+
+**Verified:** the script passes clean; a planted `cash_out_to_bank()` in a
+new file is still caught and refused. Not yet confirmed on GitHub Actions
+itself, but the earlier fixes already turned every other job green, so this
+should be the last piece.
+
+**Not done / open:** none.
+
+---
+
 ## 2026-09-23 — CI's static job could never run its unit tests; a live compliance gate found broken
 **Commit(s):** `8835626`
 
