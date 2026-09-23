@@ -30,6 +30,54 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-09-23 — CI was red on main: lint, mypy, and a migration downgrade bug
+**Commit(s):** `45e01fa`
+
+**Built:** nothing new — this is main going green again after two commits
+earlier the same day (`e34ad39`, `a3c91e9`) had left it red. Fixed: seven
+ruff findings across files touched earlier in the day's session (an en dash
+in a docstring, two unsorted import blocks, two unused test imports, one
+unparenthesized `and`/`or`); four mypy errors that had never actually run in
+CI because the Lint step fails before Types does (`outbox/service.py`'s
+drain result typed against one `Sent` dataclass when a second, structurally
+identical one could also flow into it; `card.py` using Pillow's pre-10 name
+for a resampling filter; `otp.py` passing `str | None` where
+`queue_email` wants `str`, asserted rather than re-typed since
+`prefers_email()` already guarantees it on that path).
+
+**The real bug:** migration 0008's `downgrade()` re-narrows
+`ledger_entries`' `source` CHECK back to `('paystack', 'fee')` — but CI's own
+"Database guarantees" step (`pytest -m db`) runs first and leaves a real
+`source='reversal'` row behind, which the narrower constraint then refuses.
+Chasing the reverse chain all the way to base surfaced a second, older bug
+of the same shape: migration 0001's `downgrade()` drops the `ops` schema,
+which is where `alembic`'s own version table lives (`env.py`'s
+`version_table_schema`) — the cascade takes it with it mid-command, so
+alembic has nowhere to record "now at base". Between the two, `alembic
+downgrade base` had likely never actually succeeded once in this project's
+history; nothing before today exercised the full chain in one run.
+
+**Why these are safe fixes and not scope creep on 0001/0008:** both
+downgrades already say, in their own docstrings, that they are destructive
+and for a scratch database only. Deleting a reversal row under a
+temporarily disabled trigger (0008) and recreating an empty
+`ops.alembic_version` with the one row alembic's bookkeeping expects to
+delete (0001) stay entirely inside that same charter — neither migration's
+`upgrade()` changed, and no real environment is affected (a live database is
+never downgraded to base).
+
+**Verified:** reproduced CI's exact three-step sequence against a
+from-scratch local PostgreSQL 15 — `alembic upgrade head`, `pytest -m db`
+(the same command CI's "Database guarantees" step runs, which is what plants
+the reversal row), `alembic downgrade base`, `alembic upgrade head` again —
+all clean. `ruff check .` and `mypy src` both clean. Full suite (`pytest -q`)
+clean on the resulting database. Not yet confirmed on GitHub Actions itself;
+the push that should turn CI green is `45e01fa`.
+
+**Not done / open:** none — this was a pure fix, no follow-up work implied.
+
+---
+
 ## 2026-09-23 — Migration 0010: clubs
 **Commit(s):** `5d8dc5e`
 
