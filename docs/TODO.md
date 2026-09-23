@@ -46,10 +46,14 @@ today. The other two cannot until Stage 2 is built — that is what this list is
   2026-09-20: payments only, no wallets table. Gross and provider fee are
   platform facts, not an athlete's balance. Wallets can come when something needs
   a balance. (The Pilot Build Spec lists wallets; the Build Plan lists ledger lines.)
-- [ ] `[ACCT]` **Paystack test keys** — needed to build initialise and the webhook
-  against the sandbox. Live keys need business verification, which needs a
-  **current CAC registration** (1–3 weeks; nobody has checked it is current).
-  Start this now: it is the longest pole and only bites at launch.
+- [x] `[ACCT]` **Paystack test keys** — given 2026-09-23 and run against the real
+  sandbox, which found a launch-blocking bug (`.invalid` placeholder emails are
+  refused, so every athlete without an email could not pay; fixed) and closed the
+  `fees` unknown (it is present, so `decide()` does not freeze; ₦2,500 costs 13750
+  kobo and settles at 236250). Whole money path proven end to end in test mode.
+  See CLAUDE.md Status. **Live keys still need business verification, which needs a
+  current CAC registration** (1–3 weeks; nobody has checked it is current). Start
+  that now: it is the longest pole and only bites at launch.
 - [ ] `[ACCT]` **Twilio account + Nigerian sender ID** (3–10 days). Needed for real
   OTP and for the coordinator's SMS receipt, which is a Stage 2 exit criterion.
 - [ ] `[ACCT]` **Cloudflare R2 bucket** for photographs and documents (2.2). Can be

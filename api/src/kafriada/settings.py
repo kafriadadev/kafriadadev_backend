@@ -168,10 +168,21 @@ class Settings(BaseSettings):
     # the machine — for tests and demos, refused outside local development.
     # 'paystack' calls Paystack, and needs paystack_secret_key.
     payment_provider: PaymentProviderKind = PaymentProviderKind.NONE
-    # Paystack insists on an email and an athlete need not have one. The
-    # placeholder is built on a reserved domain (.invalid never resolves), so a
-    # receipt sent to it goes nowhere instead of to a stranger.
-    payment_placeholder_email_domain: str = "payments.kafriada.invalid"
+    # Paystack insists on an email and an athlete need not have one, so one is
+    # made up per athlete. It must be a domain **we control and nobody reads**:
+    # Paystack emails a receipt to whatever is given.
+    #
+    # It used to be `payments.kafriada.invalid`. RFC 2606 reserves `.invalid`
+    # for exactly this, and it was the obviously correct choice — but Paystack
+    # refuses it outright: `400 "email" must be a valid email` (verified against
+    # the sandbox 2026-09-23). Every athlete without an email would have been
+    # unable to pay at all. A real domain is therefore required.
+    #
+    # `[USER]` Confirm the domain before launch, and publish a **null MX**
+    # record for it (RFC 7505: `MX 0 "."`), which is how a domain says it
+    # accepts no mail — otherwise these receipts bounce against a domain whose
+    # sending reputation is also carrying the real athlete email.
+    payment_placeholder_email_domain: str = "payments.kafriada.ng"
 
     # -- Media (photographs and identity documents) ------------------------
     # Where the bytes live. 'none' refuses uploads with "not available yet";

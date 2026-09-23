@@ -30,6 +30,56 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-09-23 — Paystack run against the real sandbox; a launch-blocking bug found
+**Commit(s):** *(with the notification work; `api/.env` holds the keys and is not committed)*
+
+**Built:** nothing new — this was *verification*, and it earned its keep. Test
+keys arrived, so `PAYMENT_PROVIDER=paystack` was switched on and the adapter
+pointed at the live sandbox for the first time since 2.1 was written.
+
+**What it found:**
+
+1. **`.invalid` placeholder emails are refused — this would have broken
+   payments at launch.** An athlete need not have an email, so one is invented
+   for Paystack, which insists on the field. It was built on
+   `payments.kafriada.invalid`: RFC 2606 reserves `.invalid` for exactly this,
+   it never resolves, and a receipt sent there can never reach a stranger. It
+   is the *correct* choice on paper. Paystack answers `400 "email" must be a
+   valid email` and refuses the checkout outright — so **every athlete without
+   an email on file could not have paid at all**.
+   Worse, a test covered this and asserted the bug: `email.endswith(".invalid")`.
+   It passed for months because it ran against `FakeProvider`, which accepts
+   anything given to it. A fake proving the opposite of the truth is the whole
+   argument for running the real thing before launch and not after.
+   Fixed: the default is now `payments.kafriada.ng`, and the test asserts a
+   deliverable TLD instead. Domains checked and accepted: `kafriada.ng`,
+   `payments.kafriada.ng`, `badellafarmandranch.site`.
+
+2. **`fees` is present, so real payments will not freeze.** `decide()` FREEZES
+   a payment whose event carries no fee — a deliberate refusal to guess. Nobody
+   had confirmed Paystack actually sends one. It does: ₦2,500 costs **13750
+   kobo**, settling at **236250 kobo (₦2,362.50)**. That is also the exact
+   figure `.env`'s OPEN QUESTION A1 was waiting on — whether ₦2,500 is the
+   price or the take-home is now a decision with a real number behind it.
+
+3. **The money path works end to end against real Paystack.** Our
+   `start_payment` created a checkout, a real test card paid it, and our own
+   `reconcile()` job settled it: exactly two ledger lines (250000 credit,
+   13750 fee debit) and one idempotency row. That is Stage 2 exit criterion 1
+   in substance, in test mode.
+
+4. Paystack **rate-limits** `initialize` — 429 after a handful in quick
+   succession. Worth knowing before the 200-registration burst test.
+
+**Not done / open:** no webhook has actually been *received* from Paystack —
+that needs a publicly reachable URL, so only the reconciliation path is proven
+directly. Both feed the same strict reader and the same idempotency key, so the
+parsing and settlement halves are covered; the HMAC signature check over a real
+Paystack body is not. Live keys still need business verification, which needs a
+current CAC registration.
+
+---
+
 ## 2026-09-23 — 2.3: the outbox carries every notification, not just SMS
 **Commit(s):** *(see below)*
 

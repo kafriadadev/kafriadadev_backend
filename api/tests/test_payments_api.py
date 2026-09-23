@@ -17,6 +17,7 @@ What is proved here:
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Iterator
 
 import pytest
@@ -126,14 +127,28 @@ class TestStarting:
                      r=response.json()["reference"])
         assert row["expected_kobo"] == PRICE
 
-    def test_an_athlete_without_an_email_gets_a_placeholder_that_cannot_receive_mail(
+    def test_an_athlete_without_an_email_gets_a_placeholder_paystack_will_accept(
         self, client: TestClient, fake: FakeProvider
     ) -> None:
+        """The placeholder must be an address Paystack does not refuse.
+
+        This test used to assert the opposite — that the placeholder ended in
+        ``.invalid``. RFC 2606 reserves that for exactly this purpose, so it
+        read as obviously right, and the fake provider accepted it happily.
+        Against the real sandbox Paystack answers
+        ``400 "email" must be a valid email`` and refuses the whole checkout,
+        which would have left every athlete without an email unable to pay.
+        Verified 2026-09-23; see settings.payment_placeholder_email_domain.
+        """
         athlete = athlete_with_files(client)
         client.post("/v1/payments", json=BODY, headers=athlete.headers)
         email = str(fake.calls[-1]["email"])
-        assert email.endswith(".invalid")
-        assert athlete.user_id.hex in email
+
+        assert athlete.user_id.hex in email, "the address must identify the athlete"
+        assert re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email), email
+        # Reserved TLDs read as the careful choice and are the one thing a
+        # payment provider will not take.
+        assert not email.endswith((".invalid", ".test", ".example", ".localhost")), email
 
     def test_only_the_athletes_own_price_can_be_started_here(
         self, client: TestClient, fake: FakeProvider

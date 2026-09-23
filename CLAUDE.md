@@ -381,6 +381,30 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `list_payments()`, `GET /v1/payments`, `/payments` — every payment the
   athlete has ever started, newest first, same confirmed/checking/needs-a-
   check/not-completed language `/pay` already uses.
+- **Paystack sandbox — RUN FOR REAL 2026-09-23, and it found a launch-blocking
+  bug.** Test keys are in `api/.env` with `PAYMENT_PROVIDER=paystack`.
+  1. **`.invalid` placeholder emails are refused.** `payments.kafriada.invalid`
+     (RFC 2606's reserved TLD, chosen precisely because it never resolves) gets
+     `400 "email" must be a valid email` from Paystack, which fails the whole
+     checkout. **Every athlete without an email would have been unable to pay.**
+     A test existed and asserted `email.endswith(".invalid")` — it passed
+     because it ran against `FakeProvider`, which accepts anything. Default is
+     now `payments.kafriada.ng`; the test now asserts a real TLD instead.
+     `[USER]` confirm the domain and give it a **null MX** record (RFC 7505).
+  2. **`fees` IS present** on a real `charge.success`/verify — so `decide()`
+     does *not* freeze real payments. This was the other open unknown.
+     ₦2,500 costs **13750 kobo** in fees, settling at **236250 kobo**
+     (₦2,362.50) — the exact number for `.env`'s OPEN QUESTION A1.
+  3. **The whole money path works end to end against real Paystack**: our
+     `start_payment` → a real card charge → our `reconcile()` → exactly two
+     ledger lines (250000 credit, 13750 fee debit) and one idempotency row.
+     That is Stage 2 exit criterion 1 in substance, still in test mode.
+  4. Paystack **rate-limits** `initialize` (429 after a handful in quick
+     succession). Worth knowing before the burst test.
+  Accepted domains checked: `kafriada.ng`, `payments.kafriada.ng`,
+  `badellafarmandranch.site`. Still not done: no webhook has been received from
+  Paystack (needs a public URL), so only the reconciliation path is proven —
+  both share the same strict reader and idempotency key.
 - **2.3 outbox generalisation — done 2026-09-23.** A third event type,
   `notification.requested`, addressed to a **person** rather than a number or an
   inbox: the caller gives both wordings, and the worker resolves how to reach
