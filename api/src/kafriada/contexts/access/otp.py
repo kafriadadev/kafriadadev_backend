@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 from kafriada.contexts.access.email_templates import otp_email_html
 from kafriada.outbox import service as outbox
 from kafriada.security.tokens import OTP_MAX_ATTEMPTS, hash_otp, new_otp, tokens_equal
-from kafriada.settings import OtpChannel, get_settings
+from kafriada.settings import get_settings
 
 log = structlog.get_logger(__name__)
 
@@ -127,8 +127,9 @@ def send_code(
     body = BODIES[purpose].format(code=code, minutes=cfg.otp_minutes_valid)
     # 'email' is a pilot stand-in for SMS (see settings.otp_channel). An account
     # with no email on file still gets its code the ordinary way — there is
-    # nowhere else to send it.
-    if cfg.otp_channel is OtpChannel.EMAIL and email:
+    # nowhere else to send it. The rule itself lives in outbox.service, so this
+    # path and every other notification cannot drift apart.
+    if outbox.prefers_email(email):
         html = otp_email_html(code=code, minutes=cfg.otp_minutes_valid, purpose=purpose)
         outbox.queue_email(
             session, to_email=email, subject=EMAIL_SUBJECTS[purpose], body=body,

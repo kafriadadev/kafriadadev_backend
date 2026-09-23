@@ -46,6 +46,7 @@ from kafriada.contexts.payments.rules import (
 )
 from kafriada.contexts.verification import service as verification
 from kafriada.db.engine import money_transaction
+from kafriada.outbox.service import queue_notification
 
 log = structlog.get_logger(__name__)
 
@@ -117,8 +118,8 @@ def settle_charge(
             # other writer of this payment (the abandon sweep, a reviewer).
             row = session.execute(
                 text(
-                    "SELECT status, expected_kobo FROM money.payments "
-                    "WHERE id = :id FOR UPDATE"
+                    "SELECT status, expected_kobo, paid_by, on_behalf_of "
+                    "FROM money.payments WHERE id = :id FOR UPDATE"
                 ),
                 {"id": payment_id},
             ).one()
@@ -156,6 +157,7 @@ def settle_charge(
                 moved = verification.mark_paid(session, payment_id) is not None
                 action = "payment.settled"
                 result = Settlement(Outcome.SETTLED, payment_id, verification_moved=moved)
+                _send_receipt(session, row, event.amount_kobo)
             else:
                 new_status = transition(PaymentStatus(row.status), PaymentStatus.FROZEN)
                 details["reason"] = decision.reason
@@ -194,3 +196,47 @@ def settle_charge(
     elif result.outcome is Outcome.UNKNOWN:
         log.error("payment_reference_unknown", reference=event.reference)
     return result
+
+
+def _naira(kobo: int) -> str:
+    """Kobo as a printed amount. Integers only — see ledger.entries."""
+    return f"₦{kobo // 100:,}.{abs(kobo % 100):02d}"
+
+
+def _send_receipt(session, row, paid_kobo: int) -> None:  # type: ignore[no-untyped-def]
+    """Tell the person it is for that their money arrived.
+
+    Queued inside the settlement transaction, so a receipt cannot exist for a
+    payment that did not settle, nor a settlement go unannounced.
+
+    It goes to the **athlete**, not whoever pressed pay: when a coordinator
+    pays on behalf of someone (2.4), the receipt is that athlete's evidence,
+    and it is a Stage 2 exit criterion that they receive it. Only this role's
+    own tables are read to work out who that is — ``kaf_money`` has no grant on
+    ``ops.users``, so the address itself is resolved by the worker later.
+    """
+    tell = row.paid_by
+    if row.on_behalf_of is not None:
+        athlete_user = session.execute(
+            text("SELECT user_id FROM identity.athletes WHERE id = :a"),
+            {"a": row.on_behalf_of},
+        ).scalar_one_or_none()
+        if athlete_user is not None:
+            tell = athlete_user
+
+    amount = _naira(paid_kobo)
+    queue_notification(
+        session,
+        user_id=tell,
+        sms=(
+            f"KAFRIADA: we received your payment of {amount}. Your verification is now "
+            "with your LGA coordinator to review."
+        ),
+        subject="KAFRIADA payment received",
+        email=(
+            f"We received your payment of {amount}.\n\n"
+            "Your verification is now with your LGA coordinator to review. You will be "
+            "told as soon as it is decided."
+        ),
+        purpose="payment_received",
+    )

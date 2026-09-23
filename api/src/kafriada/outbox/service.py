@@ -32,11 +32,18 @@ from kafriada.outbox import email_providers
 from kafriada.outbox.email_providers import EmailError
 from kafriada.outbox.email_providers import Sender as EmailSender
 from kafriada.outbox.providers import Sender, SmsError, build_sender
+from kafriada.settings import OtpChannel, get_settings
 
 log = structlog.get_logger(__name__)
 
 SMS_REQUESTED = "sms.requested"
 EMAIL_REQUESTED = "email.requested"
+# Addressed to a *person*, not to a phone or an inbox: the worker looks up how to
+# reach them at send time. Two reasons, and the second is the load-bearing one:
+# a recipient who changes their number between queueing and sending still gets the
+# message, and a caller that cannot read ops.users can still notify someone —
+# settlement runs as kaf_money, which by design has no grant on that table at all.
+NOTIFICATION_REQUESTED = "notification.requested"
 
 MAX_ATTEMPTS = 5
 # Seconds before each retry. A one-time code is worth nothing in an hour, so the
@@ -51,6 +58,56 @@ class DrainResult:
     failed: int = 0
     # True when there was nothing due. Lets a worker loop idle politely.
     empty: bool = False
+
+
+def prefers_email(email: str | None) -> bool:
+    """Whether a message to this person should go by email rather than SMS.
+
+    The one place the pilot's channel rule lives, so the OTP path and every
+    other notification cannot drift apart. 'email' is a stand-in while Twilio
+    has no Nigerian sender id (settings.otp_channel); somebody with no email on
+    file still gets SMS, because there is nowhere else to send it.
+    """
+    return bool(email) and get_settings().otp_channel is OtpChannel.EMAIL
+
+
+def queue_notification(
+    session: Session,
+    *,
+    user_id: UUID,
+    sms: str,
+    subject: str,
+    email: str,
+    purpose: str,
+) -> int:
+    """Queue one message to a person, inside the caller's transaction.
+
+    Both wordings are stored: which one is used depends on how that person can
+    be reached, and that is not known until the worker sends it. No phone
+    number or address is written here — only who to tell.
+    """
+    message_id: int = session.execute(
+        text(
+            """
+            INSERT INTO ops.outbox (event_type, payload)
+            VALUES (:event_type, CAST(:payload AS jsonb))
+            RETURNING id
+            """
+        ),
+        {
+            "event_type": NOTIFICATION_REQUESTED,
+            "payload": json.dumps(
+                {
+                    "user_id": str(user_id),
+                    "sms": sms,
+                    "subject": subject,
+                    "email": email,
+                    "purpose": purpose,
+                }
+            ),
+        },
+    ).scalar_one()
+    return message_id
 
 
 def queue_sms(
@@ -156,14 +213,35 @@ def _send_one(post: Sender, email_post: EmailSender) -> str | None:
         attempts = int(row["attempts"]) + 1
         event_type = row["event_type"]
 
-        if event_type not in (SMS_REQUESTED, EMAIL_REQUESTED):
+        if event_type not in (SMS_REQUESTED, EMAIL_REQUESTED, NOTIFICATION_REQUESTED):
             _mark_failed(session, row["id"], attempts, f"unknown event {event_type}")
             log.error("outbox_unknown_event", event_type=event_type)
             return "failed"
 
+        # Addressed to a person: find out how to reach them, now rather than when
+        # it was queued. Someone with no way to be reached is a permanent failure,
+        # not a retry — the row is kept as the evidence that nobody was told.
+        sent_to: str | None = None
+        if event_type == NOTIFICATION_REQUESTED:
+            reach = _reach(session, payload["user_id"])
+            if reach is None:
+                _mark_failed(session, row["id"], attempts, "no phone or email on file")
+                log.error("outbox_unreachable", purpose=payload.get("purpose"))
+                return "failed"
+            sent_to, by_email = reach
+
         try:
             if event_type == SMS_REQUESTED:
                 result = post.send(to=str(payload["to"]), body=str(payload["body"]))
+            elif event_type == NOTIFICATION_REQUESTED:
+                assert sent_to is not None
+                result = (
+                    email_post.send(
+                        to=sent_to, subject=str(payload["subject"]), body=str(payload["email"])
+                    )
+                    if by_email
+                    else post.send(to=sent_to, body=str(payload["sms"]))
+                )
             else:
                 html = payload.get("html")
                 result = email_post.send(
@@ -204,7 +282,10 @@ def _send_one(post: Sender, email_post: EmailSender) -> str | None:
                        attempts = :attempts,
                        last_error = NULL,
                        payload = jsonb_build_object(
-                           'to', payload -> 'to',
+                           'to', coalesce(payload -> 'to', to_jsonb(CAST(:sent_to AS text))),
+                           -- Kept for a notification: it is the only thing tying a
+                           -- delivered row back to the person who was told.
+                           'user_id', payload -> 'user_id',
                            'subject', payload -> 'subject',
                            'purpose', payload -> 'purpose',
                            'provider', CAST(:provider AS text),
@@ -218,10 +299,34 @@ def _send_one(post: Sender, email_post: EmailSender) -> str | None:
                 "attempts": attempts,
                 "provider": result.provider,
                 "message_id": result.provider_message_id,
+                # A notification carried no address; record the one it reached, so a
+                # delivered row is still evidence of where the message went.
+                "sent_to": sent_to,
             },
         )
         log.info("outbox_sent", provider=result.provider, purpose=payload.get("purpose"))
         return "sent"
+
+
+def _reach(session: Session, user_id: str) -> tuple[str, bool] | None:
+    """How to reach this person, and whether that is by email. None if neither.
+
+    Read here, on the worker's own connection, rather than carried in the
+    payload: the roles that queue a notification do not all have a grant on
+    ``ops.users`` — settlement runs as ``kaf_money``, which has none.
+    """
+    row = session.execute(
+        text(
+            "SELECT phone_e164, email FROM ops.users "
+            "WHERE id = CAST(:id AS uuid) AND anonymised_at IS NULL"
+        ),
+        {"id": user_id},
+    ).mappings().one_or_none()
+    if row is None:
+        return None
+    if prefers_email(row["email"]):
+        return str(row["email"]), True
+    return (str(row["phone_e164"]), False) if row["phone_e164"] else None
 
 
 def _mark_failed(session: Session, message_id: int, attempts: int, error: str) -> None:

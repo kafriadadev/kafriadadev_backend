@@ -77,11 +77,27 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `TRUSTED_HOSTS=["*"]` and the API will not boot. Start the tiers directly:
   `api/.venv/Scripts/python.exe -m uvicorn kafriada.main:app --host 127.0.0.1 --port 8010`
   (from `api/`) and `node node_modules/next/dist/bin/next start -p 3000` (from `web/`).
-- **2026-09-20: `db.slwlefnfdsjfeimyjhag.supabase.co` and the project's API host
-  `slwlefnfdsjfeimyjhag.supabase.co` do not resolve at all** ("No such host") while
-  supabase.com and github.com do — so it is not IPv6 and not the local network. Most
-  likely the free project was **paused after a week idle** (or removed). Check the
-  Supabase dashboard and restore it before debugging anything else.
+- **SOLVED 2026-09-23 — use the IPv4 pooler, not the direct endpoint.**
+  `db.<ref>.supabase.co` is **IPv6-only** (Supabase ran out of IPv4 addresses), so on
+  a network without working IPv6 the name resolves and the TCP connect then hangs
+  until it times out. The dashboard says "Healthy" the whole time and is *right* —
+  their side is fine; this machine simply cannot route to that address. Do not read a
+  timeout here as a paused project.
+  **The fix, no paid add-on needed:** Supavisor's pooler is IPv4-reachable.
+      host: aws-1-eu-west-1.pooler.supabase.com   (aws-0 is a different tenant
+                                                   cluster — it answers, then says
+                                                   "ENOTFOUND tenant/user")
+      port: 5432   <- SESSION mode. Use this one.
+      user: <role>.<project-ref>   e.g. kaf_app.slwlefnfdsjfeimyjhag
+  Everything else (password, `postgres` db, `sslmode=require`) is unchanged, and all
+  four roles keep their own identity, so the privilege boundary is untouched.
+  `api/.env` now uses this; the old direct URLs are kept commented above each one.
+  **Port 6543 (transaction mode) would break this app**: `kafriada.jobs` takes
+  *session-level* advisory locks and psycopg auto-prepares statements — neither
+  survives transaction pooling. Session mode behaves like a direct connection, so no
+  application code changes were needed.
+  *(Earlier note, 2026-09-20, now explained: the host "not resolving" was this same
+  IPv6 path failing, not a paused project.)*
 - **No reachable database? Build a private one.** Needs only the installed
   PostgreSQL binaries, no Docker, no password for any existing database:
   `initdb -D <tmp>/pgdata -U kafriada_admin -A scram-sha-256 --pwfile=<file> -E UTF8`,
@@ -94,8 +110,16 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   as-is: it hard-codes port 5432. `pg_ctl -w start` can hang a wrapping shell; the
   server is up regardless (check `netstat` for the port).
 - The link to Supabase drops intermittently (DNS `getaddrinfo failed`, connection
-  timeouts). Retry before debugging. The 200-registration burst test times out at
-  default load on this link; use `BURST_WORKERS=6 BURST_SIZE=100`.
+  timeouts). Retry before debugging — but if it is timing out *consistently*, check
+  which endpoint is configured first: the direct one is IPv6-only, see above. The
+  200-registration burst test times out at default load on this link; use
+  `BURST_WORKERS=6 BURST_SIZE=100`.
+- **Two different failures look identical and are not.** A pooled-connection
+  exhaustion (too many of: the API, the outbox dispatcher, a live curl session, and a
+  heavy DB test file, all holding connections at once) and an unreachable link both
+  surface as `psycopg.errors.ConnectionTimeout`. Tell them apart by stopping
+  everything and trying **one** bare connection: if that still times out, it is the
+  link, not contention. Both were hit in one session on 2026-09-22.
 - Audit metadata keys containing `session`, `token`, `password` etc. are stored as
   `[redacted]` — name keys accordingly (e.g. `logins_ended`).
 - A wrong one-time code must be counted in its **own** committed transaction: the
@@ -357,6 +381,22 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `list_payments()`, `GET /v1/payments`, `/payments` — every payment the
   athlete has ever started, newest first, same confirmed/checking/needs-a-
   check/not-completed language `/pay` already uses.
+- **2.3 outbox generalisation — done 2026-09-23.** A third event type,
+  `notification.requested`, addressed to a **person** rather than a number or an
+  inbox: the caller gives both wordings, and the worker resolves how to reach
+  them at send time. `outbox.service.prefers_email()` is now the single place
+  the pilot's channel rule lives, shared with the OTP path so they cannot
+  drift. Two things this buys that a resolved address could not: a number
+  changed after queueing is still the one used, and **a role with no grant on
+  `ops.users` can still notify someone** — settlement runs as `kaf_money`,
+  which by design cannot read that table, so a payment could not otherwise send
+  its own receipt. Wired up: all four verification decisions, and a **payment
+  receipt on settlement**, which did not exist at all before (half of a Stage 2
+  exit criterion; the coordinator-pays-on-behalf half is 2.4, and the receipt
+  already goes to `on_behalf_of`'s athlete rather than whoever pressed pay).
+  Unreachable fails once and is kept as evidence rather than retrying; a
+  delivered row keeps `user_id` and the address it actually reached.
+  `tests/test_notifications.py` — 6, including the money-role privilege case.
 - **ATH-02, edit my details — done and verified 2026-09-23** (migration
   0009). Gender, dominant side, secondary sport, years of experience — none
   of them captured at registration, all optional, all CHECK-constrained

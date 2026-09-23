@@ -96,13 +96,19 @@ def decisions(request_id: UUID) -> list[tuple[str, str | None]]:
 
 
 def sms_to(who) -> list[str]:  # type: ignore[no-untyped-def]
-    (row,) = sql("SELECT phone_e164 FROM ops.users WHERE id = :u", u=who.user_id)
+    """What this athlete has been told about their verification, in order.
+
+    A decision is queued addressed to the *person*, not to a number — the
+    worker decides at send time whether that reaches them by SMS or email — so
+    this reads the queue by user id and takes the SMS wording of each.
+    """
     return [
         str(r["body"])
         for r in sql(
-            "SELECT payload->>'body' AS body FROM ops.outbox "
-            "WHERE payload->>'to' = :p AND payload->>'purpose' LIKE 'verification_%' ORDER BY id",
-            p=row["phone_e164"],
+            "SELECT payload->>'sms' AS body FROM ops.outbox "
+            "WHERE payload->>'user_id' = :u AND payload->>'purpose' LIKE 'verification_%' "
+            "ORDER BY id",
+            u=str(who.user_id),
         )
     ]
 

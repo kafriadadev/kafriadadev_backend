@@ -34,9 +34,14 @@ today. The other two cannot until Stage 2 is built — that is what this list is
 
 ## 0. Only the project lead can unblock these
 
-- [ ] `[USER]` **Supabase project.** Its hostnames do not resolve at all (2026-09-20)
-  while supabase.com does — likely paused after a week idle. Check the dashboard
-  and restore it. Blocks the developer's database testing.
+- [x] `[USER]` **Supabase project.** ~~Its hostnames do not resolve at all
+  (2026-09-20)... likely paused after a week idle.~~ **That diagnosis was wrong.**
+  Solved 2026-09-23: the project was healthy throughout. `db.<ref>.supabase.co` is
+  **IPv6-only**, so it times out from a network without working IPv6. Fixed by
+  pointing `api/.env` at the IPv4 pooler
+  (`aws-1-eu-west-1.pooler.supabase.com:5432`, session mode, `<role>.<ref>`
+  usernames — see CLAUDE.md Gotchas). All four roles verified, `/readyz` green,
+  migration 0009 applied. No longer blocks the developer's database testing.
 - [x] `[USER]` **Wallets: per-athlete, or ledger tied to payments only?** Decided
   2026-09-20: payments only, no wallets table. Gross and provider fee are
   platform facts, not an athlete's balance. Wallets can come when something needs
@@ -169,10 +174,21 @@ start and VER-03 (f7269e9).
   run (for cron to page on). **Not deployed anywhere:** it needs a process supervisor
   on whichever host is chosen (`docs/deploy-runbook.md`); the standalone `outbox.dispatch`
   and `media.worker` still work and the runner subsumes them.
-- [ ] **Outbox for every notification**, not only SMS (`FOR UPDATE SKIP LOCKED`
-  consumer exists; extend it). **Retention is done** (858feb0: delivered rows after 30 days,
-  failed after 90, waiting never). Generalising beyond SMS is not: no other kind of
-  notification exists yet to generalise for.
+- [x] **Outbox for every notification**, not only SMS. Done 2026-09-23. A third event
+  type, `notification.requested`, is addressed to a **person** rather than to a number
+  or an inbox: the caller supplies both wordings, and the worker resolves how to reach
+  them at send time (`outbox.service.prefers_email` is the single place the channel
+  rule lives, shared with the OTP path so the two cannot drift). Two things this buys
+  that a resolved address could not: a number changed after queueing is still the one
+  used, and **a role with no grant on `ops.users` can still notify somebody** —
+  settlement runs as `kaf_money`, which by design cannot read that table, so a payment
+  could not otherwise send its own receipt. Wired up: all four verification decisions
+  (approved / rejected / escalated / revoked), and a **payment receipt on settlement**,
+  which did not exist at all before and is half of a Stage 2 exit criterion. Somebody
+  unreachable fails once and is kept as evidence rather than retrying. Retention was
+  already done (858feb0). Tests: `tests/test_notifications.py` (6, including the
+  money-role privilege case); the settlement, OTP/outbox and verification suites all
+  re-run clean.
 - [x] **Reconciliation** (858feb0, every 10 minutes rather than hourly — a missed webhook
   is a customer waiting): asks Paystack's verify API and hands only a `success` to the
   same `settle_charge`, same idempotency key. Never reverses, refunds or cancels;
@@ -191,22 +207,22 @@ start and VER-03 (f7269e9).
   than was paid; makes no call to Paystack. Ledger line `source='reversal'` with
   `recorded_by` and `note` enforced by CHECK. (There are no wallets, so it is against
   the payment.)
-- [ ] `[UI]` **ADM-04** — the screen for the above. Built 2026-09-22: `GET
+- [x] `[UI]` **ADM-04** — the screen for the above. Built 2026-09-22: `GET
   /v1/admin/payments/{reference}` (a lookup the API didn't have — reversal only ever
   took a reference an admin already had from Paystack's dashboard, but nothing let
   them preview it first) plus `/admin/reversal`. Live-verified end to end against
   Supabase: looked up a settled payment, recorded a refund, confirmed
-  `already_reversed`, a second attempt correctly refused (409). **Not yet re-run
-  through the full test suite** — the Supabase link went down mid-session (a bare,
-  unloaded connection attempt timed out; see CLAUDE.md Gotchas). Run
-  `test_verification.py` and `test_settlement.py` once it's back, then tick this box.
+  `already_reversed`, a second attempt correctly refused (409). Suite re-run
+  2026-09-23 once the link was fixed (see section 0): `test_settlement.py` and
+  `test_route_manifest.py`, 156 tests, clean against Supabase through the pooler.
 
 ### 2.4 Assisted payment, clubs and the admin console (3–4 days)
 
 - [ ] **Coordinator pays on behalf** (`[UI]` **CRD-04**): the ledger lands on the athlete,
   `coordinator_id` is tagged on the payment, daily caps by count and by naira
   (`[USER]` numbers), and an **SMS receipt to the athlete's phone** at confirmation.
-- [ ] **Migration 0009 — clubs** (0008 is the safety net): organizations, teams, roster members, with the
+- [ ] **Migration 0010 — clubs** (0008 is the safety net, 0009 the athlete details added
+  for ATH-02): organizations, teams, roster members, with the
   *at-most-one-open-membership* rule as a **partial unique index** — the database
   enforces it, not the code.
 - [ ] **Clubs** `[UI]`: **CLB-01** register, **CLB-02** dashboard (scope is the

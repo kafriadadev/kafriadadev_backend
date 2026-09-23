@@ -37,7 +37,7 @@ from kafriada.contexts.media import service as media
 from kafriada.contexts.media.store import ObjectStore
 from kafriada.contexts.payments.rules import Purpose, expected_amount_kobo
 from kafriada.db.engine import transaction
-from kafriada.outbox.service import queue_sms
+from kafriada.outbox.service import queue_notification
 from kafriada.settings import get_settings
 
 log = structlog.get_logger(__name__)
@@ -55,6 +55,15 @@ SMS_ESCALATED = (
     "LGA coordinator, who will help you in person."
 )
 SMS_REVOKED = "KAFRIADA: your verification has been withdrawn. Contact your LGA coordinator for help."
+
+# The same four decisions, written for an inbox rather than a locked screen.
+# A subject line is read before the message is opened, so it says what happened.
+EMAIL_SUBJECTS = {
+    "approved": "Your KAFRIADA verification is approved",
+    "rejected": "Your KAFRIADA verification needs another try",
+    "escalated": "Your KAFRIADA verification needs your LGA coordinator",
+    "revoked": "Your KAFRIADA verification has been withdrawn",
+}
 
 
 class Refused(Exception):
@@ -653,11 +662,23 @@ def _write_decision(
 
 
 def _tell_athlete(session: Session, athlete_user_id: UUID, body: str, *, purpose: str) -> None:
-    phone = session.execute(
-        text("SELECT phone_e164 FROM ops.users WHERE id = :u"), {"u": athlete_user_id}
-    ).scalar_one_or_none()
-    if phone:
-        queue_sms(session, to_phone=phone, body=body, purpose=purpose)
+    """Tell the athlete what was decided, by whatever reaches them.
+
+    Queued in the same transaction as the decision itself, so a message can
+    never describe a decision that was rolled back. Which channel carries it is
+    the worker's to decide at send time — see outbox.service.queue_notification.
+    """
+    decision = purpose.removeprefix("verification_")
+    queue_notification(
+        session,
+        user_id=athlete_user_id,
+        sms=body,
+        subject=EMAIL_SUBJECTS.get(decision, "About your KAFRIADA verification"),
+        # The SMS wording is already the whole message; an email repeating it with
+        # a paragraph of padding would say no more and read like filler.
+        email=body.removeprefix("KAFRIADA: "),
+        purpose=purpose,
+    )
 
 
 # ---------------------------------------------------------------------------

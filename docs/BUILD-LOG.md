@@ -30,6 +30,106 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-09-23 — 2.3: the outbox carries every notification, not just SMS
+**Commit(s):** *(see below)*
+
+**Built:** a third outbox event type, `notification.requested`, addressed to a
+**person** rather than to a phone number or an inbox. The caller supplies both
+wordings (`sms` and `subject`/`email`) and says who to tell; the worker looks
+up how to reach them and picks the channel when it actually sends.
+`outbox.service.prefers_email()` is now the one place the pilot's channel rule
+lives, and the OTP path was changed to call it too, so the two cannot drift.
+
+Wired to the two things that needed it:
+* **All four verification decisions** (approved, rejected, escalated, revoked),
+  which previously only ever queued SMS and so reached nobody while Twilio is
+  unregistered.
+* **A payment receipt on settlement**, which did not exist at all. It goes to
+  the athlete the payment is *for* (`on_behalf_of`), not to whoever pressed
+  pay — which is what makes it half of the Stage 2 exit criterion "a
+  coordinator pays for someone else and that person receives the receipt". The
+  other half is the coordinator flow itself, in 2.4.
+
+**Why addressed to a person rather than an address:** two reasons, and the
+second is load-bearing. A number changed between queueing and sending is still
+the one used. And **a caller with no grant on `ops.users` can still notify
+somebody** — settlement runs as `kaf_money`, which by design cannot read that
+table at all, so if the address had to be resolved by the caller, a payment
+could not send its own receipt. That constraint was found by checking the
+grants rather than assumed: `kaf_money` has `INSERT` on `ops.outbox` and
+`SELECT` on `identity.athletes`, and nothing on `ops.users`.
+
+Someone unreachable is a **permanent** failure, not a retry — there is no
+number to try again later — and the row is kept as the evidence that nobody
+was told.
+
+**Verified:** `tests/test_notifications.py`, six new tests, including the
+money-role case that connects as `kaf_money`, asserts the `ops.users` read is
+refused, and then queues and delivers a notification to that same person
+anyway. The settlement, OTP/outbox and verification suites all re-run clean
+(70 tests), plus the full suite. Writing the tests found two real things: the
+delivered-row scrub was dropping `user_id`, which is the only link from a sent
+message back to who was told (now kept), and `phone_e164` is `NOT NULL`, so
+"unreachable" in this schema means anonymised rather than blank.
+
+**Not done / open:** the receipt wording is plain text; no HTML template like
+the OTP email has. Nothing yet notifies on a payment that *fails* or freezes —
+deliberate, since a frozen payment is an alarm for a person to look at, not
+something to tell the athlete about automatically.
+
+---
+
+## 2026-09-23 — Supabase reachable again: the direct endpoint is IPv6-only
+**Commit(s):** *(config + docs; `api/.env` is gitignored and not committed)*
+
+**Built:** nothing in the application — this was a connection problem, and the
+fix is configuration. `api/.env`'s four `DATABASE_URL_*` now point at
+Supabase's Supavisor pooler instead of the direct endpoint:
+
+    host  aws-1-eu-west-1.pooler.supabase.com
+    port  5432                       (session mode)
+    user  <role>.slwlefnfdsjfeimyjhag
+
+The old direct URLs are kept commented above each one, and
+`.env.backup-before-pooler` holds the original file.
+
+**Why:** `db.<ref>.supabase.co` resolves **IPv6-only** — Supabase ran out of
+IPv4 addresses — so on a network without working IPv6 the name resolves and
+the TCP connect then hangs to timeout. That is the whole of the "Supabase is
+down" story that ran through 2026-09-20 to 09-23: the project was healthy the
+entire time and the dashboard was right to say so; this machine simply could
+not route to that address. The pooler publishes A records and is reachable.
+Credit where due — the project lead pushed back on the diagnosis and asked
+whether IPv4 could be used, which is exactly what unblocked it.
+
+Two choices inside that fix worth keeping:
+* **Session mode (5432), not transaction mode (6543).** `kafriada.jobs` takes
+  *session-level* advisory locks and psycopg auto-prepares statements; neither
+  survives transaction pooling. Session mode behaves like a direct connection,
+  so no application code changed at all.
+* **`<role>.<ref>` usernames keep all four roles distinct**, so the privilege
+  boundary — the thing every other invariant leans on — is untouched. Verified
+  by connecting as each of the four and reading back `current_user`.
+
+Also note: `aws-0-eu-west-1` is a *different* tenant cluster. It answers, then
+refuses with `ENOTFOUND tenant/user`, which reads like a credentials problem
+and is not one.
+
+**Verified:** all four roles connect and report their own identity; `/readyz`
+(which probes every role) returns `{"status":"ready"}`; the web tier renders
+live LGA data from Supabase through the API; migration 0009 applied to
+Supabase, bringing it to the same head the local database was on.
+
+**Also cleared while the link was up:** the throwaway super_admin account made
+for ADM-04's live check. It could **not** be deleted — `ledger_entries
+.recorded_by` still references it and the ledger is append-only, so the
+database refused to erase the authorship of a ledger line. That is the
+invariant doing its job, so the account was neutralised instead: password
+cleared, role grant removed, sessions deleted, `status='anonymised'`. The
+ledger line it authored stays.
+
+---
+
 ## 2026-09-23 — ATH-02: edit my details
 **Commit(s):** `ef30b84`
 
