@@ -30,6 +30,46 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-09-23 — ATH-02: edit my details
+**Commit(s):** `ef30b84`
+
+**Built:** migration 0009 — four nullable columns on `identity.athletes`
+(`gender`, `dominant_side`, `secondary_sport`, `years_experience`), each
+CHECK-constrained to a small fixed set. `get_athlete_details()` /
+`update_athlete_details()` in `contexts/identity/service.py`; `GET`/
+`PUT /v1/athletes/me`; `/details`, one form, sport and position shown for
+context but not editable there.
+
+**Why:** the permission model was already waiting for this —
+`athlete.read_self` and `athlete.update_self` have been seeded for the
+`athlete` role since migration 0001 (Stage 0), with nothing behind either
+until now. The four fixed-set CHECKs over a lookup table: none of the four
+is likely to grow a fifth option that needs its own migration, and a CHECK
+is one statement instead of a table, a foreign key and a seed data insert.
+
+**Verified:** against a private local PostgreSQL 15, stood up fresh for
+this (`initdb`/`pg_ctl`/`bootstrap-roles.sql`/`alembic upgrade head`,
+per `CLAUDE.md`'s documented recipe) because Supabase had been unreachable
+all session — confirmed at the TCP level with nothing else running
+(pool contention had been the cause of an earlier batch of failures that
+same day; this was the link itself, checked in isolation). Migration
+applies and reverses cleanly; `check_migration_safety.py` clean; a live
+GET → PUT(valid) → PUT(invalid, correctly refused with the right field) →
+GET loop against a real registered athlete; `test_permission_matrix.py`
+and `test_route_manifest.py` both pass; a full `check:render` run —
+including, for the first time, a signed-in contrast/overflow audit of
+`/details` and `/payments` themselves via `EXTRA_SESSIONS` — all pass.
+
+**Not done / open:** migration 0009 not yet applied to Supabase — repeat
+once it's reachable. Two choices the migration flags for the project lead
+to confirm before launch: the four gender options offered, and the 0–100
+bound on years of experience — neither is pinned down by the spec as built
+here. Also fixed in passing: `docs/TODO.md`'s screen-built count (said 12,
+was actually 22) and its "empty contexts" line (said `media` and
+`verification` were empty; they haven't been since 2.2) — both corrected.
+
+---
+
 ## 2026-09-22 — ATH-04: my payments
 **Commit(s):** `a2db088`
 
