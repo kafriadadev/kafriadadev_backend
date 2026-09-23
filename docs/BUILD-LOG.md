@@ -30,6 +30,76 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-09-23 — CRD-04: coordinator pays on behalf
+**Commit(s):** *(pending)*
+
+**Built:** `POST /v1/lgas/{lga_id}/athletes/{kuid}/payments`
+(`payment.initiate_behalf`, scope `lga`) and `/assist-pay` — a coordinator
+enters an athlete's KUID and is sent to Paystack, exactly one step ahead of
+the athlete's own `/pay`. `on_behalf_of` and `coordinator_id` are set on the
+row; two new settings, `assisted_payments_per_coordinator_daily` and
+`assisted_kobo_per_coordinator_daily`, cap what one coordinator may start in
+a day.
+
+**Why the caps exist from the first line, with placeholder numbers:** nothing
+here asks the athlete to confirm before their record is charged for, so the
+only thing bounding a compromised coordinator session is these two numbers.
+No document sets them. Rather than block the feature on a number nobody can
+give yet, the code enforces a placeholder (20/day, ₦50,000/day — chosen to be
+obviously survivable, not obviously right) and says plainly in three places
+(the setting's own docstring, `TODO.md`, `CLAUDE.md`) that it needs the
+project lead's real number, ideally from Wave 1's actual figures rather than
+guessed in advance of any.
+
+**Two real bugs found while building this, both the kind that only show up
+once a second payer exists:**
+
+1. **`mark_paid` would have taken the money and reviewed nobody.** It read
+   `AND pay.on_behalf_of IS NULL` — correct while only self-payment existed,
+   silently wrong the moment a second kind of payer did. An assisted payment
+   would have settled into the ledger exactly as it should, and moved no
+   verification to review at all, because the row it looked for belonged to
+   the *payer* and the payer is now sometimes not the athlete. Fixed by
+   resolving whose draft to move — `on_behalf_of` if set, the payer's own
+   athlete row otherwise — rather than assuming there is only one kind of
+   answer.
+2. **The route's own scope check cannot catch a coordinator naming the wrong
+   athlete.** `Requires(..., scope="lga")` reads `lga_id` from the *path* and
+   confirms the coordinator holds a grant on it — that is all it can do. It
+   has no way to know whether the *athlete named in the same path* is
+   actually in that LGA. Get this backwards — trust the permission layer to
+   have covered it — and any LGA coordinator could pay for any athlete in the
+   country, so long as the `lga_id` segment matched their own grant. The
+   check belongs to the service, against the database, not the caller's
+   claim: `_athlete_in_lga()` joins the athlete's `current_lga_id` against the
+   path before anything else runs.
+
+**Verified:** `tests/test_payments_on_behalf.py`, 10 tests — the ledger and
+the review both land on the athlete, the receipt reaches the athlete's phone
+and not the coordinator's, an athlete outside the coordinator's LGA is
+refused (proved with a real second coordinator scoped to a real second LGA,
+not a mock), an athlete with no files yet or already paid is refused, both
+caps refuse at the right moment, and a failed attempt does not count against
+either cap. Full suite green against a real database, twice. A live HTTP
+round trip against the running server (Supabase, through the pooler)
+confirmed both the outer 403 (coordinator has no grant at all on the path's
+LGA) and the inner 404 (grant matches the path, athlete does not).
+
+One flake surfaced and was chased down rather than waved through: the
+existing `test_a_message_is_sent_once…` failed twice in a row on the local
+database, which had accumulated **1,109** outbox rows across a day of
+repeated full-suite runs, itself worsened by this session's new
+`notification.requested` rows (payment receipts, decision emails). Confirmed
+as pile-up, not a regression, by clearing the table and rerunning clean.
+
+**Not done / open:** no separate "look up the athlete first" preview step —
+the single form either starts the checkout or bounces back with the exact
+refusal, unlike ADM-03/04's two-step pattern. Deliberate, for now: proportional
+to what a checkout redirect needs versus what withdrawing a badge or writing a
+ledger line by hand needs, but worth revisiting once real coordinators use it.
+
+---
+
 ## 2026-09-23 — Paystack run against the real sandbox; a launch-blocking bug found
 **Commit(s):** *(with the notification work; `api/.env` holds the keys and is not committed)*
 

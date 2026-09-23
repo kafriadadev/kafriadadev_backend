@@ -338,6 +338,24 @@ export function startPayment(token: string, meta: ClientMeta): Promise<StartedPa
   });
 }
 
+/** CRD-04: a coordinator starts a checkout for an athlete in their own LGA. */
+export function startPaymentOnBehalf(
+  token: string,
+  lga: string,
+  kuid: string,
+  meta: ClientMeta,
+): Promise<StartedPayment> {
+  return call<StartedPayment>(
+    `/v1/lgas/${encodeURIComponent(lga)}/athletes/${encodeURIComponent(kuid)}/payments`,
+    {
+      method: "POST",
+      body: JSON.stringify({ purpose: "stage2_athlete" }),
+      token,
+      meta,
+    },
+  );
+}
+
 export function getVerification(token: string): Promise<Verification> {
   return call<Verification>("/v1/verification", { token });
 }

@@ -145,6 +145,50 @@ def start(body: StartRequest, request: Request) -> StartResponse:
     )
 
 
+@router.post(
+    "/lgas/{lga_id}/athletes/{kuid}/payments",
+    response_model=StartResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[
+        Requires("payment.initiate_behalf", scope="lga"),
+        # Same bucket as an athlete's own start: it is the same call to
+        # Paystack and the same permanent row either way.
+        Throttle("start_payment"),
+    ],
+    summary="A coordinator starts a checkout for an athlete in their own LGA (CRD-04)",
+)
+def start_on_behalf(lga_id: str, kuid: str, body: StartRequest, request: Request) -> StartResponse:
+    principal = current_principal(request)
+    try:
+        started = service.start_payment_on_behalf(
+            principal,
+            lga_id=lga_id,
+            athlete_kuid=kuid,
+            purpose=Purpose(body.purpose),
+            request_id=request_id(request),
+            ip_address=client_ip(request),
+        )
+    except service.Refused as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND
+            if exc.code == "no_athlete"
+            else status.HTTP_429_TOO_MANY_REQUESTS
+            if exc.code in ("daily_count_cap", "daily_amount_cap")
+            else status.HTTP_409_CONFLICT,
+            detail={"message": exc.message, "field": None},
+        ) from None
+    except service.Unavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"message": exc.message, "field": None},
+        ) from None
+    return StartResponse(
+        reference=started.reference,
+        authorization_url=started.authorization_url,
+        amount_kobo=started.amount_kobo,
+    )
+
+
 @router.get(
     "/payments",
     response_model=list[PaymentResponse],

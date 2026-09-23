@@ -136,6 +136,9 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
             ? <a href={`/review?lga=${encodeURIComponent(lga)}`}>Back to the first case</a>
             : "No verifications are waiting in this LGA."}
         </p>
+        <p className="hint">
+          <a href={`/assist-pay?lga=${encodeURIComponent(lga)}`}>Pay for an athlete who cannot pay online</a>
+        </p>
       </div>
     );
   }
@@ -206,6 +209,9 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
       </form>
 
       <p style={{ textAlign: "center" }}><a href={next}>Skip for now</a></p>
+      <p className="hint" style={{ textAlign: "center" }}>
+        <a href={`/assist-pay?lga=${encodeURIComponent(lga)}`}>Pay for an athlete who cannot pay online</a>
+      </p>
     </div>
   );
 }

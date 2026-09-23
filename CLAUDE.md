@@ -405,6 +405,23 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `badellafarmandranch.site`. Still not done: no webhook has been received from
   Paystack (needs a public URL), so only the reconciliation path is proven —
   both share the same strict reader and idempotency key.
+- **CRD-04, coordinator pays on behalf — done and verified 2026-09-23.**
+  `POST /v1/lgas/{lga_id}/athletes/{kuid}/payments`
+  (`payment.initiate_behalf`, scope `lga`), `/assist-pay`. `on_behalf_of` and
+  `coordinator_id` are tagged on the row; two daily caps per coordinator (count
+  and naira — **`[USER]` placeholders**, 20/day and ₦50,000/day, revisit from
+  Wave 1's real figures). The payment receipt already reaches the athlete
+  (built on the 2.3 notification work above). One real bug found and fixed:
+  `mark_paid` excluded `on_behalf_of IS NOT NULL`, so an assisted payment would
+  have settled money and moved nobody's verification to review. The load-
+  bearing fix is the LGA check itself: `Requires(scope="lga")` only confirms
+  the coordinator's *path* matches a grant, not that the *athlete named in the
+  body* is in that LGA — without `_athlete_in_lga`, a coordinator could pay for
+  any athlete in the country by keeping the path correct and naming someone
+  else's athlete. `tests/test_payments_on_behalf.py` (10, incl. the cross-LGA
+  case) plus the full suite pass clean against a real database, twice; a live
+  HTTP round trip against the running server (Supabase) confirmed both the
+  route-level 403 and the service-level 404.
 - **2.3 outbox generalisation — done 2026-09-23.** A third event type,
   `notification.requested`, addressed to a **person** rather than a number or an
   inbox: the caller gives both wordings, and the worker resolves how to reach

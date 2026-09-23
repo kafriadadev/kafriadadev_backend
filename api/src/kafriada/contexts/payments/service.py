@@ -27,7 +27,9 @@ from uuid import UUID
 
 import structlog
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
+from kafriada.clock import today_in_nigeria
 from kafriada.contexts.access.service import Principal
 from kafriada.contexts.audit.service import Actor, record
 from kafriada.contexts.identity import service as identity
@@ -186,6 +188,201 @@ def start_payment(
     except ProviderError as exc:
         # The customer never received an address, so nothing they do can pay
         # this reference. (A late charge on it would still settle: failed → success.)
+        _mark_failed(payment_id, reference, exc, request_id)
+        raise Unavailable(NOT_AVAILABLE) from exc
+
+    return Started(
+        reference=reference,
+        authorization_url=initialised.authorization_url,
+        amount_kobo=amount,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class OnBehalfTarget:
+    athlete_id: UUID
+    athlete_user_id: UUID
+    kuid: str
+
+
+def _athlete_in_lga(session: Session, kuid: str, lga_id: str) -> OnBehalfTarget | None:
+    row = session.execute(
+        text(
+            """
+            SELECT a.id AS athlete_id, a.user_id AS athlete_user_id, a.kuid
+              FROM identity.athletes a
+              JOIN ops.users u ON u.id = a.user_id
+             WHERE a.kuid = :kuid AND a.current_lga_id = :lga AND u.anonymised_at IS NULL
+            """
+        ),
+        {"kuid": kuid, "lga": lga_id},
+    ).mappings().one_or_none()
+    return OnBehalfTarget(**row) if row is not None else None
+
+
+def _has_payment_for_athlete(
+    session: Session, target: OnBehalfTarget, purpose: Purpose, status: PaymentStatus
+) -> bool:
+    """Either kind of payment counts: this must catch an athlete who already paid
+    for themselves online, not only a second assisted attempt."""
+    return bool(
+        session.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM money.payments
+                     WHERE purpose = :purpose AND status = :status
+                       AND (on_behalf_of = :athlete_id
+                            OR (paid_by = :athlete_user_id AND on_behalf_of IS NULL))
+                )
+                """
+            ),
+            {
+                "athlete_id": target.athlete_id,
+                "athlete_user_id": target.athlete_user_id,
+                "purpose": purpose.value,
+                "status": status.value,
+            },
+        ).scalar_one()
+    )
+
+
+def start_payment_on_behalf(
+    coordinator: Principal,
+    *,
+    lga_id: str,
+    athlete_kuid: str,
+    purpose: Purpose,
+    request_id: str | None = None,
+    ip_address: str | None = None,
+) -> Started:
+    """A coordinator starts a checkout for an athlete in their own LGA (CRD-04).
+
+    The ledger lands on the athlete, never the coordinator: ``on_behalf_of`` is
+    set on the row, and both ``verification.mark_paid`` and the payment receipt
+    read it — the receipt reaches the athlete's phone, not the coordinator's.
+    ``coordinator_id`` is tagged too, which is what the two daily caps below
+    are counted against.
+
+    **The athlete must belong to the coordinator's own LGA.** The route's
+    ``Requires(..., scope="lga")`` only checks that the path's ``lga_id``
+    matches a grant the coordinator holds — it has no way to know that the
+    *athlete named in the body* is actually in that LGA, so that check is this
+    function's to make. Getting it backwards would let any LGA coordinator pay
+    for any athlete in the country.
+
+    Bounded by two daily caps per coordinator (count and total naira,
+    settings.assisted_payments_per_coordinator_daily /
+    assisted_kobo_per_coordinator_daily) — placeholders pending real numbers,
+    but the control itself must exist from the first line of this feature:
+    nothing here asks the athlete to confirm before their record is charged
+    for, so a compromised coordinator session is bounded only by these caps.
+    """
+    settings = get_settings()
+
+    with transaction() as session:
+        target = _athlete_in_lga(session, athlete_kuid, lga_id)
+    if target is None:
+        raise Refused("No athlete with that ID in this LGA.", code="no_athlete")
+
+    provider = build_provider(settings)
+    if provider.name == "none":
+        raise Unavailable(NOT_AVAILABLE)
+
+    with transaction() as session:
+        email = session.execute(
+            text("SELECT email FROM ops.users WHERE id = :id"), {"id": target.athlete_user_id}
+        ).scalar_one()
+
+    amount = expected_amount_kobo(purpose, settings)
+    reference = new_reference()
+    actor = Actor(user_id=coordinator.user_id, label=coordinator.full_name, role="lga_coordinator")
+
+    with money_transaction(reason="start assisted payment") as session:
+        if _has_payment_for_athlete(session, target, purpose, PaymentStatus.SUCCESS):
+            raise Refused("This athlete has already paid for this.", code="already_paid")
+        if _has_payment_for_athlete(session, target, purpose, PaymentStatus.FROZEN):
+            raise Refused(
+                "This athlete's earlier payment is being checked by our team. "
+                "Please wait for us to contact you before paying again.",
+                code="under_review",
+            )
+        if not verification.ready_for_payment(session, target.athlete_user_id):
+            raise Refused(
+                "This athlete has not uploaded a photo and ID document yet.",
+                code="no_submission",
+            )
+
+        today = today_in_nigeria()
+        used = session.execute(
+            text(
+                """
+                SELECT count(*) AS n, coalesce(sum(expected_kobo), 0) AS kobo
+                  FROM money.payments
+                 WHERE coordinator_id = :coordinator
+                   AND (created_at AT TIME ZONE 'Africa/Lagos')::date = :today
+                   AND status != 'failed'
+                """
+            ),
+            {"coordinator": coordinator.user_id, "today": today},
+        ).mappings().one()
+        if int(used["n"]) >= settings.assisted_payments_per_coordinator_daily:
+            raise Refused(
+                f"You have started {settings.assisted_payments_per_coordinator_daily} "
+                "assisted payments today, the most allowed in one day. Please try again "
+                "tomorrow.",
+                code="daily_count_cap",
+            )
+        if int(used["kobo"]) + amount > settings.assisted_kobo_per_coordinator_daily:
+            raise Refused(
+                "This would take today's assisted payments over the daily naira limit. "
+                "Please try again tomorrow.",
+                code="daily_amount_cap",
+            )
+
+        payment_id = session.execute(
+            text(
+                """
+                INSERT INTO money.payments
+                    (reference, purpose, expected_kobo, paid_by, on_behalf_of, coordinator_id)
+                VALUES (:reference, :purpose, :amount, :payer, :athlete, :coordinator)
+                RETURNING id
+                """
+            ),
+            {
+                "reference": reference,
+                "purpose": purpose.value,
+                "amount": amount,
+                "payer": coordinator.user_id,
+                "athlete": target.athlete_id,
+                "coordinator": coordinator.user_id,
+            },
+        ).scalar_one()
+        record(
+            session,
+            actor=actor,
+            action="payment.started_on_behalf",
+            subject_type="payment",
+            subject_id=str(payment_id),
+            metadata={
+                "reference": reference,
+                "expected_kobo": amount,
+                "purpose": purpose.value,
+                "athlete_kuid": target.kuid,
+            },
+            request_id=request_id,
+            ip_address=ip_address,
+        )
+
+    try:
+        initialised = provider.initialise(
+            reference=reference,
+            amount_kobo=amount,
+            email=email
+            or f"{target.athlete_user_id.hex}@{settings.payment_placeholder_email_domain}",
+            callback_url=f"{settings.public_base_url.rstrip('/')}/pay",
+        )
+    except ProviderError as exc:
         _mark_failed(payment_id, reference, exc, request_id)
         raise Unavailable(NOT_AVAILABLE) from exc
 

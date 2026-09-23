@@ -295,21 +295,31 @@ def ready_for_payment(session: Session, user_id: UUID) -> bool:
 
 
 def mark_paid(session: Session, payment_id: UUID) -> UUID | None:
-    """A payment settled: move the payer's draft to review. Runs in the LEDGER transaction.
+    """A payment settled: move that athlete's draft to review. Runs in the LEDGER transaction.
 
     It must never be able to fail that transaction — a webhook that cannot record a
     real payment because of a verification detail would lose money. So the UPDATE is
     guarded to match only a draft that already satisfies the table's constraints, and
     "no match" is a logged alarm, not an exception.
+
+    **Whose draft** is the whole subtlety. Usually the payer's own. When a
+    coordinator paid on behalf of somebody (CRD-04), the money came from the
+    coordinator and the review belongs to the athlete named in ``on_behalf_of``
+    — who has no account relationship to the payer at all. This used to read
+    ``AND pay.on_behalf_of IS NULL``, which was right while assisted payment did
+    not exist: it settled such a payment into the ledger and moved nobody's
+    verification, which is money taken for a review that never starts.
     """
     request_id: UUID | None = session.execute(
         text(
             """
             UPDATE identity.verification_requests v
                SET status = 'under_review', payment_id = :p, submitted_at = now()
-              FROM money.payments pay, identity.athletes a
-             WHERE pay.id = :p AND pay.purpose = 'stage2_athlete' AND pay.on_behalf_of IS NULL
-               AND a.user_id = pay.paid_by AND v.athlete_id = a.id
+              FROM money.payments pay
+              LEFT JOIN identity.athletes payer ON payer.user_id = pay.paid_by
+             WHERE pay.id = :p AND pay.purpose = 'stage2_athlete'
+               -- paid for someone else, or paid for oneself
+               AND v.athlete_id = COALESCE(pay.on_behalf_of, payer.id)
                AND v.status = 'draft'
                AND v.photo_media_id IS NOT NULL AND v.document_media_id IS NOT NULL
             RETURNING v.id

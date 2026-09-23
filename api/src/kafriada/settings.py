@@ -159,6 +159,22 @@ class Settings(BaseSettings):
     price_athlete_verification_kobo: int = Field(default=250_000, ge=1)
     price_club_verification_kobo: int = Field(default=1_500_000, ge=1)
 
+    # -- Assisted payment (CRD-04) ----------------------------------------
+    # What one coordinator may pay on behalf of others in a day, by count and
+    # by naira. This is the control that bounds the damage when a coordinator's
+    # account is taken — without it, one stolen session can start unlimited
+    # checkouts against athletes who never asked.
+    #
+    # `[USER]` **Both numbers are placeholders.** No document sets them, and
+    # they cannot be guessed well: too low blocks a real registration drive,
+    # too high defeats the point. The honest way to set them is from the first
+    # wave's actual figures — how many an LGA coordinator really does in a busy
+    # day — so revisit these after Wave 1 rather than before it. Twenty at
+    # 2,500 each is 50,000 naira, chosen to be obviously survivable rather
+    # than obviously right.
+    assisted_payments_per_coordinator_daily: int = Field(default=20, ge=1, le=1_000)
+    assisted_kobo_per_coordinator_daily: int = Field(default=5_000_000, ge=1)
+
     # -- Paystack ---------------------------------------------------------
     paystack_secret_key: SecretStr | None = None
     paystack_base_url: str = "https://api.paystack.co"

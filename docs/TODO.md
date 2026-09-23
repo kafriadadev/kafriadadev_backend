@@ -222,9 +222,29 @@ start and VER-03 (f7269e9).
 
 ### 2.4 Assisted payment, clubs and the admin console (3–4 days)
 
-- [ ] **Coordinator pays on behalf** (`[UI]` **CRD-04**): the ledger lands on the athlete,
-  `coordinator_id` is tagged on the payment, daily caps by count and by naira
-  (`[USER]` numbers), and an **SMS receipt to the athlete's phone** at confirmation.
+- [x] **Coordinator pays on behalf** (`[UI]` **CRD-04**). Done and verified 2026-09-23.
+  `POST /v1/lgas/{lga_id}/athletes/{kuid}/payments` (`payment.initiate_behalf`, scope
+  `lga`), `/assist-pay`. The ledger lands on the athlete (`on_behalf_of`), never the
+  coordinator; `coordinator_id` is tagged; two daily caps per coordinator (count and
+  naira, both `[USER]` **placeholders** — 20/day and ₦50,000/day, chosen to be
+  obviously survivable rather than obviously right — revisit from Wave 1's real
+  figures, not before it); the **payment receipt already reaches the athlete's phone**
+  at confirmation (built with the 2.3 notification work above, which already routes by
+  `on_behalf_of`). One real bug found and fixed while building this: `mark_paid` had
+  `AND pay.on_behalf_of IS NULL`, so an assisted payment would have settled into the
+  ledger and moved *nobody's* verification to review — money taken for a review that
+  never starts. **The scope check the route itself cannot make** is the one this
+  needed most: `Requires(scope="lga")` only confirms the coordinator holds a grant on
+  the `lga_id` in the *path* — it has no way to know the athlete named in the body is
+  actually in that LGA, so a coordinator scoped to their own LGA could otherwise pay
+  for any athlete in the country by naming one in a different LGA while keeping the
+  path correct. Enforced in the service (`_athlete_in_lga`), proved with a dedicated
+  test using a real cross-LGA coordinator. Verified: `tests/test_payments_on_behalf.py`
+  (10, incl. both caps, the on_behalf_of routing, the receipt destination, and the
+  scope case) plus the full suite, twice, clean against a real database; a live HTTP
+  round trip against the running server confirmed both the route-level scope refusal
+  (403, wrong LGA in the path) and the service-level one (404, wrong-LGA athlete via a
+  correct path).
 - [ ] **Migration 0010 — clubs** (0008 is the safety net, 0009 the athlete details added
   for ATH-02): organizations, teams, roster members, with the
   *at-most-one-open-membership* rule as a **partial unique index** — the database
