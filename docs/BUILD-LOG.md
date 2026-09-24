@@ -31,7 +31,7 @@ was checked live and what the result was. Say plainly when something is
 ---
 
 ## 2026-09-24 — Clubs: register a club (CLB-01) and its dashboard (CLB-02)
-**Commit(s):** *(pending)*
+**Commit(s):** `a23d25f`
 
 **Built:** `contexts/clubs/service.py`, `api/v1/clubs.py`, `/clubs/new` and
 `/clubs/[id]`. `POST /v1/clubs` (`club.create`, throttled `register_club`, default 10
