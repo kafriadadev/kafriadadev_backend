@@ -90,6 +90,7 @@ export default async function MePage() {
           ) : null}
           <a href="/payments" className="btn btn--ghost">My payments</a>
           <a href="/details" className="btn btn--ghost">Edit my details</a>
+          <a href="/clubs/new" className="btn btn--ghost">Register a club</a>
         </div>
       ) : null}
 
@@ -98,6 +99,16 @@ export default async function MePage() {
           <a href="/review" className="btn btn--ghost">Review verifications</a>
         </p>
       ) : null}
+
+      {me.roles
+        .filter((r) => r.role === "club_admin" && r.scope_id)
+        .map((r) => (
+          <p key={r.grant_id}>
+            <a href={`/clubs/${encodeURIComponent(r.scope_id as string)}`} className="btn btn--ghost">
+              {r.scope_name ?? "My club"}
+            </a>
+          </p>
+        ))}
 
       {staffRoles.length ? (
         <div className="notice">

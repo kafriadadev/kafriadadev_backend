@@ -30,6 +30,50 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-09-24 — Clubs: register a club (CLB-01) and its dashboard (CLB-02)
+**Commit(s):** *(pending)*
+
+**Built:** `contexts/clubs/service.py`, `api/v1/clubs.py`, `/clubs/new` and
+`/clubs/[id]`. `POST /v1/clubs` (`club.create`, throttled `register_club`, default 10
+per address per hour) creates the club, its one default team and a `club_admin` grant
+scoped to the club id, and writes an audit row, in one transaction. `GET
+/v1/clubs/{club_id}` (`club.read_scoped`, scope `club`) returns counts, roster and
+details. A repeated name in the same LGA comes back as a 409 the form turns into a
+tick box (CLB-01: warn, not block). `/me` shows the club's name for a `club_admin`
+grant (the role list previously resolved names only for places) and links to it. The
+same change also spinner-locks the slow forms (`SubmitButton`, `d9459c7`).
+
+**Why the scope is the interesting part:** `Requires(scope="club")` only proves the
+caller holds a grant on the club id in the path. That is enough here because a club
+is a leaf — there is no second entity in the request to mismatch, unlike CRD-04's
+athlete-in-an-LGA — so the service's job is narrower: every query takes the club id
+and filters on it, and nothing takes a bare athlete or team id from the caller.
+
+**Verified:** `tests/test_clubs.py`, 15 tests: registration writes the club, team,
+grant and audit row; bad input is refused on its own field and writes nothing (8
+cases); the duplicate question; an administrator cannot read another club (403 both
+ways), a stranger gets 403, anonymous 401; a super administrator reads any club and
+gets 404 for an unknown or malformed id; the roster holds only this club's people; a
+second active membership is refused by the database. Mutation proved red: removing
+the club filter from the roster query fails two tests. Route manifest and permission
+matrix pass. `ruff` and `mypy` clean. Live against Supabase: registered a club (201)
+and a second user was refused (403); `check:render` audits `/clubs/new` and the
+dashboard's three tabs signed in, plus the refused view, in light and dark — all
+pass. The local suite passed except `test_a_message_is_sent_once…`, which is the
+documented outbox pile-up (965 stale rows) and passes once they are cleared.
+
+**Also:** `scripts/check-no-payout-path.sh` compared allowlisted lines by line
+number, so any edit above one (this session touched two files) re-broke the gate. It
+now compares path and text only. Probed: a new withdraw line in an allowlisted file,
+a new file with `cash_out`, and a reworded allowlisted line are all still refused.
+
+**Not done / open:** CLB-03, CLB-04, ATH-05, remove player, edit club details, and
+club approval — a new club stays `pending_review` and nothing can approve it yet. The
+form's POST through the web tier was not driven in a browser (the API path and the
+rendered pages were).
+
+---
+
 ## 2026-09-23 — Payout-path gate's false positive resolved
 **Commit(s):** `1b803ee`
 

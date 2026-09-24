@@ -258,9 +258,16 @@ start and VER-03 (f7269e9).
   after two pre-existing, migration-unrelated flakes were traced and ruled
   out — see `docs/BUILD-LOG.md`). Schema only: no service, routes or screens
   yet.
-- [ ] **Clubs** `[UI]`: **CLB-01** register, **CLB-02** dashboard (scope is the
-  security story), **CLB-03** invite by KUID, **CLB-04** verify the club ₦15,000,
-  **ATH-05** my clubs and invitations. Club approval by an admin.
+- [ ] **Clubs** `[UI]` — **CLB-01** register and **CLB-02** dashboard done 2026-09-24
+  (`POST /v1/clubs`, `GET /v1/clubs/{club_id}` scoped to the club, `/clubs/new`,
+  `/clubs/[id]`, links on `/me`). Registering makes the club, one default team and a
+  `club_admin` grant scoped to the club; a repeated name in the LGA is a question
+  (tick to confirm), not a refusal. The dashboard shows counts, roster, invitations
+  and details; every query is bounded by the club id and tested with a second club.
+  **Still to do:** **CLB-03** invite by KUID, **CLB-04** verify the club ₦15,000,
+  **ATH-05** my clubs and invitations, **remove player** and **edit club details**
+  on CLB-02, and **club approval** (a new club is `pending_review` and cannot build
+  a roster until an admin approves it — no screen or route does that yet).
 - [ ] **Coordinator console** `[UI]`: **CRD-01** dashboard, **CRD-03** find an athlete,
   **CRD-06** bulk QR card printing. **CRD-05** settlement is Metabase SQL against
   the read replica, not a built screen.

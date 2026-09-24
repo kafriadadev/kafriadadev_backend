@@ -356,6 +356,58 @@ export function startPaymentOnBehalf(
   );
 }
 
+export type ClubRosterRow = {
+  full_name: string;
+  kuid: string;
+  position: string | null;
+  state: "verified" | "unverified" | "invited";
+};
+
+export type ClubDashboard = {
+  club_id: string;
+  name: string;
+  sport: string;
+  type: string;
+  year_founded: number | null;
+  lga_name: string;
+  contact_phone: string;
+  status: "pending_review" | "approved" | "suspended";
+  verified: boolean;
+  players: number;
+  verified_players: number;
+  invites_out: number;
+  roster: ClubRosterRow[];
+  created_at: string;
+};
+
+export type ClubInput = {
+  name: string;
+  sport: string;
+  lga_id: string;
+  contact_phone: string;
+  year_founded: number | null;
+  confirm_duplicate: boolean;
+};
+
+/** CLB-01: register a club. The caller becomes its administrator. */
+export function registerClub(
+  token: string,
+  input: ClubInput,
+  meta: ClientMeta,
+): Promise<{ club_id: string; name: string }> {
+  return call<{ club_id: string; name: string }>("/v1/clubs", {
+    method: "POST",
+    body: JSON.stringify(input),
+    token,
+    meta,
+  });
+}
+
+/** CLB-02: one club's dashboard. The API refuses any club the caller does not administer. */
+export function getClub(token: string, clubId: string): Promise<ClubDashboard> {
+  return call<ClubDashboard>(`/v1/clubs/${encodeURIComponent(clubId)}`, { token });
+}
+
 export function getVerification(token: string): Promise<Verification> {
   return call<Verification>("/v1/verification", { token });
 }

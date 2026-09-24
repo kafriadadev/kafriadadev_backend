@@ -135,7 +135,7 @@ def _install_routes(app: FastAPI) -> None:
     a breaking change to something other people build against needs a new
     address rather than a quiet redefinition of the old one.
     """
-    from kafriada.api.v1 import admin, athletes, codes, payments, sessions, verification
+    from kafriada.api.v1 import admin, athletes, clubs, codes, payments, sessions, verification
 
     app.include_router(athletes.router, prefix="/v1")
     app.include_router(sessions.router, prefix="/v1")
@@ -143,6 +143,7 @@ def _install_routes(app: FastAPI) -> None:
     app.include_router(admin.router, prefix="/v1")
     app.include_router(payments.router, prefix="/v1")
     app.include_router(verification.router, prefix="/v1")
+    app.include_router(clubs.router, prefix="/v1")
 
 
 def _install_error_handlers(app: FastAPI) -> None:

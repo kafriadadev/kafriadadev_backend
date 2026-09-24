@@ -20,7 +20,7 @@
 # not moving money. Rather than weaken FORBIDDEN itself, specific lines that
 # have been checked by hand and confirmed to be about something other than a
 # payout are listed below by their exact "path:line:content" text, as this
-# script itself prints it. A line that moves, or whose wording changes, stops
+# script itself prints it (the line number is ignored). A line whose wording changes, stops
 # matching and fails the build again — on purpose, so an edit near an
 # allowlisted line always gets a fresh look rather than riding on an old
 # approval.
@@ -104,7 +104,19 @@ if [ -z "$raw_matches" ]; then
   exit 0
 fi
 
-matches=$(printf '%s\n' "$raw_matches" | grep -Fxvf "$ALLOWLIST_FILE" || true)
+# Compared as "path:content" with the line number dropped, so an edit elsewhere in
+# a file (which shifts every line below it) does not break the allowlist, while a
+# change to an allowlisted line's own wording still does.
+matches=$(awk -v allow="$ALLOWLIST_FILE" '
+  function key(line,   path, rest) {
+    path = substr(line, 1, index(line, ":") - 1)
+    rest = line
+    sub(/^[^:]*:[0-9]+:/, "", rest)
+    return path ":" rest
+  }
+  BEGIN { while ((getline l < allow) > 0) ok[key(l)] = 1 }
+  !(key($0) in ok)
+' <<<"$raw_matches")
 
 if [ -n "$matches" ]; then
   echo ""

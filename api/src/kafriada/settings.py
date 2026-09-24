@@ -276,6 +276,8 @@ class Settings(BaseSettings):
     registrations_per_ip_daily: int = Field(default=200, ge=5, le=100_000)
     # Each one is a Paystack call and a permanent row in money.payments.
     payments_started_per_ip_hourly: int = Field(default=30, ge=2, le=10_000)
+    # Each one is a permanent row, and the registrant becomes its administrator.
+    clubs_registered_per_ip_hourly: int = Field(default=10, ge=1, le=10_000)
     # Each slot is a database row and, soon after, up to 10MB of somebody's bandwidth.
     uploads_per_ip_hourly: int = Field(default=60, ge=2, le=10_000)
 

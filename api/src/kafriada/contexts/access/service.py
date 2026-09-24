@@ -892,9 +892,12 @@ def _active_grants(session: Session, user_id: UUID) -> tuple[RoleGrant, ...]:
     rows = session.execute(
         text(
             """
-            SELECT ur.id, ur.role_code, ur.scope_kind, ur.scope_id, loc.name AS scope_name
+            SELECT ur.id, ur.role_code, ur.scope_kind, ur.scope_id,
+                   COALESCE(loc.name, org.name) AS scope_name
               FROM ops.user_roles ur
               LEFT JOIN ops.locations loc ON loc.id = ur.scope_id
+              LEFT JOIN identity.organizations org
+                     ON ur.scope_kind = 'club' AND org.id::text = ur.scope_id
              WHERE ur.user_id = :id AND ur.revoked_at IS NULL
              ORDER BY ur.granted_at
             """
