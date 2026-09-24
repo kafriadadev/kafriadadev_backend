@@ -127,8 +127,9 @@ jobs:
         working-directory: api
         run: |
           python -m pip install --upgrade pip pip-audit
-          pip install -e .
-          pip-audit --strict --desc
+          # The project's own dependencies, not the runner's whole interpreter:
+          # its system packages (bcc, ...) are not ours and not on PyPI.
+          pip-audit --strict --desc .
 
   # ---------------------------------------------------------------------------
   # Everything that needs a real PostgreSQL. The privilege boundary and the
