@@ -129,7 +129,7 @@ jobs:
           python -m pip install --upgrade pip pip-audit
           # The project's own dependencies, not the runner's whole interpreter:
           # its system packages (bcc, ...) are not ours and not on PyPI.
-          pip-audit --strict --desc .
+          pip-audit --strict --desc=on .
 
   # ---------------------------------------------------------------------------
   # Everything that needs a real PostgreSQL. The privilege boundary and the
