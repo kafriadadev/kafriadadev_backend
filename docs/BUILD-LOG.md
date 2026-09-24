@@ -30,6 +30,33 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-09-24 — CI green end to end: four latent gate failures
+**Commit(s):** the four commits after `92c5de7` (SQLAlchemy pin, gitleaks config, pip-audit).
+
+**Built:** nothing new. Three gates that had never run, and one that broke overnight,
+each failed behind the one before it. In the order they surfaced: (1) `sqlalchemy`
+was unpinned and CI picked up 2.1.0, whose typing broke `mypy` in files nobody
+touched — pinned `<2.1` (everything here is built and tested on 2.0.x; 2.1 is its own
+change). (2) The payout-path allowlist compared line numbers, so any edit above an
+allowlisted line re-broke it — fixed in the clubs commit. (3) The secrets scan
+panicked before scanning: `.gitleaks.toml`'s Postgres-URL rule used `(?!...)`, which
+Go's RE2 does not support; the placeholders are now excluded by the rule's allowlist.
+(4) `pip-audit --strict` audited the runner's whole interpreter and failed on `bcc`, a
+system package that is not ours and not on PyPI; it now audits the project
+(`pip-audit --strict --desc=on .` — `--desc` had been taking the path as its value).
+
+**Verified:** the run on the last commit passes all four jobs (static, web,
+database, security).
+
+**Worth knowing:** on a push, the gitleaks action scans only the pushed commits
+(`--log-opts=-1` in its log), so "no leaks detected" means that commit, not the whole
+history. A one-off full-history scan has not been run. The dependency audit passing
+means no known vulnerabilities in what `pyproject.toml` resolves today.
+
+**Not done / open:** a full-history gitleaks run; SQLAlchemy 2.1 is unadopted.
+
+---
+
 ## 2026-09-24 — Clubs: register a club (CLB-01) and its dashboard (CLB-02)
 **Commit(s):** `a23d25f`
 
