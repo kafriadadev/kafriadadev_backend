@@ -58,7 +58,7 @@ means no known vulnerabilities in what `pyproject.toml` resolves today.
 ---
 
 ## 2026-09-25 — Clubs: invite a player (CLB-03), my clubs (ATH-05), approval
-**Commit(s):** *(pending)*
+**Commit(s):** `8a1e74b`
 
 **Built:** `find_player`, `invite_player`, `remove_player`, `my_clubs`,
 `accept_invitation`, `decline_invitation` and `set_status` in `contexts/clubs/service.py`;
