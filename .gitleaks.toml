@@ -46,8 +46,12 @@ tags = ["kafriada"]
 [[rules]]
 id = "postgres-connection-with-password"
 description = "PostgreSQL URL with an inline password"
-regex = '''postgres(ql)?(\+\w+)?://[^:/\s]+:(?!CHANGE_ME|pw@|password@|local_dev)[^@\s]{6,}@'''
+# gitleaks uses Go's RE2, which has no negative lookahead, so the placeholder
+# passwords are excluded by the rule's own allowlist instead.
+regex = '''postgres(ql)?(\+\w+)?://[^:/\s]+:[^@\s]{6,}@'''
 tags = ["database"]
+[rules.allowlist]
+regexes = ['''CHANGE_ME''', ''':pw@''', ''':password@''', ''':local_dev''']
 
 # ---------------------------------------------------------------------------
 # Allowlist — documented example values only.
