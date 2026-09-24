@@ -480,6 +480,12 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   mutation. **Not built:** CLB-03/04, ATH-05, remove player, edit details, approval.
   `check-no-payout-path.sh` now ignores line numbers when matching its allowlist —
   add a new false positive by pasting its printed line into the script.
+- **CLB-03 invite, ATH-05 my clubs, remove player, club approval — done and
+  verified 2026-09-25** (migration 0011: `club.approve`, held by `super_admin`).
+  `/clubs/[id]/invite`, `/clubs`, `POST /v1/admin/clubs/{id}/approve|suspend` (no
+  screen). One active club per athlete; accepting moves them in one transaction.
+  14 tests in `tests/test_club_roster.py`; the permission matrix covers the new
+  routes. **Not built:** CLB-04, edit club details, an approval screen.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
@@ -506,11 +512,10 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
    0009 there once it's back).
 9. ~~2.3 outbox generalisation~~ and ~~CRD-04~~ — done and verified
    2026-09-23 (see Status).
-10. ~~Migration 0010, clubs~~, ~~CLB-01~~, ~~CLB-02~~ — done and verified
-    2026-09-24 (see Status).
-    **Next in line, in order (per the chosen build order):** the rest of the
-    clubs UI (CLB-03 invite, CLB-04 verify the club, ATH-05 my clubs and
-    invitations, club approval), then the coordinator console
+10. ~~Migration 0010, clubs~~, ~~CLB-01~~, ~~CLB-02~~, ~~CLB-03~~, ~~ATH-05~~,
+    club approval (API) — done and verified 2026-09-24/25 (see Status).
+    **Next in line, in order (per the chosen build order):** CLB-04 verify the
+    club and edit club details, then the coordinator console
     (CRD-01, CRD-03, CRD-06), then the admin console (ADM-01, ADM-02,
     ADM-06), then a way to appoint the first super_admin — see
     `docs/TODO.md`.

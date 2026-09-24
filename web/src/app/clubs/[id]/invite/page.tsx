@@ -1,0 +1,143 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+
+import { Flash } from "@/components/Flash";
+import { SubmitButton } from "@/components/SubmitButton";
+import { ApiError, type PlayerMatch, findPlayer } from "@/lib/api";
+import { sessionToken } from "@/lib/session";
+import { inviteAction } from "../actions";
+
+export const metadata: Metadata = { title: "Add a player" };
+export const dynamic = "force-dynamic";
+
+type Search = Record<string, string | string[] | undefined>;
+const one = (v: string | string[] | undefined): string =>
+  Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
+
+/**
+ * Invite a player (CLB-03).
+ *
+ * A search box that only ever returns one exact match: a full KAFRIADA ID or a phone
+ * number. There is no browsing and no partial search by design — a club administrator
+ * who could list players would be reading a directory. The player must accept before
+ * they appear on the roster.
+ */
+export default async function InvitePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Search>;
+}) {
+  const { id } = await params;
+  const query = await searchParams;
+  const token = await sessionToken();
+  if (!token) redirect("/sign-in");
+
+  const q = one(query.q).trim();
+  const error = one(query.error);
+  let match: PlayerMatch | null = null;
+  let notFound = false;
+  let denied = false;
+
+  if (q) {
+    try {
+      match = await findPlayer(token, id, q);
+    } catch (caught) {
+      if (caught instanceof ApiError) {
+        if (caught.status === 401) redirect("/sign-in?ended=1");
+        if (caught.status === 404) notFound = true;
+        else if (caught.status === 403) denied = true;
+        else throw caught;
+      } else throw caught;
+    }
+  }
+
+  const back = `/clubs/${encodeURIComponent(id)}`;
+
+  if (denied) {
+    return (
+      <div className="stack">
+        <h1>Add a player</h1>
+        <Flash variant="bad" title="You do not have access to this">
+          <p style={{ marginBottom: 0 }}>You can only add players to a club you administer.</p>
+        </Flash>
+      </div>
+    );
+  }
+
+  return (
+    <div className="stack">
+      <p className="eyebrow">Club</p>
+      <h1>Add a player</h1>
+
+      {error ? (
+        <Flash variant="bad" title="That did not work">
+          <p style={{ marginBottom: 0 }}>{error}</p>
+        </Flash>
+      ) : null}
+
+      <form method="get" className="doc">
+        <div className="doc__body">
+          <div className="field">
+            <label htmlFor="q">KAFRIADA ID or phone number</label>
+            <span className="hint">Enter the full ID or number. You cannot browse players.</span>
+            <input
+              id="q"
+              name="q"
+              required
+              defaultValue={q}
+              placeholder="KA-NG-JG-BKD-2026-000123"
+              style={{ fontFamily: "var(--font-mono)" }}
+            />
+          </div>
+          <button type="submit" className="btn btn--ghost btn--block">Search</button>
+        </div>
+      </form>
+
+      {notFound ? (
+        <Flash variant="warn" title="No player found">
+          <p style={{ marginBottom: 0 }}>Check the ID or number and try again.</p>
+        </Flash>
+      ) : null}
+
+      {match ? (
+        <section className="doc" aria-label="Player found">
+          <div className="doc__body">
+            <p style={{ fontWeight: 700, marginBottom: "var(--s2)" }}>{match.full_name}</p>
+            <p style={{ marginBottom: "var(--s2)" }}><span className="kuid">{match.kuid}</span></p>
+            <p style={{ marginBottom: "var(--s3)" }}>
+              <span className={match.verified ? "pill pill--issued" : "pill pill--pending"}>
+                {match.verified ? "Verified" : "Not verified"}
+              </span>{" "}
+              {[match.position, match.lga_name].filter(Boolean).join(" · ")}
+            </p>
+
+            {match.state === "on_roster" ? (
+              <p style={{ marginBottom: 0 }}>This player is already on your roster.</p>
+            ) : match.state === "invited" ? (
+              <p style={{ marginBottom: 0 }}>You have already invited this player.</p>
+            ) : (
+              <form action={inviteAction}>
+                <input type="hidden" name="club" value={id} />
+                <input type="hidden" name="kuid" value={match.kuid} />
+                {match.current_club ? (
+                  <p className="hint">
+                    This player is currently at {match.current_club}. Accepting your invitation
+                    will move them to your club.
+                  </p>
+                ) : null}
+                <SubmitButton pending="Sending invitation…">Send invitation</SubmitButton>
+                <p className="hint" style={{ marginTop: "var(--s3)", marginBottom: 0 }}>
+                  The player must accept before they appear on your roster.
+                </p>
+              </form>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      <p><a href={back}>Back to the club</a></p>
+    </div>
+  );
+}

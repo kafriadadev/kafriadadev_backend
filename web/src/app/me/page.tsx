@@ -90,6 +90,7 @@ export default async function MePage() {
           ) : null}
           <a href="/payments" className="btn btn--ghost">My payments</a>
           <a href="/details" className="btn btn--ghost">Edit my details</a>
+          <a href="/clubs" className="btn btn--ghost">My clubs</a>
           <a href="/clubs/new" className="btn btn--ghost">Register a club</a>
         </div>
       ) : null}

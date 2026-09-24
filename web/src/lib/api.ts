@@ -357,6 +357,7 @@ export function startPaymentOnBehalf(
 }
 
 export type ClubRosterRow = {
+  roster_id: string;
   full_name: string;
   kuid: string;
   position: string | null;
@@ -406,6 +407,78 @@ export function registerClub(
 /** CLB-02: one club's dashboard. The API refuses any club the caller does not administer. */
 export function getClub(token: string, clubId: string): Promise<ClubDashboard> {
   return call<ClubDashboard>(`/v1/clubs/${encodeURIComponent(clubId)}`, { token });
+}
+
+export type PlayerMatch = {
+  full_name: string;
+  kuid: string;
+  position: string | null;
+  lga_name: string;
+  verified: boolean;
+  current_club: string | null;
+  state: "found" | "on_roster" | "invited";
+};
+
+/** CLB-03: an exact match on a KAFRIADA ID or phone number, or a 404. */
+export function findPlayer(token: string, clubId: string, q: string): Promise<PlayerMatch> {
+  return call<PlayerMatch>(
+    `/v1/clubs/${encodeURIComponent(clubId)}/players/find?${new URLSearchParams({ q })}`,
+    { token },
+  );
+}
+
+export function invitePlayer(
+  token: string,
+  clubId: string,
+  kuid: string,
+  meta: ClientMeta,
+): Promise<void> {
+  return call<void>(`/v1/clubs/${encodeURIComponent(clubId)}/invitations`, {
+    method: "POST",
+    body: JSON.stringify({ kuid }),
+    token,
+    meta,
+  });
+}
+
+export function removePlayer(
+  token: string,
+  clubId: string,
+  rosterId: string,
+  meta: ClientMeta,
+): Promise<void> {
+  return call<void>(
+    `/v1/clubs/${encodeURIComponent(clubId)}/roster/${encodeURIComponent(rosterId)}`,
+    { method: "DELETE", token, meta },
+  );
+}
+
+export type Membership = {
+  roster_id: string;
+  club_id: string;
+  club_name: string;
+  sport: string;
+  lga_name: string;
+  verified_club: boolean;
+};
+
+export type MyClubs = { current: Membership | null; invitations: Membership[] };
+
+/** ATH-05: the caller's current club and the invitations waiting for an answer. */
+export function getMyClubs(token: string): Promise<MyClubs> {
+  return call<MyClubs>("/v1/athletes/me/clubs", { token });
+}
+
+export function answerInvitation(
+  token: string,
+  rosterId: string,
+  answer: "accept" | "decline",
+  meta: ClientMeta,
+): Promise<void> {
+  return call<void>(
+    `/v1/athletes/me/invitations/${encodeURIComponent(rosterId)}/${answer}`,
+    { method: "POST", token, meta },
+  );
 }
 
 export function getVerification(token: string): Promise<Verification> {

@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { Flash } from "@/components/Flash";
+import { SubmitButton } from "@/components/SubmitButton";
 import { ApiError, type ClubDashboard, type ClubRosterRow, getClub } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
+import { removeAction } from "./actions";
 
 export const metadata: Metadata = { title: "Club" };
 export const dynamic = "force-dynamic";
@@ -85,6 +87,22 @@ export default async function ClubPage({
         </Flash>
       ) : null}
 
+      {one(query.invited) ? (
+        <Flash variant="good" title="Invitation sent">
+          <p style={{ marginBottom: 0 }}>The player appears on your roster once they accept.</p>
+        </Flash>
+      ) : null}
+      {one(query.removed) ? (
+        <Flash variant="good" title="Done">
+          <p style={{ marginBottom: 0 }}>The roster has been updated.</p>
+        </Flash>
+      ) : null}
+      {one(query.error) ? (
+        <Flash variant="bad" title="That did not work">
+          <p style={{ marginBottom: 0 }}>{one(query.error)}</p>
+        </Flash>
+      ) : null}
+
       {club.status === "pending_review" ? (
         <Flash variant="warn" title="Waiting for approval">
           <p style={{ marginBottom: 0 }}>
@@ -108,6 +126,12 @@ export default async function ClubPage({
         </div>
       </section>
 
+      {club.status === "approved" ? (
+        <p>
+          <a href={`${base}/invite`} className="btn btn--primary">Add a player</a>
+        </p>
+      ) : null}
+
       <nav aria-label="Club sections" style={{ display: "flex", gap: "var(--s4)", flexWrap: "wrap" }}>
         {TABS.map((t) =>
           t.key === tab ? (
@@ -120,7 +144,7 @@ export default async function ClubPage({
 
       {tab === "roster" ? (
         players.length ? (
-          <RosterList rows={players} />
+          <RosterList rows={players} clubId={club.club_id} tab="roster" action="Remove" />
         ) : (
           <p className="hint">
             No players yet. A player joins by accepting an invitation from this club.
@@ -130,7 +154,7 @@ export default async function ClubPage({
 
       {tab === "invitations" ? (
         invited.length ? (
-          <RosterList rows={invited} />
+          <RosterList rows={invited} clubId={club.club_id} tab="invitations" action="Withdraw" />
         ) : (
           <p className="hint">No invitations are waiting for an answer.</p>
         )
@@ -155,7 +179,17 @@ export default async function ClubPage({
   );
 }
 
-function RosterList({ rows }: { rows: ClubRosterRow[] }) {
+function RosterList({
+  rows,
+  clubId,
+  tab,
+  action,
+}: {
+  rows: ClubRosterRow[];
+  clubId: string;
+  tab: string;
+  action: string;
+}) {
   return (
     <div className="stack">
       {rows.map((r) => (
@@ -167,6 +201,14 @@ function RosterList({ rows }: { rows: ClubRosterRow[] }) {
               <span className={STATE_PILL[r.state]}>{STATE_LABEL[r.state]}</span>
               {r.position ? ` ${r.position}` : ""}
             </p>
+            <form action={removeAction} style={{ marginTop: "var(--s3)" }}>
+              <input type="hidden" name="club" value={clubId} />
+              <input type="hidden" name="roster" value={r.roster_id} />
+              <input type="hidden" name="tab" value={tab} />
+              <SubmitButton className="btn btn--ghost" pending="Updating the roster…">
+                {action}
+              </SubmitButton>
+            </form>
           </div>
         </section>
       ))}

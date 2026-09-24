@@ -76,6 +76,8 @@ web/src/app/verify/page.tsx:147:      {withdrawn ? (
 web/src/app/verify/page.tsx:149:          <p className="notice__title">Your earlier verification was withdrawn</p>
 web/src/lib/api.ts:40:  verification_withdrawn: boolean;
 web/src/lib/api.ts:415:/** ADM-03: find an athlete's verification request by KUID, to withdraw it. */
+api/src/kafriada/api/v1/clubs.py:205:    summary="Remove a player from the roster, or withdraw an invitation",
+api/src/kafriada/contexts/clubs/service.py:445:    """End a membership, or withdraw an invitation. Bounded to this club's own teams."""
 EOF
 
 SEARCH_PATHS=(api/src web/src web/app)

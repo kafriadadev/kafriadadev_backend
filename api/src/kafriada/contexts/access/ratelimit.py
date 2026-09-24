@@ -174,6 +174,7 @@ def limits_for(bucket: str) -> tuple[Limit, ...]:
         "start_payment": (Limit(cfg.payments_started_per_ip_hourly, HOUR),),
         "media_upload": (Limit(cfg.uploads_per_ip_hourly, HOUR),),
         "register_club": (Limit(cfg.clubs_registered_per_ip_hourly, HOUR),),
+        "find_player": (Limit(cfg.player_lookups_per_ip_hourly, HOUR),),
     }
     # Look the name up first, so an unknown bucket raises even when limits are
     # switched off — otherwise a typo in a route would read as "no limits" in

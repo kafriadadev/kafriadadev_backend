@@ -278,6 +278,8 @@ class Settings(BaseSettings):
     payments_started_per_ip_hourly: int = Field(default=30, ge=2, le=10_000)
     # Each one is a permanent row, and the registrant becomes its administrator.
     clubs_registered_per_ip_hourly: int = Field(default=10, ge=1, le=10_000)
+    # An exact-match lookup by a club administrator; bounded so it cannot be used to probe.
+    player_lookups_per_ip_hourly: int = Field(default=120, ge=1, le=10_000)
     # Each slot is a database row and, soon after, up to 10MB of somebody's bandwidth.
     uploads_per_ip_hourly: int = Field(default=60, ge=2, le=10_000)
 

@@ -57,6 +57,54 @@ means no known vulnerabilities in what `pyproject.toml` resolves today.
 
 ---
 
+## 2026-09-25 — Clubs: invite a player (CLB-03), my clubs (ATH-05), approval
+**Commit(s):** *(pending)*
+
+**Built:** `find_player`, `invite_player`, `remove_player`, `my_clubs`,
+`accept_invitation`, `decline_invitation` and `set_status` in `contexts/clubs/service.py`;
+routes for each in `api/v1/clubs.py`; `/clubs/[id]/invite` (search one exact match,
+send an invitation), `/clubs` (my current club and invitations, Accept / Decline), Add,
+Remove and Withdraw on the dashboard, "My clubs" on `/me`. **Migration 0011** adds the
+`club.approve` permission and grants it to `super_admin` (0001 only granted what
+existed then). Approving or suspending is `POST /v1/admin/clubs/{id}/approve|suspend`;
+there is no screen for it yet. Invitations and approval each queue a notification.
+
+**Why the shape:** a lookup needs the full KAFRIADA ID or phone and returns no phone,
+date of birth or document — browsing would turn the register into a directory anyone
+could harvest by registering a club (CLB-03's own note). Accepting is one transaction:
+release the current membership, activate the new one, write the career events; the
+partial unique index from 0010 makes a second active membership impossible even if
+that code were wrong. Only an approved club can invite, and a suspended one stops
+recruiting and drops out of a player's invitation list. The two scope checks that a
+route's `Requires` cannot make live in the service: remove looks the roster row up
+*through the club in the path*, and an invitation is only found for the athlete who
+owns it.
+
+**Verified:** `tests/test_club_roster.py`, 14 tests, plus `test_clubs.py` (29 together):
+approval needs the permission (403 for a club admin, 401 anonymous, 404 unknown);
+unapproved and suspended clubs cannot recruit; exact lookup by ID or phone, and misses
+for a partial ID, a name, a short number and an empty query; no private field in the
+response; a club cannot invite for, look up through, or remove from another club, and
+naming another club's roster row through its own path finds nothing; an athlete cannot
+answer someone else's invitation; accept, decline and re-invite; a second accept
+moves the player (`joined_club`, `left_club`, `transferred`); malformed ids are 404,
+not 500. Mutations proved red: dropping the club from the remove query, dropping the
+owner from the invitation query. The permission matrix (every role x every route x two
+tenants) needed a probe value for the new `roster_id` parameter and then passes with
+the new routes. Full local suite, `ruff`, `mypy`, `check_migration_safety` clean.
+Live against Supabase: invite before approval 409, after 204, the player sees it,
+accepts (204), the roster shows them; `check:render` audits the dashboard tabs, the
+invite page in its empty, match and no-match states, `/clubs` and a refused view,
+signed in as each role, light and dark — all pass.
+
+**Not done / open:** CLB-04 (club verification payment), edit club details, an approval
+screen (the throwaway test clubs on Supabase were approved with a one-line SQL update,
+since no super_admin exists yet), and a coordinator's read-only view of clubs in their
+LGA (`club.read_scoped` is granted to them but the club scope check does not resolve
+LGA or state hierarchy). The web forms were not driven in a browser.
+
+---
+
 ## 2026-09-24 — Clubs: register a club (CLB-01) and its dashboard (CLB-02)
 **Commit(s):** `a23d25f`
 
