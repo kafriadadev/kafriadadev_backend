@@ -1,3 +1,4 @@
+import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -90,9 +91,7 @@ export default async function ConfirmPhonePage({
               style={{ fontFamily: "var(--font-mono)", letterSpacing: ".3em" }}
             />
           </div>
-          <button type="submit" className="btn btn--primary btn--block">
-            Confirm my number
-          </button>
+          <SubmitButton pending="Checking your code…">Confirm my number</SubmitButton>
         </div>
       </form>
 

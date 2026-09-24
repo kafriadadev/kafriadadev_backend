@@ -1,3 +1,4 @@
+import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
 
 import { Flash } from "@/components/Flash";
@@ -241,10 +242,9 @@ export default async function RegisterPage({
             </label>
           </div>
 
-          <button type="submit" className="btn btn--primary btn--block"
-                  style={{ marginTop: "var(--s5)" }}>
-            Create my KAFRIADA ID
-          </button>
+          <div style={{ marginTop: "var(--s5)" }}>
+            <SubmitButton pending="Creating your ID…">Create my KAFRIADA ID</SubmitButton>
+          </div>
 
           <p className="hint" style={{ textAlign: "center", marginTop: "var(--s4)" }}>
             Already registered? <a href="/sign-in">Sign in</a> or{" "}

@@ -1,3 +1,4 @@
+import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -104,9 +105,9 @@ async function start(token: string, error: string) {
               <p className="hint">You have already paid for this. Nothing more is due.</p>
             ) : (
               <form action={startPaymentAction}>
-                <button type="submit" className="btn btn--primary btn--block">
+                <SubmitButton pending="Taking you to Paystack…" detail="Please do not close or refresh this page.">
                   Pay securely with Paystack
-                </button>
+                </SubmitButton>
                 <p className="hint" style={{ textAlign: "center", marginTop: "var(--s4)" }}>
                   You will leave KAFRIADA to pay. We never see your card details.
                 </p>

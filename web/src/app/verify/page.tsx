@@ -1,3 +1,4 @@
+import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -129,7 +130,7 @@ function UploadForm({ v }: { v: Verification }) {
           <span className="hint">{fileLabel(v.document)}</span>
         </div>
 
-        <button type="submit" className="btn btn--ghost btn--block">Save my files</button>
+        <SubmitButton className="btn btn--ghost btn--block" pending="Uploading your files…" detail="Please keep this page open. This can take a few seconds.">Save my files</SubmitButton>
         <p className="hint" style={{ marginTop: "var(--s4)" }}>
           Maximum 10MB per image. Your document is used only to check your identity and age, and is
           deleted 30 days after a decision. Your photo stays on your profile.
@@ -272,9 +273,9 @@ function Rejected({ v }: { v: Verification }) {
       <UploadForm v={v} />
 
       <form action={resubmitAction}>
-        <button type="submit" className="btn btn--primary btn--block" disabled={!ready}>
+        <SubmitButton disabled={!ready} pending="Sending for review…">
           Resubmit for review
-        </button>
+        </SubmitButton>
         {!ready ? (
           <p className="hint">Both files must be added and ready before you can send it again.</p>
         ) : null}

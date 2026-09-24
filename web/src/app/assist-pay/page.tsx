@@ -1,3 +1,4 @@
+import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -91,9 +92,9 @@ export default async function AssistPayPage({ searchParams }: { searchParams: Pr
               aria-describedby="kuid-hint"
             />
           </div>
-          <button type="submit" className="btn btn--primary btn--block">
+          <SubmitButton pending="Taking you to Paystack…" detail="Please do not close or refresh this page.">
             Continue to payment
-          </button>
+          </SubmitButton>
         </div>
       </form>
 

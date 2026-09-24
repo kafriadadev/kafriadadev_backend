@@ -1,3 +1,4 @@
+import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -88,9 +89,7 @@ export default async function SignInPage({
             />
           </div>
 
-          <button type="submit" className="btn btn--primary btn--block">
-            Sign in
-          </button>
+          <SubmitButton pending="Signing you in…">Sign in</SubmitButton>
 
           <p className="hint" style={{ textAlign: "center", marginTop: "var(--s4)" }}>
             <a href="/forgot">Forgot your password?</a>
