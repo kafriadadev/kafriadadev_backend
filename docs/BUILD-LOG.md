@@ -99,8 +99,8 @@ PostgreSQL with it (the earlier "could not open pg_notify" error). It was rebuil
 documented recipe, now under `C:\Users\HP\.kaf-localdb` so Windows does not clean it.
 
 **Not done / open:** CRD-06 (bulk QR printing); a coordinator's read-only view of clubs in
-their LGA; the throwaway coordinator used for the live check on Supabase should have its
-role revoked (see the ISSUE-LOG note if it was not).
+their LGA. The throwaway coordinator used for the live check on Supabase had its role and
+session revoked afterwards (the user row remains: users are never deleted).
 
 ---
 
