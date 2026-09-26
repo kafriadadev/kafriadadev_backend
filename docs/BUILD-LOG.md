@@ -58,7 +58,7 @@ means no known vulnerabilities in what `pyproject.toml` resolves today.
 ---
 
 ## 2026-09-27 — The coordinator console (CRD-01, CRD-03) and editing a club
-**Commit(s):** *(pending)*
+**Commit(s):** `8527517`
 
 **Built:** `contexts/coordination/service.py`, `api/v1/coordination.py`, `/coordinator` and
 `/coordinator/find`. **CRD-01:** registered, paid, to review, clubs and the oldest
