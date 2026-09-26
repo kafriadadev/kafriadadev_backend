@@ -127,8 +127,11 @@ export default async function ClubPage({
       </section>
 
       {club.status === "approved" ? (
-        <p>
+        <p style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>
           <a href={`${base}/invite`} className="btn btn--primary">Add a player</a>
+          {club.verified ? null : (
+            <a href={`${base}/verify`} className="btn btn--ghost">Verify club</a>
+          )}
         </p>
       ) : null}
 

@@ -32,11 +32,11 @@ from kafriada.settings import get_settings
 
 log = structlog.get_logger(__name__)
 
-KINDS = ("photo", "document")
+KINDS = ("photo", "document", "club_document")
 ALLOWED_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 
 # A face at a size a profile shows; a document at a size a person can still read.
-_LONGEST_SIDE = {"photo": 900, "document": 1800}
+_LONGEST_SIDE = {"photo": 900, "document": 1800, "club_document": 1800}
 # Refuse to decode anything that would expand past this many pixels: a small file
 # can declare an enormous canvas, and decoding it is how a server runs out of memory.
 Image.MAX_IMAGE_PIXELS = 40_000_000

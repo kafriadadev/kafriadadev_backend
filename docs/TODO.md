@@ -264,9 +264,20 @@ start and VER-03 (f7269e9).
   (`POST /v1/admin/clubs/{id}/approve|suspend`, migration 0011, `club.approve` held by
   `super_admin`). An athlete is active in one club at a time: accepting a second
   invitation ends the first in the same transaction and writes `left_club` and
-  `transferred` to their history. **Still to do:** **CLB-04** verify the club ₦15,000,
-  **edit club details** (CLB-02), and a **screen for approval** — until the admin
-  console (ADM-02) and a first super_admin exist, approving is an API call.
+  `transferred` to their history. **CLB-04** verify the club ₦15,000 done 2026-09-25
+  (migration 0012; see below). **Still to do:** **edit club details** (CLB-02), and a
+  **screen for approval and for reviewing club documents** — until the admin console
+  (ADM-02) and a first super_admin exist, both are API calls.
+- [x] **CLB-04 verify the club** (2026-09-25, migration 0012). The athlete money path
+  unchanged with a different price and beneficiary: `money.payments.org_id` (a CHECK ties
+  it to `stage2_org`, and the guard trigger makes it immutable), `club_verification_requests`
+  (one live per club) and append-only `club_verification_decisions`, a `club_document`
+  media kind through the same re-encoding pipeline. Club admin: `/clubs/[id]/verify`,
+  `GET|POST /v1/clubs/{id}/verification/...` (uploads, payment, resubmit). Reviewer (a
+  super_admin, `club.approve`): `/v1/admin/club-verification/queue|{id}/document|approve|
+  reject`, no screen. Approval sets the club to stage 2. **Not built:** revoking a
+  verified club (the state exists, no route), the 30-day purge of club documents, a
+  reviewer screen, and Slice 2's transfers (the wireframe's "accept transfers" benefit).
 - [ ] **Coordinator console** `[UI]`: **CRD-01** dashboard, **CRD-03** find an athlete,
   **CRD-06** bulk QR card printing. **CRD-05** settlement is Metabase SQL against
   the read replica, not a built screen.

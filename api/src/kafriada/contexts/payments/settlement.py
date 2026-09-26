@@ -35,6 +35,7 @@ import structlog
 from sqlalchemy import text
 
 from kafriada.contexts.audit.service import Actor, record
+from kafriada.contexts.clubs import verification as club_verification
 from kafriada.contexts.ledger.entries import plan_settlement
 from kafriada.contexts.payments.rules import (
     ChargeEvent,
@@ -118,7 +119,7 @@ def settle_charge(
             # other writer of this payment (the abandon sweep, a reviewer).
             row = session.execute(
                 text(
-                    "SELECT status, expected_kobo, paid_by, on_behalf_of "
+                    "SELECT status, expected_kobo, paid_by, on_behalf_of, purpose "
                     "FROM money.payments WHERE id = :id FOR UPDATE"
                 ),
                 {"id": payment_id},
@@ -154,7 +155,10 @@ def settle_charge(
                             "amount": line.amount_kobo,
                         },
                     )
-                moved = verification.mark_paid(session, payment_id) is not None
+                moved = (
+                    verification.mark_paid(session, payment_id) is not None
+                    or club_verification.mark_paid(session, payment_id) is not None
+                )
                 action = "payment.settled"
                 result = Settlement(Outcome.SETTLED, payment_id, verification_moved=moved)
                 _send_receipt(session, row, event.amount_kobo)
@@ -225,18 +229,28 @@ def _send_receipt(session, row, paid_kobo: int) -> None:  # type: ignore[no-unty
             tell = athlete_user
 
     amount = _naira(paid_kobo)
-    queue_notification(
-        session,
-        user_id=tell,
-        sms=(
+    if row.purpose == "stage2_org":
+        sms = f"KAFRIADA: we received your payment of {amount}. Your club is now with an administrator to review."
+        email = (
+            f"We received your payment of {amount}.\n\n"
+            "Your club is now with an administrator to review. You will be told as soon "
+            "as it is decided."
+        )
+    else:
+        sms = (
             f"KAFRIADA: we received your payment of {amount}. Your verification is now "
             "with your LGA coordinator to review."
-        ),
-        subject="KAFRIADA payment received",
-        email=(
+        )
+        email = (
             f"We received your payment of {amount}.\n\n"
             "Your verification is now with your LGA coordinator to review. You will be "
             "told as soon as it is decided."
-        ),
+        )
+    queue_notification(
+        session,
+        user_id=tell,
+        sms=sms,
+        subject="KAFRIADA payment received",
+        email=email,
         purpose="payment_received",
     )

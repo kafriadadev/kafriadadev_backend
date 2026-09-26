@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 const PURPOSE_LABEL: Record<string, string> = {
   stage2_athlete: "Stage-2 verification",
+  stage2_org: "Club verification",
 };
 
 const STATE_LABEL: Record<Payment["state"], string> = {

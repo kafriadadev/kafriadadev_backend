@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 from kafriada.clock import today_in_nigeria
 from kafriada.contexts.access.service import Principal
 from kafriada.contexts.audit.service import Actor, record
+from kafriada.contexts.clubs import verification as club_verification
 from kafriada.contexts.identity import service as identity
 from kafriada.contexts.payments.provider import ProviderError, build_provider
 from kafriada.contexts.payments.rules import (
@@ -188,6 +189,117 @@ def start_payment(
     except ProviderError as exc:
         # The customer never received an address, so nothing they do can pay
         # this reference. (A late charge on it would still settle: failed → success.)
+        _mark_failed(payment_id, reference, exc, request_id)
+        raise Unavailable(NOT_AVAILABLE) from exc
+
+    return Started(
+        reference=reference,
+        authorization_url=initialised.authorization_url,
+        amount_kobo=amount,
+    )
+
+
+def start_club_payment(
+    principal: Principal,
+    club_id: UUID,
+    *,
+    request_id: str | None = None,
+    ip_address: str | None = None,
+) -> Started:
+    """Start the checkout for a club's verification badge (CLB-04).
+
+    The same path as an athlete's, with a different price and a different beneficiary:
+    the payment names the club (``org_id``) and the price is ours, never the caller's.
+    The route has proved the caller administers ``club_id``.
+    """
+    settings = get_settings()
+    user_id = principal.user_id
+    purpose = Purpose.STAGE2_ORG
+
+    provider = build_provider(settings)
+    if provider.name == "none":
+        raise Unavailable(NOT_AVAILABLE)
+
+    with transaction() as session:
+        email = session.execute(
+            text("SELECT email FROM ops.users WHERE id = :id"), {"id": user_id}
+        ).scalar_one()
+        club = session.execute(
+            text("SELECT status, stage FROM identity.organizations WHERE id = :c"), {"c": club_id}
+        ).mappings().one_or_none()
+    if club is None:
+        raise Refused("No such club.", code="no_club")
+    if club["status"] != "approved":
+        raise Refused("A club must be approved before it can be verified.", code="not_approved")
+    if club["stage"] == 2:
+        raise Refused("This club is already verified.", code="already_paid")
+
+    amount = expected_amount_kobo(purpose, settings)
+    reference = new_reference()
+    actor = Actor(user_id=user_id, label=principal.full_name, role="club_admin")
+
+    with money_transaction(reason="start club payment") as session:
+        for status, message, code in (
+            (PaymentStatus.SUCCESS, "This club has already paid for verification.", "already_paid"),
+            (
+                PaymentStatus.FROZEN,
+                "An earlier payment is being checked by our team. Please wait for us to "
+                "contact you before paying again.",
+                "under_review",
+            ),
+        ):
+            if session.execute(
+                text(
+                    "SELECT EXISTS (SELECT 1 FROM money.payments "
+                    "WHERE org_id = :c AND status = :s)"
+                ),
+                {"c": club_id, "s": status.value},
+            ).scalar_one():
+                raise Refused(message, code=code)
+        if not club_verification.ready_for_payment(session, club_id):
+            raise Refused(
+                "Add your club's registration document or LGA letter first. "
+                "We will bring you back here to pay.",
+                code="no_submission",
+            )
+        payment_id = session.execute(
+            text(
+                """
+                INSERT INTO money.payments (reference, purpose, expected_kobo, paid_by, org_id)
+                VALUES (:reference, :purpose, :amount, :payer, :club)
+                RETURNING id
+                """
+            ),
+            {
+                "reference": reference,
+                "purpose": purpose.value,
+                "amount": amount,
+                "payer": user_id,
+                "club": club_id,
+            },
+        ).scalar_one()
+        record(
+            session,
+            actor=actor,
+            action="payment.started",
+            subject_type="payment",
+            subject_id=str(payment_id),
+            metadata={
+                "reference": reference, "expected_kobo": amount,
+                "purpose": purpose.value, "club_id": str(club_id),
+            },
+            request_id=request_id,
+            ip_address=ip_address,
+        )
+
+    try:
+        initialised = provider.initialise(
+            reference=reference,
+            amount_kobo=amount,
+            email=email or f"{user_id.hex}@{settings.payment_placeholder_email_domain}",
+            callback_url=f"{settings.public_base_url.rstrip('/')}/clubs/{club_id}/verify",
+        )
+    except ProviderError as exc:
         _mark_failed(payment_id, reference, exc, request_id)
         raise Unavailable(NOT_AVAILABLE) from exc
 

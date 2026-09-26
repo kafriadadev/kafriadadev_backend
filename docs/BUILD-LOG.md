@@ -57,6 +57,55 @@ means no known vulnerabilities in what `pyproject.toml` resolves today.
 
 ---
 
+## 2026-09-25 — CLB-04: verify the club (₦15,000)
+**Commit(s):** *(pending)*
+
+**Built:** **Migration 0012.** `money.payments.org_id` names the club a `stage2_org`
+payment is for; a CHECK makes purpose and club go together and `guard_payment` treats it
+as an agreed field, immutable like the amount. `identity.club_verification_requests` is
+the machine (draft, under_review, approved, rejected, revoked; one live request per club
+by partial unique index; cannot leave draft without a document and a payment, by CHECK)
+and `club_verification_decisions` is append-only with a required reason for a rejection.
+`media_files` accepts `club_document`, uploaded by the administrator and linked by the
+request. `contexts/clubs/verification.py` is the state machine and reviewer; the payment
+side is `payments.service.start_club_payment` and a purpose branch in settlement
+(`club_verification.mark_paid` beside the athlete's, inside the ledger transaction, and a
+club-worded receipt). Routes in `api/v1/club_verification.py`; `/clubs/[id]/verify`
+(document, pay, wait, rejected-with-reason, resubmit), a Verify club button on the
+dashboard, a "Club verification" label on `/payments`.
+
+**Why the shape:** the wireframe says one payment path, two prices, so a club payment is
+the ordinary payment with a different beneficiary column rather than a second path. The
+document reuses the media pipeline, owned by the uploading administrator's athlete row,
+so nothing about storage, re-encoding or EXIF stripping is new.
+
+**Verified:** `tests/test_club_verification.py`, 12 tests: price and state at start;
+an unapproved club, a stranger and an anonymous caller are refused; paying before a
+document is refused and writes no payment; a non-image is refused on the form; the
+payment names the club, is the club price, settles to exactly two ledger lines and sends
+a club receipt; a payment at the athlete price freezes and never reaches a reviewer; the
+database refuses an org payment without a club and a club on an athlete payment; the
+whole review (queue, document served only while waiting, approve makes the club stage 2,
+no second payment or edit, cannot be decided twice); rejection needs a reason the club
+reads, and resubmit reuses the payment; only a reviewer can see the queue, the document
+or decide; one administrator of two clubs cannot move a file between them. Mutations
+proved red: dropping the club from the media ownership query (needed an open,
+unsent slot to show, so the test uses one) and matching a payment to any club's draft.
+The permission matrix and route manifest pass with the new routes. The full suite,
+`ruff`, `mypy` and `check_migration_safety` are clean, and a full `alembic downgrade
+base` then `upgrade head` round-trips with these rows present. Live: a throwaway club on
+Supabase uploaded a document (ready) and real Paystack accepted a ₦15,000 checkout for
+it. `check:render` audits the new screen.
+
+**Not done / open:** revoking a verified club (the state exists, no route or screen); the
+30-day purge of club documents (the athlete purge is keyed to athlete requests); a
+reviewer screen (approval and review are API calls until the admin console and a first
+super_admin exist; test clubs on Supabase are approved by a one-line SQL update); a real
+card payment for a club has not been made (only checkout creation, against real
+Paystack, and settlement in tests).
+
+---
+
 ## 2026-09-25 — Clubs: invite a player (CLB-03), my clubs (ATH-05), approval
 **Commit(s):** `8a1e74b`
 

@@ -481,6 +481,72 @@ export function answerInvitation(
   );
 }
 
+export type ClubVerification = {
+  club_id: string;
+  club_name: string;
+  club_status: "pending_review" | "approved" | "suspended";
+  verified: boolean;
+  state: "none" | "draft" | "under_review" | "approved" | "rejected";
+  /** The document's own processing state, once one was sent. */
+  document: "pending" | "uploaded" | "ready" | "unreadable" | "deleted" | null;
+  price_kobo: number;
+  paid: boolean;
+  reason: string | null;
+};
+
+/** CLB-04: where the club's verification stands. */
+export function getClubVerification(token: string, clubId: string): Promise<ClubVerification> {
+  return call<ClubVerification>(`/v1/clubs/${encodeURIComponent(clubId)}/verification`, { token });
+}
+
+/** Open a slot for the club's document, send the bytes through the API, confirm. */
+export async function uploadClubDocument(
+  token: string,
+  clubId: string,
+  file: { type: string; size: number; bytes: ArrayBuffer },
+  meta: ClientMeta,
+): Promise<void> {
+  const base = `/v1/clubs/${encodeURIComponent(clubId)}/verification/uploads`;
+  const slot = await call<{ media_id: string }>(base, {
+    method: "POST",
+    body: JSON.stringify({ content_type: file.type, size_bytes: file.size }),
+    token,
+    meta,
+  });
+  await call<void>(`${base}/${slot.media_id}/content`, {
+    method: "PUT",
+    body: file.bytes,
+    headers: { "content-type": "application/octet-stream" },
+    token,
+    meta,
+  });
+  await call<void>(`${base}/${slot.media_id}/confirm`, { method: "POST", token, meta });
+}
+
+export function startClubPayment(
+  token: string,
+  clubId: string,
+  meta: ClientMeta,
+): Promise<StartedPayment> {
+  return call<StartedPayment>(`/v1/clubs/${encodeURIComponent(clubId)}/verification/payment`, {
+    method: "POST",
+    token,
+    meta,
+  });
+}
+
+export function resubmitClubVerification(
+  token: string,
+  clubId: string,
+  meta: ClientMeta,
+): Promise<void> {
+  return call<void>(`/v1/clubs/${encodeURIComponent(clubId)}/verification/resubmit`, {
+    method: "POST",
+    token,
+    meta,
+  });
+}
+
 export function getVerification(token: string): Promise<Verification> {
   return call<Verification>("/v1/verification", { token });
 }
