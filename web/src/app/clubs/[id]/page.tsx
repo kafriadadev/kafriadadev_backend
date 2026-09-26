@@ -92,6 +92,11 @@ export default async function ClubPage({
           <p style={{ marginBottom: 0 }}>The player appears on your roster once they accept.</p>
         </Flash>
       ) : null}
+      {one(query.saved) ? (
+        <Flash variant="good" title="Details saved">
+          <p style={{ marginBottom: 0 }}>The club&rsquo;s details are updated.</p>
+        </Flash>
+      ) : null}
       {one(query.removed) ? (
         <Flash variant="good" title="Done">
           <p style={{ marginBottom: 0 }}>The roster has been updated.</p>
@@ -175,6 +180,9 @@ export default async function ClubPage({
               ) : null}
               <div className="fact"><dt>Contact</dt><dd>{club.contact_phone}</dd></div>
             </dl>
+            <p style={{ marginTop: "var(--s4)", marginBottom: 0 }}>
+              <a href={`${base}/edit`} className="btn btn--ghost">Edit details</a>
+            </p>
           </div>
         </section>
       ) : null}

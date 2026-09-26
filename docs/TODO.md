@@ -265,9 +265,10 @@ start and VER-03 (f7269e9).
   `super_admin`). An athlete is active in one club at a time: accepting a second
   invitation ends the first in the same transaction and writes `left_club` and
   `transferred` to their history. **CLB-04** verify the club ₦15,000 done 2026-09-25
-  (migration 0012; see below). **Still to do:** **edit club details** (CLB-02), and a
-  **screen for approval and for reviewing club documents** — until the admin console
-  (ADM-02) and a first super_admin exist, both are API calls.
+  (migration 0012; see below). **Edit club details** done 2026-09-27 (`PUT /v1/clubs/{id}`,
+  `/clubs/[id]/edit`: name, contact phone and founding year, not sport or area).
+  **Still to do:** a **screen for approval and for reviewing club documents** — until
+  the admin console (ADM-02) and a first super_admin exist, both are API calls.
 - [x] **CLB-04 verify the club** (2026-09-25, migration 0012). The athlete money path
   unchanged with a different price and beneficiary: `money.payments.org_id` (a CHECK ties
   it to `stage2_org`, and the guard trigger makes it immutable), `club_verification_requests`
@@ -278,9 +279,14 @@ start and VER-03 (f7269e9).
   reject`, no screen. Approval sets the club to stage 2. **Not built:** revoking a
   verified club (the state exists, no route), the 30-day purge of club documents, a
   reviewer screen, and Slice 2's transfers (the wireframe's "accept transfers" benefit).
-- [ ] **Coordinator console** `[UI]`: **CRD-01** dashboard, **CRD-03** find an athlete,
-  **CRD-06** bulk QR card printing. **CRD-05** settlement is Metabase SQL against
-  the read replica, not a built screen.
+- [ ] **Coordinator console** `[UI]` — **CRD-01** dashboard and **CRD-03** find an athlete
+  done 2026-09-27 (`GET /v1/lgas/{id}/dashboard`, `GET /v1/lgas/{id}/athlete-search`,
+  `/coordinator`, `/coordinator/find`, "Coordinator dashboard" on `/me`). The numbers are
+  the LGA's; the cash total is the caller's own assisted payments today against the two
+  daily caps; search is name or ID (partial) or a whole phone number, and an athlete in
+  another LGA is not found (200, empty), never "not permitted". **Still to do:**
+  **CRD-06** bulk QR card printing. **CRD-05** settlement is Metabase SQL against the
+  read replica, not a built screen.
 - [ ] **Admin console** `[UI]`: **ADM-01** dashboard, **ADM-02** users and roles (API
   exists, no screen), **ADM-06** audit log viewer.
 - [ ] **A way to appoint the first super_admin** (today: a SQL insert).

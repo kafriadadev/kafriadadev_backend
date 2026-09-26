@@ -57,6 +57,53 @@ means no known vulnerabilities in what `pyproject.toml` resolves today.
 
 ---
 
+## 2026-09-27 — The coordinator console (CRD-01, CRD-03) and editing a club
+**Commit(s):** *(pending)*
+
+**Built:** `contexts/coordination/service.py`, `api/v1/coordination.py`, `/coordinator` and
+`/coordinator/find`. **CRD-01:** registered, paid, to review, clubs and the oldest
+waiting case for one LGA (amber past 18 hours, red past the 24-hour target, and "nothing
+is waiting" said plainly), links to review, find and pay, and, for someone who can start
+assisted payments, today's cash total and the two daily limits with the payment link
+withdrawn once a cap is reached. The review count comes from the reviewer's own queue
+query, so it excludes their own record and cannot drift from what they can act on. A
+state coordinator or an administrator picks the LGA. **CRD-03:** name or ID (partial) or a
+whole phone number, inside one LGA, paged with plain links; wildcard characters match
+literally; under two characters returns nothing. Also **edit club details** (CLB-02's
+last action): `PUT /v1/clubs/{id}` and `/clubs/[id]/edit` change name, contact number and
+founding year; sport and area are not editable, because a club's rosters and reviews
+belong to what it registered as. The audit row records which fields changed.
+
+**Why an athlete elsewhere is "no results":** the wireframe is explicit — "not permitted"
+would let a coordinator probe who exists in other LGAs. The LGA is a query condition in
+the service, not something the caller can widen, so out-of-scope athletes are not filtered
+out afterwards, they are never selected.
+
+**Verified:** `tests/test_coordination.py`, 8 tests: the numbers move with the register;
+a coordinator's own record is never counted as waiting; the cash total is the caller's
+own and a started-but-unpaid payment counts against the cap, not as cash; scope is the
+LGA, its state and global, and nothing else (403 for another LGA and for an athlete, 401
+anonymous, 404 unknown LGA); find by name, ID (any case, or a serial fragment) and phone
+with no private field in the response; short queries and `%`/`_` match nothing; an athlete
+moved to another LGA gives exactly the same response as someone who does not exist, by
+name, ID and phone, and is found by the coordinator whose LGA it now is; paging.
+`tests/test_clubs.py` gains three tests for editing (fields, team renamed, audit, bad
+input, only the club's own administrator). Mutations proved red: dropping the LGA from
+the search (five tests) and dropping the coordinator from the cash total. Full suite,
+`ruff`, `mypy`, `check_migration_safety` and the payout gate clean. Live against Supabase
+with a throwaway LGA coordinator: dashboard (1,149 registered, 16 waiting), search, and
+another LGA refused with 403; `check:render` audits the new screens.
+
+**Also:** the machine's temporary directory had been cleaned, which took the private local
+PostgreSQL with it (the earlier "could not open pg_notify" error). It was rebuilt from the
+documented recipe, now under `C:\Users\HP\.kaf-localdb` so Windows does not clean it.
+
+**Not done / open:** CRD-06 (bulk QR printing); a coordinator's read-only view of clubs in
+their LGA; the throwaway coordinator used for the live check on Supabase should have its
+role revoked (see the ISSUE-LOG note if it was not).
+
+---
+
 ## 2026-09-25 — CLB-04: verify the club (₦15,000)
 **Commit(s):** `3050919`
 

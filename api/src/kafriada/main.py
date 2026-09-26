@@ -141,6 +141,7 @@ def _install_routes(app: FastAPI) -> None:
         club_verification,
         clubs,
         codes,
+        coordination,
         payments,
         sessions,
         verification,
@@ -154,6 +155,7 @@ def _install_routes(app: FastAPI) -> None:
     app.include_router(verification.router, prefix="/v1")
     app.include_router(clubs.router, prefix="/v1")
     app.include_router(club_verification.router, prefix="/v1")
+    app.include_router(coordination.router, prefix="/v1")
 
 
 def _install_error_handlers(app: FastAPI) -> None:

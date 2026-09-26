@@ -491,6 +491,14 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   media, `payments.service.start_club_payment`, settlement branch, `/clubs/[id]/verify`.
   Reviewer is a `super_admin` under `club.approve` via API only. 12 tests; real Paystack
   accepted a ₦15,000 checkout. **Not built:** revoke, club-document purge, reviewer screen.
+- **CRD-01 coordinator dashboard, CRD-03 find an athlete, edit club details — done and
+  verified 2026-09-27.** `/coordinator`, `/coordinator/find`,
+  `GET /v1/lgas/{id}/dashboard|athlete-search` (an athlete outside the LGA is "no
+  results", not a refusal), `PUT /v1/clubs/{id}`. 8 + 3 tests. **Not built:** CRD-06.
+- **The local test database moved** to `C:\Users\HP\.kaf-localdb` (port 54329, password
+  `localtest123` for every role, from the recipe above) after Windows cleaned the old one in
+  Temp. Start it with `pg_ctl -D C:/Users/HP/.kaf-localdb/pgdata -o "-p 54329 -c
+  listen_addresses=127.0.0.1" -l C:/Users/HP/.kaf-localdb/pg.log start`.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
@@ -519,8 +527,8 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
    2026-09-23 (see Status).
 10. ~~Migration 0010, clubs~~, ~~CLB-01~~, ~~CLB-02~~, ~~CLB-03~~, ~~ATH-05~~,
     club approval (API), ~~CLB-04~~ — done and verified 2026-09-24/25 (see Status).
-    **Next in line, in order (per the chosen build order):** edit club details, then the coordinator console
-    (CRD-01, CRD-03, CRD-06), then the admin console (ADM-01, ADM-02,
+    **Next in line, in order (per the chosen build order):** then CRD-06 (bulk QR printing) — CRD-01, CRD-03 and edit club
+    details are done 2026-09-27 — then the admin console (ADM-01, ADM-02,
     ADM-06), then a way to appoint the first super_admin — see
     `docs/TODO.md`.
 

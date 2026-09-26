@@ -634,3 +634,76 @@ def decline_invitation(
             request_id=request_id,
             ip_address=ip_address,
         )
+
+
+# ---------------------------------------------------------------------------
+# Editing a club's details
+# ---------------------------------------------------------------------------
+def update_details(
+    club_id: UUID,
+    actor_id: UUID,
+    actor_name: str,
+    *,
+    name: str,
+    contact_phone: str,
+    year_founded: int | None,
+    request_id: str | None = None,
+    ip_address: str | None = None,
+) -> None:
+    """Change the name, contact number and founding year. Sport and area are not editable:
+    a club that moved sport or area is a different club, and rosters and reviews are
+    attached to what it was registered as."""
+    name = " ".join(name.split())
+    if len(name) < 3:
+        raise Refused("Enter the club's name.", code="invalid", field="name")
+    if len(name) > 80:
+        raise Refused("The name can be at most 80 characters.", code="invalid", field="name")
+    if year_founded is not None and not 1900 <= year_founded <= today_in_nigeria().year:
+        raise Refused("Enter a valid year.", code="invalid", field="year_founded")
+    try:
+        phone = phone_mod.normalise(contact_phone)
+    except phone_mod.InvalidPhoneNumberError as exc:
+        raise Refused(str(exc), code="invalid", field="contact_phone") from exc
+
+    with transaction() as session:
+        before = session.execute(
+            text(
+                "SELECT name, contact_phone, year_founded FROM identity.organizations "
+                "WHERE id = :c FOR UPDATE"
+            ),
+            {"c": club_id},
+        ).mappings().one_or_none()
+        if before is None:
+            raise Refused("No such club.", code="missing")
+        session.execute(
+            text(
+                "UPDATE identity.organizations SET name = :n, contact_phone = :p, year_founded = :y "
+                "WHERE id = :c"
+            ),
+            {"n": name, "p": phone, "y": year_founded, "c": club_id},
+        )
+        if name != before["name"]:
+            # The default team was named for the club when it was registered.
+            session.execute(
+                text("UPDATE identity.teams SET name = :n WHERE org_id = :c AND name = :old"),
+                {"n": name, "c": club_id, "old": before["name"]},
+            )
+        changed = [
+            field
+            for field, old, new in (
+                ("name", before["name"], name),
+                ("contact_phone", before["contact_phone"], phone),
+                ("year_founded", before["year_founded"], year_founded),
+            )
+            if old != new
+        ]
+        record(
+            session,
+            actor=Actor(user_id=actor_id, label=actor_name),
+            action="club.details_updated",
+            subject_type="club",
+            subject_id=str(club_id),
+            metadata={"changed": changed},
+            request_id=request_id,
+            ip_address=ip_address,
+        )

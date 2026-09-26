@@ -314,3 +314,33 @@ async def _set_status(club_id: str, new_status: str, request: Request) -> None:
         )
     except service.Refused as exc:
         raise _refuse(exc) from None
+
+
+class UpdateClubRequest(BaseModel):
+    name: str = Field(max_length=200)
+    contact_phone: str = Field(max_length=30)
+    year_founded: int | None = None
+
+
+@router.put(
+    "/clubs/{club_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Requires("club.manage_roster", scope="club")],
+    summary="Edit the club's name, contact number and founding year",
+)
+async def update_club(club_id: str, body: UpdateClubRequest, request: Request) -> None:
+    principal = current_principal(request)
+    try:
+        await run_in_threadpool(
+            service.update_details,
+            _uuid(club_id, "No such club."),
+            principal.user_id,
+            principal.full_name,
+            name=body.name,
+            contact_phone=body.contact_phone,
+            year_founded=body.year_founded,
+            request_id=header_request_id(request),
+            ip_address=client_ip(request),
+        )
+    except service.Refused as exc:
+        raise _refuse(exc) from None

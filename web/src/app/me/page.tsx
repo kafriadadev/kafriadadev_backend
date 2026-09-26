@@ -97,7 +97,7 @@ export default async function MePage() {
 
       {staffRoles.some((r) => r.role === "lga_coordinator" || r.role === "state_coordinator") ? (
         <p>
-          <a href="/review" className="btn btn--ghost">Review verifications</a>
+          <a href="/coordinator" className="btn btn--primary">Coordinator dashboard</a>
         </p>
       ) : null}
 

@@ -179,3 +179,54 @@ def test_an_athlete_can_be_active_in_only_one_club(client: TestClient) -> None:
     put(club_a, player, "active", a)
     with pytest.raises(Exception, match="roster_members_one_active_per_athlete"):
         put(club_b, player, "active", b)
+
+
+def test_an_administrator_can_edit_the_details_and_the_history_says_what_changed(client: TestClient) -> None:
+    who = new_athlete("Editor")
+    club = club_of(client, who)
+    new_name = f"Renamed FC {uuid4().hex[:6]}"
+    got = client.put(
+        f"/v1/clubs/{club}", headers=who.headers,
+        json={"name": f"  {new_name}  ", "contact_phone": "0803 999 8888", "year_founded": 2001},
+    )
+    assert got.status_code == 204, got.text
+    seen = client.get(f"/v1/clubs/{club}", headers=who.headers).json()
+    assert (seen["name"], seen["contact_phone"], seen["year_founded"]) == (new_name, "+2348039998888", 2001)
+    assert sql("SELECT name FROM identity.teams WHERE org_id = :c", c=club)[0]["name"] == new_name
+    assert "club.details_updated" in audit_actions(club)
+    (row,) = sql(
+        "SELECT metadata->>'changed' AS changed FROM ops.audit_log WHERE subject_id = :c "
+        "AND action = 'club.details_updated'", c=club,
+    )
+    assert all(f in str(row["changed"]) for f in ("contact_phone", "name", "year_founded"))
+    cleared = client.put(
+        f"/v1/clubs/{club}", headers=who.headers,
+        json={"name": new_name, "contact_phone": "08039998888", "year_founded": None},
+    )
+    assert cleared.status_code == 204
+    assert client.get(f"/v1/clubs/{club}", headers=who.headers).json()["year_founded"] is None
+
+
+@pytest.mark.parametrize(
+    ("over", "field"),
+    [({"name": "x"}, "name"), ({"contact_phone": "12"}, "contact_phone"), ({"year_founded": 1800}, "year_founded")],
+)
+def test_a_bad_edit_is_refused_on_its_field_and_changes_nothing(
+    client: TestClient, over: dict[str, object], field: str
+) -> None:
+    who = new_athlete("Bad edit")
+    club = club_of(client, who)
+    before = client.get(f"/v1/clubs/{club}", headers=who.headers).json()
+    body_ = {"name": before["name"], "contact_phone": "08031234567", "year_founded": None, **over}
+    got = client.put(f"/v1/clubs/{club}", headers=who.headers, json=body_)
+    assert got.status_code == 422 and got.json()["error"]["message"]["field"] == field
+    assert client.get(f"/v1/clubs/{club}", headers=who.headers).json()["name"] == before["name"]
+
+
+def test_only_the_clubs_own_administrator_can_edit_it(client: TestClient) -> None:
+    a, b = new_athlete("Edit A"), new_athlete("Edit B")
+    club_a = club_of(client, a)
+    payload = {"name": "Hijacked FC", "contact_phone": "08031234567", "year_founded": None}
+    assert client.put(f"/v1/clubs/{club_a}", headers=b.headers, json=payload).status_code == 403
+    assert client.put(f"/v1/clubs/{club_a}", json=payload).status_code == 401
+    assert client.get(f"/v1/clubs/{club_a}", headers=a.headers).json()["name"] != "Hijacked FC"

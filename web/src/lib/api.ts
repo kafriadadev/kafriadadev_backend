@@ -404,6 +404,21 @@ export function registerClub(
   });
 }
 
+/** Edit the club's name, contact number and founding year. */
+export function updateClub(
+  token: string,
+  clubId: string,
+  details: { name: string; contact_phone: string; year_founded: number | null },
+  meta: ClientMeta,
+): Promise<void> {
+  return call<void>(`/v1/clubs/${encodeURIComponent(clubId)}`, {
+    method: "PUT",
+    body: JSON.stringify(details),
+    token,
+    meta,
+  });
+}
+
 /** CLB-02: one club's dashboard. The API refuses any club the caller does not administer. */
 export function getClub(token: string, clubId: string): Promise<ClubDashboard> {
   return call<ClubDashboard>(`/v1/clubs/${encodeURIComponent(clubId)}`, { token });
@@ -545,6 +560,51 @@ export function resubmitClubVerification(
     token,
     meta,
   });
+}
+
+export type CoordinatorDashboard = {
+  lga_id: string;
+  lga_name: string;
+  registered: number;
+  paid: number;
+  to_review: number;
+  /** Whole hours the oldest waiting case has sat; null when nothing is waiting. */
+  oldest_waiting_hours: number | null;
+  clubs: number;
+  /** Whether this person can start assisted (cash) payments in this LGA. */
+  can_assist: boolean;
+  collected_kobo: number;
+  collected_count: number;
+  limit_kobo: number;
+  limit_count: number;
+  cap_reached: boolean;
+};
+
+/** CRD-01: one LGA's numbers, and the caller's own cash total for today. */
+export function getCoordinatorDashboard(token: string, lga: string): Promise<CoordinatorDashboard> {
+  return call<CoordinatorDashboard>(`/v1/lgas/${encodeURIComponent(lga)}/dashboard`, { token });
+}
+
+export type FoundAthlete = {
+  kuid: string;
+  full_name: string;
+  playing_position: string | null;
+  verified: boolean;
+};
+
+export type AthleteSearch = { people: FoundAthlete[]; page: number; has_more: boolean };
+
+/** CRD-03: find an athlete in one LGA by name, ID or phone. Elsewhere is simply not found. */
+export function searchAthletes(
+  token: string,
+  lga: string,
+  q: string,
+  page: number,
+): Promise<AthleteSearch> {
+  return call<AthleteSearch>(
+    `/v1/lgas/${encodeURIComponent(lga)}/athlete-search?${new URLSearchParams({ q, page: String(page) })}`,
+    { token },
+  );
 }
 
 export function getVerification(token: string): Promise<Verification> {
