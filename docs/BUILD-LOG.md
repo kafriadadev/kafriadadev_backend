@@ -58,7 +58,7 @@ means no known vulnerabilities in what `pyproject.toml` resolves today.
 ---
 
 ## 2026-09-25 — CLB-04: verify the club (₦15,000)
-**Commit(s):** *(pending)*
+**Commit(s):** `3050919`
 
 **Built:** **Migration 0012.** `money.payments.org_id` names the club a `stage2_org`
 payment is for; a CHECK makes purpose and club go together and `guard_payment` treats it
