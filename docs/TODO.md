@@ -276,9 +276,14 @@ start and VER-03 (f7269e9).
   media kind through the same re-encoding pipeline. Club admin: `/clubs/[id]/verify`,
   `GET|POST /v1/clubs/{id}/verification/...` (uploads, payment, resubmit). Reviewer (a
   super_admin, `club.approve`): `/v1/admin/club-verification/queue|{id}/document|approve|
-  reject`, no screen. Approval sets the club to stage 2. **Not built:** revoking a
-  verified club (the state exists, no route), the 30-day purge of club documents, a
-  reviewer screen, and Slice 2's transfers (the wireframe's "accept transfers" benefit).
+  reject`, no screen. Approval sets the club to stage 2. **Revoking a verified club and
+  the 30-day purge of its document** done 2026-09-27: `POST /v1/admin/club-verification/
+  {id}/revoke` (reason and password, mirrors ADM-03 exactly; sets the club's stage back
+  to 1 and frees the request slot the same way a revoked athlete verification does),
+  `/admin/clubs/[id]/revoke`; `contexts.clubs.verification.purge_expired_documents`
+  joined into the hourly `documents` job alongside the athlete purge. **Not built:** a
+  reviewer screen for approval and review (both are still API calls until the admin
+  console gets one), and Slice 2's transfers (the wireframe's "accept transfers" benefit).
 - [ ] **Coordinator console** `[UI]` — **CRD-01** dashboard and **CRD-03** find an athlete
   done 2026-09-27 (`GET /v1/lgas/{id}/dashboard`, `GET /v1/lgas/{id}/athlete-search`,
   `/coordinator`, `/coordinator/find`, "Coordinator dashboard" on `/me`). The numbers are

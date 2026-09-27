@@ -46,7 +46,7 @@ def _club(club_id: str) -> UUID:
 
 
 def _refused(exc: service.Refused) -> HTTPException:
-    if exc.code in ("reason",):
+    if exc.code in ("reason", "password"):
         return HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=_detail(exc.message, exc.field))
     return HTTPException(status.HTTP_409_CONFLICT, detail=_detail(exc.message, exc.field))
 
@@ -287,3 +287,27 @@ def approve(club_id: str, request: Request) -> Response:
 )
 def reject(club_id: str, body: RejectRequest, request: Request) -> Response:
     return _decide(club_id, request, body.reason)
+
+
+class RevokeRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=2000)
+    current_password: str = Field(min_length=1, max_length=1024)
+
+
+@router.post(
+    "/admin/club-verification/{club_id}/revoke",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Requires("club.approve")],
+    summary="Withdraw a club's verified badge (reason and password required)",
+)
+def revoke(club_id: str, body: RevokeRequest, request: Request) -> Response:
+    try:
+        service.revoke(
+            current_principal(request), _club(club_id), body.reason, body.current_password,
+            request_id=header_request_id(request), ip_address=client_ip(request),
+        )
+    except service.NotFound:
+        raise NOT_FOUND from None
+    except service.Refused as exc:
+        raise _refused(exc) from None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

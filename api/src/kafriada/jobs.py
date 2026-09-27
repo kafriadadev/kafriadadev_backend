@@ -47,6 +47,7 @@ from kafriada import integrity
 from kafriada.clock import NIGERIA_TZ, now_utc
 from kafriada.contexts.access import ratelimit
 from kafriada.contexts.access import service as access
+from kafriada.contexts.clubs import verification as club_verification
 from kafriada.contexts.media import service as media
 from kafriada.contexts.media.store import build_store
 from kafriada.contexts.payments import reconcile
@@ -103,6 +104,16 @@ def _process_media() -> Summary:
     return {"ready": media.process_pending(20, store=build_store())}
 
 
+def _purge_documents() -> Summary:
+    if get_settings().media_store is MediaStoreKind.NONE:
+        return {"skipped": "no media store is configured"}
+    store = build_store()
+    return {
+        "purged": media.purge_expired_documents(store=store),
+        "club_documents_purged": club_verification.purge_expired_documents(store=store),
+    }
+
+
 def _integrity() -> Summary:
     findings = integrity.run_all()
     return {
@@ -119,9 +130,7 @@ def build_jobs() -> list[Job]:
         Job("expire", lambda: reconcile.expire_stale().summary(), every=HOUR),
         Job("sessions", lambda: {"removed": access.sweep_sessions()}, every=HOUR),
         Job("rate_counters", lambda: {"removed": ratelimit.prune()}, every=HOUR),
-        Job("documents", lambda: {"purged": media.purge_expired_documents(store=build_store())}
-            if get_settings().media_store is not MediaStoreKind.NONE
-            else {"skipped": "no media store is configured"}, every=HOUR),
+        Job("documents", _purge_documents, every=HOUR),
         Job("outbox_retention", lambda: {"removed": outbox.prune_delivered()},
             every=DAY, daily_at_hour=3),
         Job("integrity", _integrity, every=DAY, daily_at_hour=2,

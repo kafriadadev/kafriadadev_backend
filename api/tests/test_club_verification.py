@@ -322,3 +322,160 @@ def test_one_administrator_of_two_clubs_cannot_move_a_file_between_them(
     # Theirs, and they administer both clubs — but it belongs to club A's request only.
     assert client.put(f"/v1/clubs/{club_b}/verification/uploads/{media_id}/content", content=b"x", headers=admin.headers).status_code == 404
     assert client.post(f"/v1/clubs/{club_b}/verification/uploads/{media_id}/confirm", headers=admin.headers).status_code == 404
+
+
+# -- revoking a verified club (mirrors ADM-03) -------------------------------
+PASSWORD = "a long test passphrase"
+
+
+def verified_club(client: TestClient, root: dict[str, str], fake: FakeProvider) -> tuple[Athlete, str]:
+    admin, club = in_review(client, root)
+    pay(client, admin, club)
+    assert client.post(f"/v1/admin/club-verification/{club}/approve", headers=root).status_code == 204
+    return admin, club
+
+
+def test_revoking_needs_a_reason_and_the_password_again(
+    client: TestClient, root: dict[str, str], fake: FakeProvider
+) -> None:
+    from tests._media_helpers import super_admin
+
+    boss = super_admin(PASSWORD)
+    admin, club = verified_club(client, root, fake)
+
+    empty = client.post(
+        f"/v1/admin/club-verification/{club}/revoke", headers=boss.headers,
+        json={"reason": "   ", "current_password": PASSWORD},
+    )
+    assert empty.status_code == 422 and empty.json()["error"]["message"]["field"] == "reason"
+
+    wrong = client.post(
+        f"/v1/admin/club-verification/{club}/revoke", headers=boss.headers,
+        json={"reason": "forged document", "current_password": "not my password"},
+    )
+    assert wrong.status_code == 422 and wrong.json()["error"]["message"]["field"] == "current_password"
+    assert overview(client, admin, club)["verified"] is True
+
+    words = "The document was forged."
+    ok = client.post(
+        f"/v1/admin/club-verification/{club}/revoke", headers=boss.headers,
+        json={"reason": words, "current_password": PASSWORD},
+    )
+    assert ok.status_code == 204, ok.text
+    seen = overview(client, admin, club)
+    # A revoked request frees the slot, the same as an athlete's — the club could start a
+    # fresh submission, so its current state reads "none", not "revoked".
+    assert (seen["state"], seen["verified"]) == ("none", False)
+    assert client.get(f"/v1/clubs/{club}", headers=admin.headers).json()["verified"] is False
+    assert "club_verification.revoked" in audit_actions(club)
+    (decision,) = sql(
+        "SELECT decision, reason FROM identity.club_verification_decisions d "
+        "JOIN identity.club_verification_requests v ON v.id = d.request_id "
+        "WHERE v.org_id = :c ORDER BY d.id DESC LIMIT 1", c=club,
+    )
+    assert (decision["decision"], decision["reason"]) == ("revoked", words)
+
+
+def test_a_club_that_is_not_verified_cannot_be_revoked_and_it_cannot_be_revoked_twice(
+    client: TestClient, root: dict[str, str], fake: FakeProvider
+) -> None:
+    from tests._media_helpers import super_admin
+
+    boss = super_admin(PASSWORD)
+    _admin, bare_club = new_club(client, root)  # no verification request exists at all
+    nothing_to_revoke = client.post(
+        f"/v1/admin/club-verification/{bare_club}/revoke", headers=boss.headers,
+        json={"reason": "x", "current_password": PASSWORD},
+    )
+    assert nothing_to_revoke.status_code == 404
+
+    _admin3, waiting_club = in_review(client, root)  # a request exists, but is not approved
+    not_approved = client.post(
+        f"/v1/admin/club-verification/{waiting_club}/revoke", headers=boss.headers,
+        json={"reason": "x", "current_password": PASSWORD},
+    )
+    assert not_approved.status_code == 409
+
+    _admin2, club2 = verified_club(client, root, fake)
+    first = client.post(
+        f"/v1/admin/club-verification/{club2}/revoke", headers=boss.headers,
+        json={"reason": "once", "current_password": PASSWORD},
+    )
+    assert first.status_code == 204
+    twice = client.post(
+        f"/v1/admin/club-verification/{club2}/revoke", headers=boss.headers,
+        json={"reason": "again", "current_password": PASSWORD},
+    )
+    # A revoked request frees the slot, so a second revoke finds nothing to act on.
+    assert twice.status_code == 404
+    assert client.post(
+        f"/v1/admin/club-verification/{uuid4()}/revoke", headers=boss.headers,
+        json={"reason": "x", "current_password": PASSWORD},
+    ).status_code == 404
+
+
+def test_only_a_reviewer_can_revoke(client: TestClient, root: dict[str, str], fake: FakeProvider) -> None:
+    admin, club = verified_club(client, root, fake)
+    stranger = new_athlete("Stranger reviewer")
+    denied = client.post(
+        f"/v1/admin/club-verification/{club}/revoke", headers=admin.headers,
+        json={"reason": "x", "current_password": PASSWORD},
+    )
+    assert denied.status_code == 403
+    assert client.post(
+        f"/v1/admin/club-verification/{club}/revoke", headers=stranger.headers,
+        json={"reason": "x", "current_password": PASSWORD},
+    ).status_code == 403
+    anon = client.post(f"/v1/admin/club-verification/{club}/revoke", json={"reason": "x", "current_password": PASSWORD})
+    assert anon.status_code == 401
+    assert overview(client, admin, club)["verified"] is True
+
+
+# -- purging a decided club's document, 30 days later ------------------------
+class TestClubDocumentsDoNotOutliveTheirPurpose:
+    def _backdate(self, club_id: str, days: int) -> None:
+        sql(
+            "UPDATE identity.club_verification_requests SET decided_at = now() - make_interval(days => :d) "
+            "WHERE org_id = :c", d=days, c=club_id,
+        )
+
+    def test_the_document_is_removed_thirty_days_after_approval(
+        self, client: TestClient, root: dict[str, str], fake: FakeProvider, _store
+    ) -> None:  # type: ignore[no-untyped-def]
+        from kafriada.contexts.clubs import verification as club_verification
+
+        _admin, club = verified_club(client, root, fake)
+        (key,) = sql(
+            "SELECT m.derivative_key AS key FROM identity.media_files m "
+            "JOIN identity.club_verification_requests v ON v.document_media_id = m.id WHERE v.org_id = :c", c=club,
+        )
+        derivative = str(key["key"])
+
+        self._backdate(club, 29)
+        club_verification.purge_expired_documents(store=_store)
+        assert _store.head(derivative) is not None  # not yet
+
+        self._backdate(club, 31)
+        club_verification.purge_expired_documents(store=_store)
+        assert _store.head(derivative) is None
+        status_row = sql("SELECT status FROM identity.media_files WHERE derivative_key = :k", k=derivative)
+        assert status_row[0]["status"] == "deleted"
+
+    def test_a_rejected_clubs_document_is_kept_for_the_next_attempt(
+        self, client: TestClient, root: dict[str, str], fake: FakeProvider, _store
+    ) -> None:  # type: ignore[no-untyped-def]
+        from kafriada.contexts.clubs import verification as club_verification
+
+        admin, club = in_review(client, root)
+        pay(client, admin, club)
+        rejected = client.post(
+            f"/v1/admin/club-verification/{club}/reject", headers=root, json={"reason": "blurry"}
+        )
+        assert rejected.status_code == 204
+        self._backdate(club, 90)
+        (key,) = sql(
+            "SELECT m.derivative_key AS key FROM identity.media_files m "
+            "JOIN identity.club_verification_requests v ON v.document_media_id = m.id WHERE v.org_id = :c", c=club,
+        )
+        club_verification.purge_expired_documents(store=_store)
+        assert _store.head(str(key["key"])) is not None

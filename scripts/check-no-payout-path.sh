@@ -78,6 +78,13 @@ web/src/lib/api.ts:40:  verification_withdrawn: boolean;
 web/src/lib/api.ts:415:/** ADM-03: find an athlete's verification request by KUID, to withdraw it. */
 api/src/kafriada/api/v1/clubs.py:205:    summary="Remove a player from the roster, or withdraw an invitation",
 api/src/kafriada/contexts/clubs/service.py:445:    """End a membership, or withdraw an invitation. Bounded to this club's own teams."""
+api/src/kafriada/contexts/clubs/verification.py:461:        raise Refused("Say why this is being withdrawn. It is kept permanently.", code="reason", field="reason")
+api/src/kafriada/contexts/clubs/verification.py:510:            sms=f"KAFRIADA: {row['name']}'s verified badge has been withdrawn. Sign in to see why.",
+api/src/kafriada/contexts/clubs/verification.py:511:            subject=f"{row['name']}'s verified badge has been withdrawn",
+api/src/kafriada/contexts/clubs/verification.py:512:            email=f"{row['name']}'s verified badge has been withdrawn on KAFRIADA.\n\nReason: {reason}",
+web/src/app/admin/clubs/page.tsx:72:          title={done === "approved" ? "Club approved" : done === "revoked" ? "Verification withdrawn" : "Club suspended"}
+web/src/app/admin/clubs/[id]/revoke/actions.ts:24:  if (!reason) redirect(`${back}?${new URLSearchParams({ error: "Say why this is being withdrawn." })}`);
+web/src/app/admin/clubs/[id]/revoke/page.tsx:108:              Nothing to withdraw — only a currently verified club can be.
 EOF
 
 SEARCH_PATHS=(api/src web/src web/app)

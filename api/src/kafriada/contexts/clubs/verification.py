@@ -28,9 +28,12 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from kafriada.contexts.access import service as access
+from kafriada.contexts.access.service import Principal
 from kafriada.contexts.audit.service import Actor, record
 from kafriada.contexts.media import service as media
-from kafriada.contexts.media.store import ObjectStore
+from kafriada.contexts.media.store import ObjectStore, StoreError
+from kafriada.contexts.media.store import build_store as _build_store
 from kafriada.contexts.payments.rules import Purpose, expected_amount_kobo
 from kafriada.db.engine import transaction
 from kafriada.outbox.service import queue_notification
@@ -438,3 +441,116 @@ def reject(
     if len(reason) > MAX_REASON_CHARS:
         raise Refused(f"Keep the reason under {MAX_REASON_CHARS} characters.", code="reason", field="reason")
     _decide(club_id, reviewer_id, reviewer_name, "rejected", reason, request_id=request_id, ip_address=ip_address)
+
+
+# ---------------------------------------------------------------------------
+# Withdrawing an approved verification (mirrors ADM-03's athlete revoke)
+# ---------------------------------------------------------------------------
+def revoke(
+    actor: Principal,
+    club_id: UUID,
+    reason: str,
+    current_password: str,
+    *,
+    request_id: str | None = None,
+    ip_address: str | None = None,
+) -> None:
+    """Withdraw a club's verified badge. Reason and password are both required, as ADM-03 asks of an athlete's."""
+    reason = reason.strip()
+    if not reason:
+        raise Refused("Say why this is being withdrawn. It is kept permanently.", code="reason", field="reason")
+    if len(reason) > MAX_REASON_CHARS:
+        raise Refused(f"Keep the reason under {MAX_REASON_CHARS} characters.", code="reason", field="reason")
+    try:
+        access.reauthenticate(actor, current_password, request_id=request_id, ip_address=ip_address)
+    except access.AccessError as exc:
+        raise Refused(exc.message, code="password", field="current_password") from exc
+
+    with transaction() as session:
+        row = session.execute(
+            text(
+                """
+                SELECT v.id, v.status, o.name, o.rep_user_id
+                  FROM identity.club_verification_requests v
+                  JOIN identity.organizations o ON o.id = v.org_id
+                 WHERE v.org_id = :c AND v.status <> 'revoked'
+                 FOR UPDATE OF v
+                """
+            ),
+            {"c": club_id},
+        ).mappings().one_or_none()
+        if row is None:
+            raise NotFound()
+        if row["status"] != "approved":
+            raise Refused("This club is not currently verified.", code="not_approved")
+        session.execute(
+            text("UPDATE identity.club_verification_requests SET status = 'revoked', decided_at = now() WHERE id = :r"),
+            {"r": row["id"]},
+        )
+        session.execute(text("UPDATE identity.organizations SET stage = 1 WHERE id = :c"), {"c": club_id})
+        session.execute(
+            text(
+                "INSERT INTO identity.club_verification_decisions (request_id, decision, reviewer_id, reason) "
+                "VALUES (:r, 'revoked', :by, :reason)"
+            ),
+            {"r": row["id"], "by": actor.user_id, "reason": reason},
+        )
+        record(
+            session,
+            actor=Actor(user_id=actor.user_id, label=actor.full_name, role="super_admin"),
+            action="club_verification.revoked",
+            subject_type="club",
+            subject_id=str(club_id),
+            request_id=request_id,
+            ip_address=ip_address,
+        )
+        queue_notification(
+            session,
+            user_id=row["rep_user_id"],
+            sms=f"KAFRIADA: {row['name']}'s verified badge has been withdrawn. Sign in to see why.",
+            subject=f"{row['name']}'s verified badge has been withdrawn",
+            email=f"{row['name']}'s verified badge has been withdrawn on KAFRIADA.\n\nReason: {reason}",
+            purpose="club_verification_revoked",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Purging the object behind a decided club's document, 30 days after the decision
+# ---------------------------------------------------------------------------
+def purge_expired_documents(days: int = 30, *, store: ObjectStore | None = None) -> int:
+    """Remove the object behind a club's document, ``days`` after a decision.
+
+    Mirrors ``media.purge_expired_documents``: a rejected request is excluded because it
+    may still be resubmitted against the same document. The row stays and records when.
+    """
+    store = store or _build_store()
+    with transaction() as session:
+        rows = session.execute(
+            text(
+                """
+                SELECT m.id, m.original_key, m.derivative_key
+                  FROM identity.media_files m
+                  JOIN identity.club_verification_requests v ON v.document_media_id = m.id
+                 WHERE m.kind = 'club_document' AND m.deleted_at IS NULL
+                   AND v.status IN ('approved', 'revoked')
+                   AND v.decided_at < now() - make_interval(days => :days)
+                """
+            ),
+            {"days": days},
+        ).all()
+    purged = 0
+    for row in rows:
+        try:
+            for key in (row.original_key, row.derivative_key):
+                if key:
+                    store.delete(key)
+        except StoreError as exc:
+            log.warning("club_document_purge_deferred", media_id=str(row.id), error=exc.message)
+            continue
+        with transaction() as session:
+            session.execute(
+                text("UPDATE identity.media_files SET status = 'deleted', deleted_at = now() WHERE id = :id"),
+                {"id": row.id},
+            )
+        purged += 1
+    return purged

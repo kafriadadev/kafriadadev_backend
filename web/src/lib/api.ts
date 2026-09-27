@@ -780,6 +780,22 @@ export function decideClubVerification(
   });
 }
 
+/** Withdraw a club's verified badge (reason and password required, like ADM-03). */
+export function revokeClubVerification(
+  token: string,
+  clubId: string,
+  reason: string,
+  currentPassword: string,
+  meta: ClientMeta,
+): Promise<void> {
+  return call<void>(`/v1/admin/club-verification/${encodeURIComponent(clubId)}/revoke`, {
+    method: "POST",
+    body: JSON.stringify({ reason, current_password: currentPassword }),
+    token,
+    meta,
+  });
+}
+
 export type AuditEntry = {
   entry_id: number;
   occurred_at: string;

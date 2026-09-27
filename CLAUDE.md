@@ -512,6 +512,10 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   PDF for browsers that cannot print. 8 tests. **Restart the API and web from a shell
   without `DATABASE_URL_*`/`OTP_CHANNEL` exported**, or the API reads the local test
   database and answers 401 to every real session.
+- **Club leftovers — done and verified 2026-09-27:** revoking a verified club
+  (`POST /v1/admin/club-verification/{id}/revoke`, `/admin/clubs/[id]/revoke`, ADM-03's
+  reason-and-password shape) and the 30-day purge of a club's document, joined into the
+  hourly `documents` job. 17 tests total in `tests/test_club_verification.py`.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
@@ -542,8 +546,8 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
     club approval (API), ~~CLB-04~~ — done and verified 2026-09-24/25 (see Status).
     CRD-01, CRD-03, edit club details, the admin console (ADM-01, ADM-02, ADM-06,
     club approval and review) and the first super administrator are done 2026-09-27.
-    CRD-06 is done too. **Next in line:** the small leftovers
-    (revoke a verified club, purge of club documents) and Stage 3 — see
+    CRD-06 and the club leftovers (revoke, document purge) are done too.
+    **Next in line:** Stage 3 launch readiness — see
     `docs/TODO.md`.
 
 ## Outside the code (block launch, not build)

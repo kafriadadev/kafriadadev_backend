@@ -57,6 +57,43 @@ means no known vulnerabilities in what `pyproject.toml` resolves today.
 
 ---
 
+## 2026-09-27 — Club leftovers: revoking a verified club, purging its document
+**Commit(s):** *(pending)*
+
+**Built:** `contexts/clubs/verification.revoke()` — reason and password required, exactly
+ADM-03's shape (`access.reauthenticate`, a `Refused("password")` field mapped to 422 the same
+way): moves an `approved` request to `revoked`, sets `organizations.stage` back to 1, writes
+the decision (append-only, `decision='revoked'`) and an audit row, and tells the club's
+representative why. A revoked request frees the slot the same as an athlete's — the club's
+own `overview()` then reads "none", not "revoked", so it can be verified again from scratch.
+Route: `POST /v1/admin/club-verification/{id}/revoke`, under the same `club.approve`
+permission as approve/reject. Screen: `/admin/clubs/[id]/revoke`, reached from a "Withdraw
+verification" link next to every verified club on `/admin/clubs`. Also
+`contexts/clubs/verification.purge_expired_documents()` — the same shape as the athlete
+purge (a rejected request is excluded, since it may still be resubmitted against the same
+document), joined into the hourly `documents` job in `kafriada/jobs.py` alongside it.
+
+**Verified:** `tests/test_club_verification.py` grew to 17 tests. Revoking: a reason is
+required, the password is checked again, a club with no verification request at all is 404,
+one with a request that is not approved is 409, a second revoke on an already-revoked one is
+404 (the slot was freed), only a reviewer may call it, and a revoked club's `overview()`
+correctly reads "none" rather than "revoked". Purging: the document is gone and its row marked
+`deleted` at 31 days but not at 29, and a rejected club's document survives 90 days untouched.
+Mutations proved red: dropping the password re-check, and dropping the "must be approved"
+guard. The full suite, `ruff`, `mypy`, `check_migration_safety` and the payout gate are clean;
+`kafriada.jobs --once --only documents` runs both purges cleanly with a local store configured.
+Live against Supabase: registered, approved, paid and settled a real club through
+`settle_charge` (not a hand-edited row), approved it, refused a wrong password (422), then
+revoked it for real and confirmed `verified` flipped from `true` to `false`; `check:render`
+audits the new screen for both the reviewer and the club administrator, signed in.
+
+**Not done / open:** the athlete-side and club-side purges still run as two separate SQL
+scans in the same job; a single combined query would be a later tidy-up, not a correctness
+gap. There is no screen listing what has already been revoked (the audit log and each
+club's own decisions cover it).
+
+---
+
 ## 2026-09-27 — CRD-06: bulk QR card printing
 **Commit(s):** `5314045`
 

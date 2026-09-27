@@ -67,9 +67,16 @@ export default async function AdminClubsPage({ searchParams }: { searchParams: P
       <h1>Clubs</h1>
 
       {done ? (
-        <Flash variant="good" title={done === "approved" ? "Club approved" : "Club suspended"}>
+        <Flash
+          variant="good"
+          title={done === "approved" ? "Club approved" : done === "revoked" ? "Verification withdrawn" : "Club suspended"}
+        >
           <p style={{ marginBottom: 0 }}>
-            {done === "approved" ? "The club can now build a roster." : "The club can no longer invite players."}
+            {done === "approved"
+              ? "The club can now build a roster."
+              : done === "revoked"
+                ? "The club has been told, and can be verified again from scratch."
+                : "The club can no longer invite players."}
           </p>
         </Flash>
       ) : null}
@@ -122,6 +129,9 @@ export default async function AdminClubsPage({ searchParams }: { searchParams: P
                 </form>
               ) : null}
               <a href={`/clubs/${c.club_id}`} className="btn btn--ghost">Open</a>
+              {c.verified ? (
+                <a href={`/admin/clubs/${c.club_id}/revoke`} className="btn btn--ghost">Withdraw verification</a>
+              ) : null}
             </div>
           </div>
         </section>
