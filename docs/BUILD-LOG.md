@@ -58,7 +58,7 @@ means no known vulnerabilities in what `pyproject.toml` resolves today.
 ---
 
 ## 2026-09-27 — Club leftovers: revoking a verified club, purging its document
-**Commit(s):** *(pending)*
+**Commit(s):** `781d431`
 
 **Built:** `contexts/clubs/verification.revoke()` — reason and password required, exactly
 ADM-03's shape (`access.reauthenticate`, a `Refused("password")` field mapped to 422 the same
