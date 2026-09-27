@@ -284,9 +284,13 @@ start and VER-03 (f7269e9).
   `/coordinator`, `/coordinator/find`, "Coordinator dashboard" on `/me`). The numbers are
   the LGA's; the cash total is the caller's own assisted payments today against the two
   daily caps; search is name or ID (partial) or a whole phone number, and an athlete in
-  another LGA is not found (200, empty), never "not permitted". **Still to do:**
-  **CRD-06** bulk QR card printing. **CRD-05** settlement is Metabase SQL against the
-  read replica, not a built screen.
+  another LGA is not found (200, empty), never "not permitted". **CRD-06** bulk QR card
+  printing done 2026-09-27 (migration 0013 `identity.card_prints`, `GET /v1/lgas/{id}/cards`,
+  `cards.pdf`, `POST .../cards/printed`, `/coordinator/cards`): filter by registration
+  date and print status, eight cards to an A4 sheet at credit-card size (a print
+  stylesheet, and a PDF for a browser that cannot print), paged at five sheets, and
+  a "mark these as printed" record that keeps "not yet printed" honest. **CRD-05**
+  settlement is Metabase SQL against the read replica, not a built screen.
 - [x] **Admin console** `[UI]` — done 2026-09-27: **ADM-01** overview (`/admin`: money in
   24 hours, unresolved payments, the nightly ledger check, funnel, review median), **ADM-02**
   users and roles (`/admin/users`, `/admin/users/[id]`: search by name, phone or ID, see

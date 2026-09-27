@@ -804,6 +804,47 @@ export function getAuditLog(
   return call<AuditPage>(`/v1/admin/audit?${params}`, { token });
 }
 
+export type CardBatch = {
+  people: { kuid: string; full_name: string; registered_on: string; printed: boolean }[];
+  total: number;
+  page: number;
+  pages: number;
+  per_sheet: number;
+};
+
+export type CardFilters = { since: string; until: string; unprinted: boolean; page: number };
+
+const cardQuery = (f: CardFilters): string => {
+  const params = new URLSearchParams({ unprinted: String(f.unprinted), page: String(f.page) });
+  if (f.since) params.set("since", f.since);
+  if (f.until) params.set("until", f.until);
+  return params.toString();
+};
+
+/** CRD-06: athletes in one LGA whose cards can be printed, one page of the batch. */
+export function getCardBatch(token: string, lga: string, filters: CardFilters): Promise<CardBatch> {
+  return call<CardBatch>(`/v1/lgas/${encodeURIComponent(lga)}/cards?${cardQuery(filters)}`, { token });
+}
+
+/** The same page as A4 sheets of eight cards. Slow to draw, so it gets a long deadline. */
+export function getCardSheets(token: string, lga: string, filters: CardFilters): Promise<Response | null> {
+  return getImage(`/v1/lgas/${encodeURIComponent(lga)}/cards.pdf?${cardQuery(filters)}`, token, 90_000);
+}
+
+export function markCardsPrinted(
+  token: string,
+  lga: string,
+  kuids: string[],
+  meta: ClientMeta,
+): Promise<{ marked: number }> {
+  return call<{ marked: number }>(`/v1/lgas/${encodeURIComponent(lga)}/cards/printed`, {
+    method: "POST",
+    body: JSON.stringify({ kuids }),
+    token,
+    meta,
+  });
+}
+
 export function getVerification(token: string): Promise<Verification> {
   return call<Verification>("/v1/verification", { token });
 }
@@ -942,9 +983,13 @@ export function decideCase(
 }
 
 /** An image the API would only give to someone allowed to see it. Bytes, or null. */
-export async function getImage(path: string, token?: string): Promise<Response | null> {
+export async function getImage(
+  path: string,
+  token?: string,
+  timeoutMs: number = TIMEOUT_MS,
+): Promise<Response | null> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${API_BASE}${path}`, {
       signal: controller.signal,

@@ -1,0 +1,179 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+
+import { Flash } from "@/components/Flash";
+import { SubmitButton } from "@/components/SubmitButton";
+import { ApiError, type CardBatch, getCardBatch, getMe } from "@/lib/api";
+import { sessionToken } from "@/lib/session";
+import { markPrintedAction } from "./actions";
+
+export const metadata: Metadata = { title: "Print cards" };
+export const dynamic = "force-dynamic";
+
+type Search = Record<string, string | string[] | undefined>;
+const one = (v: string | string[] | undefined): string =>
+  Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
+
+/**
+ * Bulk QR card printing (CRD-06): a registration drive into a stack of cards.
+ *
+ * A plain GET form filters by registration date and print status. Printing is the
+ * browser's own — this page carries a print stylesheet that lays the cards out eight to
+ * an A4 sheet at credit-card size — and there is a PDF of the same page for a browser
+ * that cannot. A very large batch is paged, never built as one enormous document.
+ */
+export default async function CardsPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const params = await searchParams;
+  const token = await sessionToken();
+  if (!token) redirect("/sign-in");
+
+  let own = "";
+  try {
+    own = (await getMe(token)).roles.find((r) => r.scope_kind === "lga")?.scope_id ?? "";
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) redirect("/sign-in?ended=1");
+    throw error;
+  }
+
+  const lga = one(params.lga) || own;
+  const since = one(params.since);
+  const until = one(params.until);
+  const unprinted = one(params.unprinted) !== "false";
+  const page = Math.max(Number.parseInt(one(params.page) || "1", 10) || 1, 1);
+
+  if (!lga) {
+    return (
+      <div className="stack no-print">
+        <h1>Print cards</h1>
+        <Flash variant="warn" title="No LGA to print for">
+          <p style={{ marginBottom: 0 }}>
+            Choose a local government area on <a href="/coordinator">your dashboard</a> first.
+          </p>
+        </Flash>
+      </div>
+    );
+  }
+
+  let batch: CardBatch | null = null;
+  let problem = one(params.error);
+  try {
+    batch = await getCardBatch(token, lga, { since, until, unprinted, page });
+  } catch (error) {
+    if (error instanceof ApiError) {
+      if (error.status === 401) redirect("/sign-in?ended=1");
+      if (error.status === 403) problem = "You can only print cards for your own local government area.";
+      else if (error.status === 422) problem = "Check the dates: use the form year-month-day.";
+      else throw error;
+    } else throw error;
+  }
+
+  const keep = (extra: Record<string, string> = {}) =>
+    new URLSearchParams({ lga, since, until, unprinted: String(unprinted), page: String(page), ...extra });
+  const pageLink = (p: number) => `/coordinator/cards?${keep({ page: String(p) })}`;
+  const onPage = batch?.people.length ?? 0;
+  const sheets = batch ? Math.ceil(onPage / batch.per_sheet) : 0;
+  const marked = one(params.marked);
+
+  return (
+    <div className="stack">
+      <div className="stack no-print">
+        <p className="eyebrow">Coordinator</p>
+        <h1>Print cards</h1>
+
+        {problem ? (
+          <Flash variant="bad" title="That did not work">
+            <p style={{ marginBottom: 0 }}>{problem}</p>
+          </Flash>
+        ) : null}
+        {marked ? (
+          <Flash variant="good" title="Recorded">
+            <p style={{ marginBottom: 0 }}>
+              {marked === "1" ? "One card is" : `${marked} cards are`} now marked as printed.
+            </p>
+          </Flash>
+        ) : null}
+
+        <form method="get" className="doc">
+          <div className="doc__body">
+            <input type="hidden" name="lga" value={lga} />
+            <div className="field">
+              <label htmlFor="since">Registered from</label>
+              <input id="since" name="since" type="date" defaultValue={since} />
+            </div>
+            <div className="field">
+              <label htmlFor="until">Registered to</label>
+              <input id="until" name="until" type="date" defaultValue={until} />
+            </div>
+            <div className="field">
+              <label htmlFor="unprinted">Show</label>
+              <select id="unprinted" name="unprinted" defaultValue={String(unprinted)}>
+                <option value="true">Not yet printed</option>
+                <option value="false">All</option>
+              </select>
+            </div>
+            <button type="submit" className="btn btn--primary btn--block">Find</button>
+          </div>
+        </form>
+
+        {batch && batch.total === 0 ? <p className="hint">No athletes match.</p> : null}
+
+        {batch && batch.total > 0 ? (
+          <>
+            <p>
+              <strong>{batch.total}</strong> {batch.total === 1 ? "athlete" : "athletes"} &middot;{" "}
+              {Math.ceil(batch.total / batch.per_sheet)} sheets of A4, {batch.per_sheet} cards per sheet.
+              {batch.pages > 1 ? ` This is page ${batch.page} of ${batch.pages}: ${onPage} cards, ${sheets} sheets.` : ""}
+            </p>
+            <p className="hint">
+              Use your browser&rsquo;s Print option (Ctrl+P). The cards print eight to a sheet at
+              card size. If it cannot print from here, download the PDF instead.
+            </p>
+            <div style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>
+              <a
+                href={`/coordinator/cards/pdf?${keep()}`}
+                className="btn btn--primary"
+              >
+                Download PDF
+              </a>
+              <form action={markPrintedAction}>
+                <input type="hidden" name="lga" value={lga} />
+                <input type="hidden" name="since" value={since} />
+                <input type="hidden" name="until" value={until} />
+                <input type="hidden" name="unprinted" value={String(unprinted)} />
+                <input type="hidden" name="page" value={String(page)} />
+                <input type="hidden" name="kuids" value={batch.people.map((p) => p.kuid).join(",")} />
+                <SubmitButton className="btn btn--ghost" pending="Recording…">
+                  Mark these as printed
+                </SubmitButton>
+              </form>
+            </div>
+            {batch.pages > 1 ? (
+              <nav aria-label="Pages" style={{ display: "flex", gap: "var(--s4)" }}>
+                {batch.page > 1 ? <a href={pageLink(batch.page - 1)}>Previous page</a> : null}
+                {batch.page < batch.pages ? <a href={pageLink(batch.page + 1)}>Next page</a> : null}
+              </nav>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+
+      {batch && batch.total > 0 ? (
+        <div className="cardgrid" aria-label="Cards to print">
+          {batch.people.map((p) => (
+            <figure key={p.kuid}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/card/${encodeURIComponent(p.kuid)}/card.png`}
+                alt={`Card for ${p.full_name}, ${p.kuid}`}
+                width={1600}
+                height={1010}
+              />
+            </figure>
+          ))}
+        </div>
+      ) : null}
+
+      <p className="no-print"><a href={`/coordinator?lga=${encodeURIComponent(lga)}`}>Back to today</a></p>
+    </div>
+  );
+}

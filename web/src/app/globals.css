@@ -556,6 +556,22 @@ a:focus-visible, button:focus-visible {
   .shell { max-width: none; padding: 0; }
 }
 
+/* Bulk card printing (CRD-06): on screen the cards wrap to fit the phone; printed, they are
+   exactly credit-card sized, two across and four down on an A4 sheet. */
+.cardgrid {
+  display: grid; gap: var(--s4); margin: 0; padding: 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(85.6mm, 100%), 1fr));
+}
+.cardgrid figure { margin: 0; }
+.cardgrid img { display: block; width: 100%; height: auto; }
+@media print {
+  @page { size: A4; margin: 10mm; }
+  .cardgrid { grid-template-columns: repeat(2, 85.6mm); gap: 5mm; justify-content: center; }
+  .cardgrid figure { break-inside: avoid; }
+  .cardgrid figure:nth-child(8n) { break-after: page; }
+  .cardgrid img { width: 85.6mm; height: 54mm; }
+}
+
 /* ---------------------------------------------------------------------------
    Reduced motion. The only motion here is a 160ms button lift, and even that
    goes — someone who asked for stillness should get it.

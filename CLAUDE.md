@@ -506,6 +506,12 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   0803XXXXXXX --reason "founding administrator"` — the person must have registered and
   confirmed their number. Club-scoped roles can be granted (the club must exist).
   18 tests. **Not built:** ADM-01 state subset, phone reset, audit export.
+- **CRD-06 bulk QR card printing — done and verified 2026-09-27** (migration 0013,
+  `identity.card_prints`). `/coordinator/cards`, `GET /v1/lgas/{id}/cards|cards.pdf`,
+  `POST .../cards/printed`. Print stylesheet: eight cards to an A4 sheet at credit-card size;
+  PDF for browsers that cannot print. 8 tests. **Restart the API and web from a shell
+  without `DATABASE_URL_*`/`OTP_CHANNEL` exported**, or the API reads the local test
+  database and answers 401 to every real session.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
@@ -536,7 +542,7 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
     club approval (API), ~~CLB-04~~ — done and verified 2026-09-24/25 (see Status).
     CRD-01, CRD-03, edit club details, the admin console (ADM-01, ADM-02, ADM-06,
     club approval and review) and the first super administrator are done 2026-09-27.
-    **Next in line:** CRD-06 (bulk QR card printing), then the small leftovers
+    CRD-06 is done too. **Next in line:** the small leftovers
     (revoke a verified club, purge of club documents) and Stage 3 — see
     `docs/TODO.md`.
 

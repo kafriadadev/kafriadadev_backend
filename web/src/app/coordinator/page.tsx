@@ -123,6 +123,7 @@ export default async function CoordinatorPage({ searchParams }: { searchParams: 
       <div style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>
         <a href={`/review?${q}`} className="btn btn--ghost">Review verifications</a>
         <a href={`/coordinator/find?${q}`} className="btn btn--ghost">Find an athlete</a>
+        <a href={`/coordinator/cards?${q}`} className="btn btn--ghost">Print QR cards</a>
         {d.can_assist && !d.cap_reached ? (
           <a href={`/assist-pay?${q}`} className="btn btn--ghost">Pay for an athlete</a>
         ) : null}

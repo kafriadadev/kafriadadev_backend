@@ -57,6 +57,48 @@ means no known vulnerabilities in what `pyproject.toml` resolves today.
 
 ---
 
+## 2026-09-27 — CRD-06: bulk QR card printing
+**Commit(s):** *(pending)*
+
+**Built:** **Migration 0013**: `identity.card_prints` (athlete, who printed, when), insert-only
+by privilege and trigger like every record later used as evidence; a reprint is another row and
+"not yet printed" means no row. `contexts/coordination/cards.py`, three routes in
+`api/v1/coordination.py` (`GET /v1/lgas/{id}/cards`, `.../cards.pdf`, `POST .../cards/printed`),
+and `/coordinator/cards` with a PDF proxy. Filters are registration date (Nigeria time) and
+"not yet printed" or all; a page is at most five sheets of eight cards, so a very large batch is
+paged rather than built as one document. Printing is the browser's own: a print stylesheet lays
+the cards out two across and four down at exactly credit-card size (85.6 x 54 mm) on A4, and the
+page hides everything that is not a card when printed; for a browser that cannot print there is
+a PDF of the same page. "Mark these as printed" records the page and writes an audit row; athletes
+outside the LGA are ignored. A "Print QR cards" link joins the coordinator's dashboard.
+
+**Why the PDF is drawn from one query:** the first version loaded each athlete's profile in turn,
+which is forty round trips per page, and over the Supabase link that is minutes. One query returns
+what the cards need, and forty cards now come back as five sheets in about eight seconds.
+
+**Verified:** `tests/test_cards.py`, 8 tests: the batch and its sheet arithmetic; the date window;
+what was marked leaves the unprinted list and stays in the full one, and a reprint is a new row;
+marking ignores anyone outside the LGA, unknown ids and malformed ones, and refuses too many;
+scope is the LGA, its state and nothing else (403 elsewhere and for an athlete, 401 anonymous) on
+all three routes; a batch is paged; the PDF is real, an attachment, two sheets
+for nine cards, and a 404 when nothing matches; a print record cannot be updated or deleted.
+Mutations proved red: dropping the LGA from marking, and ignoring the unprinted filter. The full
+suite, `ruff`, `mypy`, `check_migration_safety` and the payout gate are clean, and a full
+`alembic downgrade base` then `upgrade head` round-trips. Live against Supabase with a throwaway
+coordinator: 1,149 unprinted athletes over 29 pages, a 40-card page as a five-sheet 1.3 MB PDF,
+another LGA refused with 403; `check:render` audits the new page.
+
+**Also:** a lesson worth keeping. After a restart the API answered every request with 401, which
+looked like a broken session and was not: the restart had inherited the local-test-database
+variables exported earlier in the same shell, so the API was reading a different database from
+the one that held the session. Restart the tiers from a shell with those variables unset.
+
+**Not done / open:** the printed layout was checked by structure (page count, sizes), not by
+printing on paper; the browser's own print is what a coordinator will use, so the first real
+print should be looked at. Cutting guides between cards are not drawn.
+
+---
+
 ## 2026-09-27 — The administrator console, and the first super administrator
 **Commit(s):** `5ee7830`
 

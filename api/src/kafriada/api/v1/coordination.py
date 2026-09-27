@@ -7,11 +7,16 @@ query to it, so nothing outside it can appear in a result.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request, status
-from pydantic import BaseModel
+from datetime import date
 
+from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel, Field
+
+from kafriada.api.client import client_ip
+from kafriada.api.client import request_id as header_request_id
 from kafriada.api.security import Requires, current_principal
-from kafriada.contexts.coordination import service
+from kafriada.contexts.coordination import cards, service
 
 router = APIRouter(tags=["coordination"])
 
@@ -71,3 +76,90 @@ def search(lga_id: str, q: str = "", page: int = 1) -> SearchResponse:
         page=found.page,
         has_more=found.has_more,
     )
+
+
+# ---------------------------------------------------------------------------
+# CRD-06: bulk QR card printing
+# ---------------------------------------------------------------------------
+class CardRowOut(BaseModel):
+    kuid: str
+    full_name: str
+    registered_on: date
+    printed: bool
+
+
+class CardsResponse(BaseModel):
+    people: list[CardRowOut]
+    total: int
+    page: int
+    pages: int
+    per_sheet: int
+
+
+class MarkPrintedRequest(BaseModel):
+    kuids: list[str] = Field(max_length=cards.PAGE_SIZE)
+
+
+class MarkPrintedResponse(BaseModel):
+    marked: int
+
+
+@router.get(
+    "/lgas/{lga_id}/cards",
+    response_model=CardsResponse,
+    dependencies=[Requires("athlete.search_scoped", scope="lga")],
+    summary="Athletes whose cards can be printed, filtered by registration date and print status",
+)
+def card_list(
+    lga_id: str,
+    since: date | None = None,
+    until: date | None = None,
+    unprinted: bool = True,
+    page: int = 1,
+) -> CardsResponse:
+    found = cards.list_cards(lga_id, since, until, unprinted, min(page, 10_000))
+    return CardsResponse(
+        people=[CardRowOut(**{f: getattr(p, f) for f in CardRowOut.model_fields}) for p in found.people],
+        total=found.total,
+        page=found.page,
+        pages=found.pages,
+        per_sheet=cards.PER_SHEET,
+    )
+
+
+@router.get(
+    "/lgas/{lga_id}/cards.pdf",
+    dependencies=[Requires("athlete.search_scoped", scope="lga")],
+    summary="One page of the batch as A4 sheets of eight cards",
+    response_class=Response,
+)
+async def card_sheets(
+    lga_id: str,
+    since: date | None = None,
+    until: date | None = None,
+    unprinted: bool = True,
+    page: int = 1,
+) -> Response:
+    pdf = await run_in_threadpool(cards.sheets_pdf, lga_id, since, until, unprinted, min(page, 10_000))
+    if pdf is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="No cards match.")
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="cards-{lga_id}-{page}.pdf"', "Cache-Control": "private, no-store"},
+    )
+
+
+@router.post(
+    "/lgas/{lga_id}/cards/printed",
+    response_model=MarkPrintedResponse,
+    dependencies=[Requires("athlete.search_scoped", scope="lga")],
+    summary="Record that these cards were printed; athletes outside the LGA are ignored",
+)
+def mark_printed(lga_id: str, body: MarkPrintedRequest, request: Request) -> MarkPrintedResponse:
+    principal = current_principal(request)
+    marked = cards.mark_printed(
+        lga_id, body.kuids, principal.user_id, principal.full_name,
+        request_id=header_request_id(request), ip_address=client_ip(request),
+    )
+    return MarkPrintedResponse(marked=marked)
