@@ -58,7 +58,7 @@ means no known vulnerabilities in what `pyproject.toml` resolves today.
 ---
 
 ## 2026-09-27 — CRD-06: bulk QR card printing
-**Commit(s):** *(pending)*
+**Commit(s):** `5314045`
 
 **Built:** **Migration 0013**: `identity.card_prints` (athlete, who printed, when), insert-only
 by privilege and trigger like every record later used as evidence; a reprint is another row and
