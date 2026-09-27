@@ -58,7 +58,7 @@ means no known vulnerabilities in what `pyproject.toml` resolves today.
 ---
 
 ## 2026-09-27 — The administrator console, and the first super administrator
-**Commit(s):** *(pending)*
+**Commit(s):** `5ee7830`
 
 **Built:** `python -m kafriada.appoint`, `contexts/admin/service.py` (read models),
 routes in `api/v1/admin.py`, and `/admin`, `/admin/users`, `/admin/users/[id]`,
