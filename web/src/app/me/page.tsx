@@ -95,6 +95,12 @@ export default async function MePage() {
         </div>
       ) : null}
 
+      {staffRoles.some((r) => r.role === "super_admin") ? (
+        <p>
+          <a href="/admin" className="btn btn--primary">Administrator console</a>
+        </p>
+      ) : null}
+
       {staffRoles.some((r) => r.role === "lga_coordinator" || r.role === "state_coordinator") ? (
         <p>
           <a href="/coordinator" className="btn btn--primary">Coordinator dashboard</a>

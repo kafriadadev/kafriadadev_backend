@@ -83,6 +83,8 @@ def test_a_coordinator_never_counts_their_own_record_as_waiting(client: TestClie
     )
     others_waiting = sql(
         "SELECT count(*) AS n FROM identity.verification_requests v JOIN identity.athletes a ON a.id = v.athlete_id "
+        "JOIN identity.media_files pm ON pm.id = v.photo_media_id AND pm.status = 'ready' "
+        "JOIN identity.media_files dm ON dm.id = v.document_media_id AND dm.status = 'ready' "
         "WHERE v.status = 'under_review' AND a.current_lga_id = :l AND a.user_id <> :u", l=LGA, u=own.user_id,
     )[0]["n"]
     assert dash(client, own).json()["to_review"] == others_waiting

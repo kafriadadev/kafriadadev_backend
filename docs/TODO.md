@@ -287,9 +287,21 @@ start and VER-03 (f7269e9).
   another LGA is not found (200, empty), never "not permitted". **Still to do:**
   **CRD-06** bulk QR card printing. **CRD-05** settlement is Metabase SQL against the
   read replica, not a built screen.
-- [ ] **Admin console** `[UI]`: **ADM-01** dashboard, **ADM-02** users and roles (API
-  exists, no screen), **ADM-06** audit log viewer.
-- [ ] **A way to appoint the first super_admin** (today: a SQL insert).
+- [x] **Admin console** `[UI]` — done 2026-09-27: **ADM-01** overview (`/admin`: money in
+  24 hours, unresolved payments, the nightly ledger check, funnel, review median), **ADM-02**
+  users and roles (`/admin/users`, `/admin/users/[id]`: search by name, phone or ID, see
+  what is held and where, grant with role and scope together, revoke, end sessions;
+  password asked again), **ADM-06** audit log (`/admin/audit`: filters, paged, read only),
+  **club approval** (`/admin/clubs`) and **club reviews** (`/admin/club-verification`, the
+  document and approve or reject with a reason). Read side: `GET /v1/admin/overview|users|
+  users/{id}|roles|clubs|audit`. A club-scoped role can now be granted (the club must
+  exist). **Not built:** ADM-01's state-scoped subset for a state coordinator, ADM-02's
+  "reset a phone number", ADM-06's export.
+- [x] **A way to appoint the first super_admin** — done 2026-09-27:
+  `python -m kafriada.appoint --phone 0803… --reason "founding administrator"` (from
+  `api/`, with the database credentials in `.env`). Only `super_admin`, only to a registered
+  person whose number is confirmed, once, with an audit row; every later grant goes
+  through the console.
 
 ### Stage 2 exit criteria — do not soften any of these
 

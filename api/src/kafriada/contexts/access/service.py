@@ -980,13 +980,21 @@ def grant_role(
         elif scope_id is None:
             raise AccessError(f"Choose the {scope_kind} this role covers.", field="scope_id")
         elif scope_kind == "club":
-            # Clubs arrive with their context in Stage 2. Until a club can be
-            # looked up, a club id cannot be checked, and an unchecked scope is
+            # A club id is only a scope if there is such a club. An unchecked scope is
             # how a grant ends up covering something nobody intended.
-            raise AccessError(
-                "Club roles can be granted once clubs are registered in KAFRIADA.",
-                field="role",
+            try:
+                club_id = UUID(scope_id)
+            except ValueError:
+                club_id = None
+            club = (
+                session.execute(
+                    text("SELECT 1 FROM identity.organizations WHERE id = :id"), {"id": club_id}
+                ).scalar_one_or_none()
+                if club_id is not None
+                else None
             )
+            if club is None:
+                raise AccessError("There is no club with that id.", field="scope_id")
         else:
             place = session.execute(
                 text("SELECT name FROM ops.locations WHERE id = :id AND kind = :kind"),

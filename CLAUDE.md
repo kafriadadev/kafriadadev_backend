@@ -499,6 +499,13 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `localtest123` for every role, from the recipe above) after Windows cleaned the old one in
   Temp. Start it with `pg_ctl -D C:/Users/HP/.kaf-localdb/pgdata -o "-p 54329 -c
   listen_addresses=127.0.0.1" -l C:/Users/HP/.kaf-localdb/pg.log start`.
+- **Admin console and the first super administrator — done and verified 2026-09-27.**
+  `/admin` (ADM-01), `/admin/users` (ADM-02), `/admin/clubs`, `/admin/club-verification`,
+  `/admin/audit` (ADM-06), `GET /v1/admin/overview|users|roles|clubs|audit`. **The first
+  super administrator:** `cd api && .venv/Scripts/python.exe -m kafriada.appoint --phone
+  0803XXXXXXX --reason "founding administrator"` — the person must have registered and
+  confirmed their number. Club-scoped roles can be granted (the club must exist).
+  18 tests. **Not built:** ADM-01 state subset, phone reset, audit export.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
@@ -527,9 +534,10 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
    2026-09-23 (see Status).
 10. ~~Migration 0010, clubs~~, ~~CLB-01~~, ~~CLB-02~~, ~~CLB-03~~, ~~ATH-05~~,
     club approval (API), ~~CLB-04~~ — done and verified 2026-09-24/25 (see Status).
-    **Next in line, in order (per the chosen build order):** then CRD-06 (bulk QR printing) — CRD-01, CRD-03 and edit club
-    details are done 2026-09-27 — then the admin console (ADM-01, ADM-02,
-    ADM-06), then a way to appoint the first super_admin — see
+    CRD-01, CRD-03, edit club details, the admin console (ADM-01, ADM-02, ADM-06,
+    club approval and review) and the first super administrator are done 2026-09-27.
+    **Next in line:** CRD-06 (bulk QR card printing), then the small leftovers
+    (revoke a verified club, purge of club documents) and Stage 3 — see
     `docs/TODO.md`.
 
 ## Outside the code (block launch, not build)

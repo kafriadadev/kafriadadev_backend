@@ -281,7 +281,7 @@ def test_granting_a_role_is_reauthenticated_audited_and_ends_sessions(
         ({"scope_id": None}, "scope_id"),  # a scoped role with no scope
         ({"scope_id": "NG-JG-XXX"}, "scope_id"),  # no such LGA
         ({"role": "super_admin"}, "scope_id"),  # a global role given a scope
-        ({"role": "club_admin", "scope_id": "any-club"}, "role"),  # clubs do not exist yet
+        ({"role": "club_admin", "scope_id": "any-club"}, "scope_id"),  # no such club
         ({"role": "no_such_role"}, "role"),
         ({"current_password": "not my password"}, "current_password"),
     ],

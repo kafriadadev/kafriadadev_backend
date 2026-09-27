@@ -607,6 +607,203 @@ export function searchAthletes(
   );
 }
 
+// ---------------------------------------------------------------------------
+// The administrator console (ADM-01, ADM-02, ADM-06, club approval and review)
+// ---------------------------------------------------------------------------
+export type AdminOverview = {
+  collected_kobo: number;
+  payments: number;
+  unresolved: number;
+  /** null until the nightly integrity check has ever run. */
+  ledger_ok: boolean | null;
+  ledger_checked_at: string | null;
+  registered: number;
+  paid: number;
+  conversion_percent: number;
+  clubs: number;
+  verified_clubs: number;
+  clubs_waiting: number;
+  review_median_hours: number | null;
+  live_lgas: number;
+};
+
+export function getAdminOverview(token: string): Promise<AdminOverview> {
+  return call<AdminOverview>("/v1/admin/overview", { token });
+}
+
+export type AdminGrant = {
+  grant_id: string;
+  role: string;
+  scope_kind: string;
+  scope_id: string | null;
+  scope_name: string | null;
+};
+
+export type AdminUser = {
+  user_id: string;
+  full_name: string;
+  phone_masked: string;
+  kuid: string | null;
+  last_seen: string | null;
+  roles: AdminGrant[];
+};
+
+export type AdminUsers = { users: AdminUser[]; page: number; has_more: boolean };
+
+export function findAdminUsers(
+  token: string,
+  q: string,
+  role: string,
+  page: number,
+): Promise<AdminUsers> {
+  return call<AdminUsers>(
+    `/v1/admin/users?${new URLSearchParams({ q, role, page: String(page) })}`,
+    { token },
+  );
+}
+
+export function getAdminUser(token: string, userId: string): Promise<AdminUser> {
+  return call<AdminUser>(`/v1/admin/users/${encodeURIComponent(userId)}`, { token });
+}
+
+export type RoleKind = { code: string; description: string; scope_kind: string };
+
+export function getRoleKinds(token: string): Promise<RoleKind[]> {
+  return call<RoleKind[]>("/v1/admin/roles", { token });
+}
+
+export function grantRole(
+  token: string,
+  userId: string,
+  role: string,
+  scopeId: string | null,
+  reason: string,
+  currentPassword: string,
+  meta: ClientMeta,
+): Promise<{ grant_id: string }> {
+  return call<{ grant_id: string }>(`/v1/admin/users/${encodeURIComponent(userId)}/roles`, {
+    method: "POST",
+    body: JSON.stringify({
+      role,
+      scope_id: scopeId,
+      reason,
+      current_password: currentPassword,
+    }),
+    token,
+    meta,
+  });
+}
+
+export function revokeGrant(
+  token: string,
+  grantId: string,
+  reason: string,
+  currentPassword: string,
+  meta: ClientMeta,
+): Promise<void> {
+  return call<void>(`/v1/admin/role-grants/${encodeURIComponent(grantId)}/revoke`, {
+    method: "POST",
+    body: JSON.stringify({ reason, current_password: currentPassword }),
+    token,
+    meta,
+  });
+}
+
+export function endUserSessions(
+  token: string,
+  userId: string,
+  reason: string,
+  meta: ClientMeta,
+): Promise<{ sessions_ended: number }> {
+  return call<{ sessions_ended: number }>(
+    `/v1/admin/users/${encodeURIComponent(userId)}/sessions/end`,
+    { method: "POST", body: JSON.stringify({ reason }), token, meta },
+  );
+}
+
+export type AdminClub = {
+  club_id: string;
+  name: string;
+  sport: string;
+  lga_name: string;
+  status: "pending_review" | "approved" | "suspended";
+  verified: boolean;
+  representative: string;
+  verification: string | null;
+  created_at: string;
+};
+
+export type AdminClubs = { clubs: AdminClub[]; page: number; has_more: boolean };
+
+export function listAdminClubs(token: string, status: string, page: number): Promise<AdminClubs> {
+  return call<AdminClubs>(`/v1/admin/clubs?${new URLSearchParams({ status, page: String(page) })}`, {
+    token,
+  });
+}
+
+export function setClubStatus(
+  token: string,
+  clubId: string,
+  status: "approve" | "suspend",
+  meta: ClientMeta,
+): Promise<void> {
+  return call<void>(`/v1/admin/clubs/${encodeURIComponent(clubId)}/${status}`, {
+    method: "POST",
+    token,
+    meta,
+  });
+}
+
+export type ClubVerificationWaiting = {
+  club_id: string;
+  club_name: string;
+  lga_name: string;
+  submitted_at: string;
+};
+
+export function getClubVerificationQueue(token: string): Promise<ClubVerificationWaiting[]> {
+  return call<ClubVerificationWaiting[]>("/v1/admin/club-verification/queue", { token });
+}
+
+export function decideClubVerification(
+  token: string,
+  clubId: string,
+  decision: "approve" | "reject",
+  reason: string,
+  meta: ClientMeta,
+): Promise<void> {
+  return call<void>(`/v1/admin/club-verification/${encodeURIComponent(clubId)}/${decision}`, {
+    method: "POST",
+    body: decision === "reject" ? JSON.stringify({ reason }) : undefined,
+    token,
+    meta,
+  });
+}
+
+export type AuditEntry = {
+  entry_id: number;
+  occurred_at: string;
+  actor: string;
+  actor_role: string | null;
+  action: string;
+  subject_type: string;
+  subject_id: string;
+  reference: string | null;
+};
+
+export type AuditPage = { entries: AuditEntry[]; page: number; has_more: boolean };
+
+export function getAuditLog(
+  token: string,
+  filters: { actor: string; action: string; since: string; until: string; page: number },
+): Promise<AuditPage> {
+  const params = new URLSearchParams({ page: String(filters.page) });
+  for (const key of ["actor", "action", "since", "until"] as const) {
+    if (filters[key]) params.set(key, filters[key]);
+  }
+  return call<AuditPage>(`/v1/admin/audit?${params}`, { token });
+}
+
 export function getVerification(token: string): Promise<Verification> {
   return call<Verification>("/v1/verification", { token });
 }

@@ -57,6 +57,56 @@ means no known vulnerabilities in what `pyproject.toml` resolves today.
 
 ---
 
+## 2026-09-27 — The administrator console, and the first super administrator
+**Commit(s):** *(pending)*
+
+**Built:** `python -m kafriada.appoint`, `contexts/admin/service.py` (read models),
+routes in `api/v1/admin.py`, and `/admin`, `/admin/users`, `/admin/users/[id]`,
+`/admin/clubs`, `/admin/club-verification` (with a document proxy), `/admin/audit`,
+`AdminNav`, and an "Administrator console" button on `/me`. **First administrator:** nobody
+holds the authority to ask for a password yet, so it is a command run by someone with the
+database credentials; it grants only `super_admin`, only to a registered person whose
+number is confirmed, refuses to do it twice, and writes an audit row with the operator's
+reason. **ADM-01** shows money in the last 24 hours, unresolved (frozen) payments, the
+last nightly ledger check and when it ran, the funnel and conversion, clubs, and the
+30-day review median; a failed ledger check takes over the top of the screen, and
+unresolved payments and a slow median get their own notice. **ADM-02** finds people by name
+(partial), whole phone number or ID (partial) and role, with masked numbers and last-seen
+time; a person's page grants, revokes and ends sessions through the existing password-checked
+routes, with role and scope in one form. **ADM-06** is filters plus paging over an
+append-only table and has no write path at all. The two club screens are the reviewer side
+of CLB-01 and CLB-04, which until now were API only. `grant_role` used to refuse every club
+scope ("clubs do not exist yet"); it now checks the club exists.
+
+**Verified:** `tests/test_appoint.py` (8) and `tests/test_admin_console.py` (10). Appoint: a
+confirmed person, once, an audit row naming the operator, a local-format number works,
+unknown / unconfirmed / no reason / bad number / erased account are all refused and grant
+nothing; a club-scoped grant needs a real club (a malformed id, an unknown club, an LGA id
+and no scope are all refused) and the role then works on that club only. Console: only a
+super administrator can read any of it (a plain athlete, an LGA coordinator and a state
+coordinator holding a *scoped* `admin.read_audit` are all 403, anonymous 401), the audit
+log has no POST, PUT, PATCH or DELETE, the overview moves with a paid athlete, a frozen
+payment and the ledger check, people are found by name, phone and ID with roles and no
+full number, erased people do not show, paging, clubs waiting come first, the audit log
+filters by actor, action and date and pages. Mutations proved red: dropping the club
+existence check, and listing erased people. The permission matrix and route manifest pass
+with the new routes. Live against Supabase with a throwaway super administrator: overview,
+users, clubs and audit read; a grant (201), a grant with the wrong password (422), and a
+revoke (204); the throwaway was revoked afterwards. `check:render` audits every new
+screen.
+
+**Also:** one existing test (`test_coordination`) counted waiting cases more loosely than
+the real queue, which needs both files ready, and failed only when other tests left
+half-built requests behind; its count now follows the queue's rules. The overview on
+Supabase shows 16 unresolved payments: they are frozen wrong-amount payments from earlier
+testing, and the screen is doing its job.
+
+**Not done / open:** ADM-01's state-scoped subset for a state coordinator; ADM-02's "reset a
+phone number"; ADM-06's export; the older `/admin/revoke` and `/admin/reversal` screens do
+not carry the new navigation; revoking a verified club; the 30-day purge of club documents.
+
+---
+
 ## 2026-09-27 — The coordinator console (CRD-01, CRD-03) and editing a club
 **Commit(s):** `8527517`
 
