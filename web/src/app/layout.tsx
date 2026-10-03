@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import Link from "next/link";
+import { SiteFooter } from "@/components/SiteFooter";
+import { SiteHeader } from "@/components/SiteHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,20 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en-NG">
       <body>
         <a className="skip-link" href="#main">Skip to content</a>
-        <div className="shell">
-          <header className="masthead">
-            <Link href="/" className="wordmark">
-              KAF<span>RIADA</span>
-            </Link>
-            <p className="masthead__meta">
-              Jigawa State · Pilot ·{" "}
-              {/* Static on every page, so no page has to read the cookie to
-                  render its header. Signed-in visitors are sent on to /me. */}
-              <Link href="/sign-in" className="masthead__link">Sign in</Link>
-            </p>
-          </header>
-          <main id="main">{children}</main>
-        </div>
+        <SiteHeader />
+        <main id="main" className="main">{children}</main>
+        <SiteFooter />
       </body>
     </html>
   );

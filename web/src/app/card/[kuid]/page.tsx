@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { PageHead } from "@/components/PageHead";
 import { getProfile, type PublicProfile } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Your KAFRIADA card" };
@@ -35,32 +36,34 @@ export default async function CardPage({
   const firstName = profile.full_name.split(" ")[0];
 
   return (
-    <div className="stack">
+    <div className="page page--wide">
       <div className="no-print">
-        <p className="eyebrow">Step 3 of 3 · Done</p>
-        <h1>{`${firstName}, this is your ID.`}</h1>
-        <p className="lede">
-          It is permanent and it is yours. Print it, download it, or simply
-          write the number down — all three work.
-        </p>
+        <PageHead
+          eyebrow="Step 3 of 3 · Done"
+          title={`${firstName}, this is your ID.`}
+          lede="It is permanent and it is yours. Print it, download it, or simply write the number down. All three work."
+        />
       </div>
+
+      <div className="split">
+      <div className="stack">
 
       {/* -- The card itself. This is what gets printed. ------------------- */}
       <article className="doc" aria-label="Your KAFRIADA card">
         <div className="doc__body">
-          <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--s4)", alignItems: "flex-start" }}>
-            <div style={{ minWidth: 0 }}>
-              <p className="eyebrow" style={{ marginBottom: "var(--s2)" }}>
+          <div className="row-between">
+            <div className="minw0">
+              <p className="eyebrow mb-2">
                 Federation of Nigerian Sports
               </p>
-              <h2 style={{ fontSize: "clamp(1.4rem, 5.5vw, 1.9rem)", marginBottom: "var(--s1)" }}>
+              <h2 className="doc__title">
                 {profile.full_name}
               </h2>
-              <p style={{ color: "var(--plate-muted)", margin: 0, fontSize: ".95rem" }}>
+              <p className="doc__sub">
                 {profile.sport}
                 {profile.playing_position ? ` · ${profile.playing_position}` : ""}
               </p>
-              <p style={{ color: "var(--plate-muted)", margin: "2px 0 0", fontSize: ".95rem" }}>
+              <p className="doc__sub">
                 {profile.lga_name}, {profile.state_name}
               </p>
             </div>
@@ -71,13 +74,7 @@ export default async function CardPage({
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex", gap: "var(--s4)", alignItems: "center",
-              marginTop: "var(--s5)", paddingTop: "var(--s5)",
-              borderTop: "1px solid var(--plate-rule)", flexWrap: "wrap",
-            }}
-          >
+          <div className="doc__section cluster cluster--lg">
             {/* Server-rendered, cached a day, and proxied — the browser never
                 touches the domain tier to get it. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -86,13 +83,13 @@ export default async function CardPage({
               alt={`QR code linking to the public profile for ${profile.kuid}`}
               width={132}
               height={132}
-              style={{ width: 132, height: 132, flex: "none" }}
+              className="qr"
             />
-            <div style={{ minWidth: 180, flex: 1 }}>
-              <p className="eyebrow" style={{ marginBottom: "var(--s2)" }}>
+            <div className="grow">
+              <p className="eyebrow mb-2">
                 Scan to verify
               </p>
-              <p style={{ fontSize: ".92rem", color: "var(--plate-muted)", marginBottom: 0 }}>
+              <p className="hint mb0">
                 Anyone can scan this with a phone camera to see your public
                 profile. It does not show your phone number or your date of
                 birth.
@@ -109,7 +106,7 @@ export default async function CardPage({
       </article>
 
       {/* -- Actions ------------------------------------------------------- */}
-      <div className="no-print" style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>
+      <div className="no-print cluster">
         {/* A plain link to the print stylesheet route would need JavaScript to
             trigger window.print(). Instead the page IS the print layout, so the
             browser's own print command produces the card — which works
@@ -128,35 +125,40 @@ export default async function CardPage({
         </a>
       </div>
 
-      <div className="notice no-print">
+      </div>
+
+      <aside className="stack no-print">
+      <div className="notice">
         <p className="notice__title">To print</p>
-        <p style={{ marginBottom: 0 }}>
+        <p className="mb0">
           Use your browser&rsquo;s Print command on this page. Everything except
           the card is left off the paper automatically.
         </p>
       </div>
 
       {/* -- The upsell. Deliberately AFTER the free thing is delivered. --- */}
-      <div className="notice notice--warn no-print">
+      <div className="notice notice--warn">
         <p className="notice__title">Optional</p>
         <p>
           <strong>Add your photograph for ₦2,500.</strong> Your LGA coordinator
           checks your ID document, and your photo then appears on your public
           profile with a verified badge.
         </p>
-        <p style={{ marginBottom: 0, fontSize: ".9rem", color: "var(--plate-muted)" }}>
+        <p className="hint mb0">
           No bank card? Take ₦2,500 in cash to your LGA coordinator and they can
-          do it for you. Payment opens shortly.
+          do it for you.
         </p>
       </div>
 
-      <div className="notice no-print">
+      <div className="notice">
         <p className="notice__title">Keep this number</p>
-        <p style={{ marginBottom: 0 }}>
+        <p className="mb0">
           Your ID is <span className="kuid">{profile.kuid}</span>. It records
           where you first registered, not where you live — it stays the same even
           if you move or change clubs.
         </p>
+      </div>
+      </aside>
       </div>
     </div>
   );

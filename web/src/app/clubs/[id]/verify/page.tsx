@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { PageHead } from "@/components/PageHead";
+import { NoAccess } from "@/components/NoAccess";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import {
@@ -54,12 +56,7 @@ export default async function VerifyClubPage({
       if (error.status === 401) redirect("/sign-in?ended=1");
       if (error.status === 403 || error.status === 404) {
         return (
-          <div className="stack">
-            <h1>Verify your club</h1>
-            <Flash variant="bad" title="You do not have access to this">
-              <p style={{ marginBottom: 0 }}>You can only verify a club you administer.</p>
-            </Flash>
-          </div>
+          <NoAccess title="Verify your club" message="You can only verify a club you administer." />
         );
       }
     }
@@ -81,18 +78,21 @@ export default async function VerifyClubPage({
   const ready = v.document === "ready";
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Club &middot; {v.club_name}</p>
-      <h1>Verify your club</h1>
+    <div className="page stack">
+      <PageHead
+        back={{ href: base, label: "Club" }}
+        eyebrow={<>Club &middot; {v.club_name}</>}
+        title="Verify your club"
+      />
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
       {one(query.saved) ? (
         <Flash variant="good" title="Document saved">
-          <p style={{ marginBottom: 0 }}>You can pay now.</p>
+          <p className="mb0">You can pay now.</p>
         </Flash>
       ) : null}
 
@@ -100,15 +100,15 @@ export default async function VerifyClubPage({
 
       {v.verified ? (
         <Flash variant="good" title="This club is verified">
-          <p style={{ marginBottom: 0 }}>The verified badge shows on your club page.</p>
+          <p className="mb0">The verified badge shows on your club page.</p>
         </Flash>
       ) : v.club_status !== "approved" ? (
         <Flash variant="warn" title="Waiting for approval">
-          <p style={{ marginBottom: 0 }}>A club must be approved before it can be verified.</p>
+          <p className="mb0">A club must be approved before it can be verified.</p>
         </Flash>
       ) : v.state === "under_review" ? (
         <Flash variant="info" title="Your club is being reviewed">
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             An administrator is checking your document. You will be told as soon as it is decided.
           </p>
         </Flash>
@@ -117,7 +117,7 @@ export default async function VerifyClubPage({
           <section className="doc" aria-label="What you get">
             <div className="doc__body">
               <p className="eyebrow">Verified club</p>
-              <ul style={{ margin: "0 0 var(--s4)", paddingLeft: "1.1em" }}>
+              <ul className="bullets">
                 <li>A verified badge on your club page</li>
                 <li>Checked by a KAFRIADA administrator</li>
               </ul>
@@ -132,7 +132,7 @@ export default async function VerifyClubPage({
 
           {v.state === "rejected" && v.reason ? (
             <Flash variant="bad" title="Not verified this time">
-              <p style={{ marginBottom: 0 }}>{v.reason}</p>
+              <p className="mb0">{v.reason}</p>
             </Flash>
           ) : null}
 
@@ -155,7 +155,7 @@ export default async function VerifyClubPage({
               >
                 Save my document
               </SubmitButton>
-              <p className="hint" style={{ marginTop: "var(--s4)", marginBottom: 0 }}>
+              <p className="hint mt-4 mb0">
                 Maximum 10MB. The document is used only to check the club.
               </p>
             </div>
@@ -184,7 +184,7 @@ export default async function VerifyClubPage({
                   >
                     Pay {formatNaira(v.price_kobo)} with Paystack
                   </SubmitButton>
-                  <p className="hint" style={{ textAlign: "center", marginTop: "var(--s4)" }}>
+                  <p className="hint form-foot">
                     {ready
                       ? "You will leave KAFRIADA to pay. We never see your card details."
                       : "Add your document first."}
@@ -196,7 +196,6 @@ export default async function VerifyClubPage({
         </>
       )}
 
-      <p><a href={base}>Back to the club</a></p>
     </div>
   );
 }
@@ -206,7 +205,7 @@ function PaymentNotice({ payment, club }: { payment: Payment; club: string }) {
   if (payment.state === "confirmed") {
     return (
       <Flash variant="good" title="Payment confirmed">
-        <p style={{ marginBottom: 0 }}>
+        <p className="mb0">
           We received {formatNaira(payment.amount_kobo)}. Your club is now with an administrator.
         </p>
       </Flash>
@@ -223,7 +222,7 @@ function PaymentNotice({ payment, club }: { payment: Payment; club: string }) {
   if (payment.state === "review") {
     return (
       <Flash variant="warn" title="Your payment needs a check by our team">
-        <p style={{ marginBottom: 0 }}>
+        <p className="mb0">
           Please do not pay again. We will contact you on the phone number you registered with.
         </p>
       </Flash>
@@ -231,7 +230,7 @@ function PaymentNotice({ payment, club }: { payment: Payment; club: string }) {
   }
   return (
     <Flash variant="bad" title="The payment was not completed">
-      <p style={{ marginBottom: 0 }}>
+      <p className="mb0">
         If money left your account, it will show here as confirmed once Paystack tells us.
         Otherwise you can try again below.
       </p>

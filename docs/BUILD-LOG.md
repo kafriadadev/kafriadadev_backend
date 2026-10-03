@@ -30,6 +30,51 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-03 — Interface overhaul: navigation, layouts and components for every screen
+**Commit(s):** see the commit that adds this entry.
+
+**Built:** a structural redesign of all 36 screens, keeping the existing visual identity
+(paper, green and gold, the document card, every `--plate-*` token). New in
+`globals.css`: two page widths (680px reading, 1180px working screens), a site header
+with a no-JavaScript `<details>` menu on phones, a footer, page heads with back links and
+actions, section tabs, an administrator sidebar from 1024px, stat tiles, action tiles,
+tables that restack as labelled cards below 720px, filter chips, toolbars, pager, empty
+states, form fieldsets and two-column field rows, and layout utilities. New components:
+`SiteHeader`, `SiteFooter`, `PageHead`, `SubNav`, `AdminShell` (in `AdminNav.tsx`),
+`CoordinatorNav`, `Stat`, `EmptyState`, `Pager`, `NoAccess`. Every one of the 213
+inline `style={{}}` attributes is gone. Screens reworked beyond restyling: `/me` is a
+hub of tiles grouped into My ID, Clubs and Work areas, with the account card beside
+them; the admin overview, coordinator dashboard and club page lead with stat tiles;
+users, audit log, roster, coordinator search and payments are tables; the review and
+club-review screens put the evidence beside the decision on a desktop; the landing
+page shows a sample card next to the headline. Copy: removed internal screen codes
+("Admin · ADM-04", "Coordinator · CRD-04") from page eyebrows and a stale "Payment
+opens shortly" line on the card page.
+
+**Why:** the identity was right; the structure was not. There was no navigation (the
+header said "Sign in" to people already signed in), every screen was a 660px column
+including tables and dashboards on a desktop, and `/me` was a wall of equal buttons.
+The header reads no cookie on purpose: doing so made every page dynamic, including the
+cached public profile. "My account" goes to `/me`, which already sends anyone not
+signed in to sign-in; signing out moved to `/me`'s page head. Tabs wrap rather than
+scroll sideways, because a tab off the edge of a phone is a screen nobody finds.
+
+**Verified:** `npm run typecheck` and `npm run build` clean. `check:render` now runs at
+320, 360, 768 and 1280px (light and dark) and checks the phone menu opens with
+JavaScript off: all public pages, the JS-off registration, confirm, reset and sign-in
+round trips, plus 26 signed-in screens via `EXTRA_SESSIONS` (every athlete, club,
+coordinator and admin screen) — 164 checks, all passed. Signed-in screens were
+audited against the private local PostgreSQL with one throwaway account holding
+athlete, super_admin, lga_coordinator and club_admin; nothing was written to Supabase.
+The audit found three real faults, all fixed: tab bars overflowing at 360px,
+visually-hidden table headings extending past the screen edge, and a single-column
+grid sized by a 320px evidence image. Four screens were also looked at directly
+(`/me` and `/admin/users` at 1280px, `/coordinator` at 390px, the landing page).
+
+**Not done / open:** the signed-in sign-in/sign-out loop (`SIGNIN_PHONE`) was not run
+this session; payment return states (confirmed/failed/review) and the verification
+states other than "start" still have not been contrast-audited, as before.
+
 ## 2026-09-24 — CI green end to end: four latent gate failures
 **Commit(s):** the four commits after `92c5de7` (SQLAlchemy pin, gitleaks config, pip-audit).
 

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { PageHead } from "@/components/PageHead";
+import { NoAccess } from "@/components/NoAccess";
+import { AdminShell } from "@/components/AdminNav";
 import { Flash } from "@/components/Flash";
 import {
   ApiError,
@@ -49,12 +52,7 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
   }
   if (!me.roles.some((r) => r.role === "super_admin")) {
     return (
-      <div className="stack">
-        <h1>Withdraw a verification</h1>
-        <Flash variant="bad" title="You do not have access to this">
-          <p style={{ marginBottom: 0 }}>Only a super administrator can withdraw a badge.</p>
-        </Flash>
-      </div>
+      <NoAccess title="Withdraw a verification" message="Only a super administrator can withdraw a badge." />
     );
   }
 
@@ -79,18 +77,17 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
   }
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Admin &middot; ADM-03</p>
-      <h1>Withdraw a verification</h1>
-      <p className="lede">
-        Finds an athlete&rsquo;s verification by their KAFRIADA ID, so it can be
-        withdrawn with a reason. The badge and photo come down immediately;
-        the KAFRIADA ID itself is never affected.
-      </p>
+    <AdminShell current="/admin/revoke">
+      <PageHead
+        eyebrow="Administrator"
+        title="Withdraw a verification"
+        lede={<>Finds an athlete&rsquo;s verification by their KAFRIADA ID, so it can be withdrawn with a reason. The badge and photo come down immediately; the KAFRIADA ID itself is never affected.</>}
+        app
+      />
 
       {done ? (
         <Flash variant="good" title="Withdrawn">
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             The badge for <span className="kuid">{done}</span> has been withdrawn.
             The athlete has been told by SMS, and the reason is kept permanently.
           </p>
@@ -99,35 +96,33 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
 
-      <form method="GET" className="doc" noValidate>
-        <div className="doc__body">
-          <div className="field">
-            <label htmlFor="kuid">KAFRIADA ID</label>
-            <input
-              id="kuid"
-              name="kuid"
-              required
-              placeholder="KA-NG-JG-BKD-2026-000001"
-              defaultValue={kuid}
-              style={{ fontFamily: "var(--font-mono)" }}
-            />
-          </div>
-          <button type="submit" className="btn btn--primary btn--block">Find</button>
+      <form method="GET" className="panel toolbar toolbar--2" role="search" noValidate>
+        <div className="field">
+          <label htmlFor="kuid">KAFRIADA ID</label>
+          <input
+            id="kuid"
+            name="kuid"
+            required
+            placeholder="KA-NG-JG-BKD-2026-000001"
+            defaultValue={kuid}
+            className="input-mono"
+          />
         </div>
+        <button type="submit" className="btn btn--primary btn--block">Find</button>
       </form>
 
       {lookupError ? (
         <Flash variant="warn" title="Not found">
-          <p style={{ marginBottom: 0 }}>{lookupError}</p>
+          <p className="mb0">{lookupError}</p>
         </Flash>
       ) : null}
 
       {found ? (
-        <section className="doc" aria-label="What was found">
+        <section className="doc narrow" aria-label="What was found">
           <div className="doc__body">
             <dl className="facts">
               <div className="fact"><dt>Name</dt><dd>{found.full_name}</dd></div>
@@ -139,7 +134,7 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
             </dl>
 
             {found.revocable ? (
-              <form action={revokeAction} style={{ marginTop: "var(--s5)" }}>
+              <form action={revokeAction} className="mt-5">
                 <input type="hidden" name="request_id" value={found.request_id} />
                 <input type="hidden" name="kuid" value={found.kuid} />
                 <div className="field">
@@ -163,13 +158,13 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
                 </button>
               </form>
             ) : (
-              <p className="hint" style={{ marginTop: "var(--s4)", marginBottom: 0 }}>
+              <p className="hint mt-4 mb0">
                 Nothing to withdraw — only an approved verification can be.
               </p>
             )}
           </div>
         </section>
       ) : null}
-    </div>
+    </AdminShell>
   );
 }

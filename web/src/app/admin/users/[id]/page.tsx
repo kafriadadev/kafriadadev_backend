@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { AdminNav } from "@/components/AdminNav";
+import { EmptyState } from "@/components/EmptyState";
+import { PageHead } from "@/components/PageHead";
+import { AdminShell } from "@/components/AdminNav";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import {
@@ -55,15 +57,14 @@ export default async function UserPage({
       if (error.status === 401) redirect("/sign-in?ended=1");
       if (error.status === 403 || error.status === 404 || error.status === 422) {
         return (
-          <div className="stack">
-            <AdminNav current="/admin/users" />
-            <h1>User</h1>
+          <AdminShell current="/admin/users">
+            <PageHead eyebrow="Administrator" title="User" app />
             <Flash variant="bad" title="Not found or not allowed">
-              <p style={{ marginBottom: 0 }}>
+              <p className="mb0">
                 There is no such user, or you do not have access. <a href="/admin/users">Back to users</a>
               </p>
             </Flash>
-          </div>
+          </AdminShell>
         );
       }
     }
@@ -80,35 +81,44 @@ export default async function UserPage({
   };
 
   return (
-    <div className="stack">
-      <AdminNav current="/admin/users" />
-      <p className="eyebrow">User</p>
-      <h1>{user.full_name}</h1>
-      <p className="hint">
-        {user.phone_masked}
-        {user.kuid ? <> &middot; <span className="kuid">{user.kuid}</span></> : null}
-      </p>
+    <AdminShell current="/admin/users">
+      <PageHead
+        back={{ href: "/admin/users", label: "Users and roles" }}
+        eyebrow="User"
+        title={user.full_name}
+        lede={
+          <>
+            {user.phone_masked}
+            {user.kuid ? <> &middot; <span className="kuid">{user.kuid}</span></> : null}
+          </>
+        }
+        app
+      />
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
       {done ? (
         <Flash variant="good" title="Done">
-          <p style={{ marginBottom: 0 }}>{done}</p>
+          <p className="mb0">{done}</p>
         </Flash>
       ) : null}
 
-      <h2>Roles</h2>
-      {user.roles.length === 0 ? <p className="hint">This person holds no roles.</p> : null}
+      <div className="split">
+      <div className="stack">
+      <h2 className="section-title">Roles</h2>
+      {user.roles.length === 0 ? <EmptyState title="This person holds no roles" /> : null}
       {user.roles.map((r) => (
         <section className="doc" key={r.grant_id} aria-label={r.role}>
           <div className="doc__body">
-            <p style={{ fontWeight: 700, marginBottom: "var(--s3)" }}>
+            <p className="bold mb0">
               {r.role}
               {r.scope_name ? ` — ${r.scope_name}` : r.scope_kind === "global" ? "" : ` — ${r.scope_id}`}
             </p>
+            <details className="disclose">
+            <summary>Revoke this role</summary>
             <form action={revokeAction}>
               <input type="hidden" name="user" value={user.user_id} />
               <input type="hidden" name="grant" value={r.grant_id} />
@@ -120,13 +130,29 @@ export default async function UserPage({
                 <label htmlFor={`pw-${r.grant_id}`}>Your password</label>
                 <input id={`pw-${r.grant_id}`} name="current_password" type="password" required autoComplete="current-password" />
               </div>
-              <SubmitButton className="btn btn--ghost" pending="Revoking…">Revoke this role</SubmitButton>
+              <SubmitButton className="btn btn--danger" pending="Revoking…">Revoke this role</SubmitButton>
             </form>
+            </details>
           </div>
         </section>
       ))}
 
-      <h2>Grant a role</h2>
+      <h2 className="section-title mt-lg">Sessions</h2>
+      <form action={endSessionsAction} className="doc">
+        <div className="doc__body">
+          <input type="hidden" name="user" value={user.user_id} />
+          <div className="field">
+            <label htmlFor="end-reason">Reason for ending every session</label>
+            <input id="end-reason" name="reason" required maxLength={300} />
+          </div>
+          <SubmitButton className="btn btn--ghost" pending="Ending sessions…">End all sessions</SubmitButton>
+        </div>
+      </form>
+
+      </div>
+
+      <aside className="stack">
+      <h2 className="section-title">Grant a role</h2>
       <form action={grantAction} className="doc">
         <div className="doc__body">
           <input type="hidden" name="user" value={user.user_id} />
@@ -161,7 +187,7 @@ export default async function UserPage({
           </div>
           <div className="field">
             <label htmlFor="club_id">Or a club&rsquo;s id</label>
-            <input id="club_id" name="club_id" autoComplete="off" style={{ fontFamily: "var(--font-mono)" }} />
+            <input id="club_id" name="club_id" autoComplete="off" className="input-mono" />
           </div>
           <div className="field">
             <label htmlFor="reason">Reason</label>
@@ -176,19 +202,8 @@ export default async function UserPage({
         </div>
       </form>
 
-      <h2>Sessions</h2>
-      <form action={endSessionsAction} className="doc">
-        <div className="doc__body">
-          <input type="hidden" name="user" value={user.user_id} />
-          <div className="field">
-            <label htmlFor="end-reason">Reason for ending every session</label>
-            <input id="end-reason" name="reason" required maxLength={300} />
-          </div>
-          <SubmitButton className="btn btn--ghost" pending="Ending sessions…">End all sessions</SubmitButton>
-        </div>
-      </form>
-
-      <p><a href="/admin/users">Back to users</a></p>
-    </div>
+      </aside>
+      </div>
+    </AdminShell>
   );
 }

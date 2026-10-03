@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { PageHead } from "@/components/PageHead";
+
 export const metadata: Metadata = { title: "Privacy notice" };
 
 /**
@@ -11,25 +13,24 @@ export const metadata: Metadata = { title: "Privacy notice" };
  */
 export default function PrivacyPage() {
   return (
-    <div className="stack">
-      <p className="eyebrow">Version 1.0 · Effective 1 October 2026</p>
-      <h1>What we keep, and what we do with it</h1>
+    <div className="page prose">
+      <PageHead eyebrow="Version 1.0 · Effective 1 October 2026" title="What we keep, and what we do with it" />
 
-      <h3>What we collect</h3>
+      <h2>What we collect</h2>
       <p>
         Your name, phone number, date of birth, Local Government Area, sport and
         position. If you choose paid verification, also a photograph and a
         photograph of an identity document.
       </p>
 
-      <h3>What is public</h3>
+      <h2>What is public</h2>
       <p>
         Your name, KAFRIADA ID, sport, position, LGA, age and — once verified —
         your photograph. <strong>Your phone number and your date of birth are
         never shown publicly</strong>, and neither is any identity document.
       </p>
 
-      <h3>Why we keep it</h3>
+      <h2>Why we keep it</h2>
       <p>
         To issue and maintain your permanent sports identity, to check the
         documents you send for verification, and to keep records of payments as
@@ -42,7 +43,7 @@ export default function PrivacyPage() {
           Your name, photograph, phone number, date of birth and any documents
           are erased.
         </p>
-        <p style={{ marginBottom: 0 }}>
+        <p className="mb0">
           <strong>Your KAFRIADA ID and your payment records are kept.</strong> We
           are required to retain financial records, and the record of what
           happened cannot be altered by anyone — including us. We are telling you
@@ -50,13 +51,13 @@ export default function PrivacyPage() {
         </p>
       </div>
 
-      <h3>How long</h3>
+      <h2>How long</h2>
       <p>
         Identity documents are deleted 30 days after a verification decision.
         Records of what happened are kept for seven years.
       </p>
 
-      <h3>Who to contact</h3>
+      <h2>Who to contact</h2>
       <p>
         Speak to your LGA coordinator, or write to KowaGuru Technology Limited.
       </p>

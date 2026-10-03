@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { EmptyState } from "@/components/EmptyState";
+import { PageHead } from "@/components/PageHead";
 import { ApiError, type Payment, getMe, listPayments } from "@/lib/api";
 import { formatNaira } from "@/lib/money";
 import { sessionToken } from "@/lib/session";
@@ -54,45 +56,39 @@ export default async function PaymentsPage() {
   const payments = await listPayments(token);
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Account</p>
-      <h1>My payments</h1>
+    <div className="page page--wide stack">
+      <PageHead
+        back={{ href: "/me", label: "My account" }}
+        eyebrow="Account"
+        title="My payments"
+        app
+      />
 
       {payments.length === 0 ? (
-        <div className="notice" role="status">
-          <p className="notice__title">Nothing here yet</p>
-          <p style={{ marginBottom: 0 }}>
-            You have not started a payment. <a href="/pay">Get verified</a> starts
-            one for ₦2,500.
-          </p>
-        </div>
+        <EmptyState title="Nothing here yet">
+          <p className="small">You have not started a payment.</p>
+          <a href="/pay" className="btn btn--primary">Get verified for ₦2,500</a>
+        </EmptyState>
       ) : (
-        <div className="stack" style={{ gap: "var(--s3)" }}>
-          {payments.map((p) => (
-            <section key={p.reference} className="doc" aria-label={`Payment ${p.reference}`}>
-              <div className="doc__body" style={{ display: "flex", justifyContent: "space-between", gap: "var(--s4)", flexWrap: "wrap", alignItems: "flex-start" }}>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: 0, fontWeight: 700 }}>
-                    {PURPOSE_LABEL[p.purpose] ?? p.purpose}
-                  </p>
-                  <p className="hint" style={{ margin: "2px 0 0" }}>{stamp(p.created_at)}</p>
-                  <p className="kuid" style={{ fontSize: ".8rem", marginTop: "var(--s2)" }}>
-                    {p.reference}
-                  </p>
-                </div>
-                <div style={{ textAlign: "right", flex: "none" }}>
-                  <p className="amount" style={{ margin: 0 }}>{formatNaira(p.amount_kobo)}</p>
-                  <span className={STATE_PILL[p.state]} style={{ marginTop: "var(--s2)" }}>
-                    {STATE_LABEL[p.state]}
-                  </span>
-                </div>
-              </div>
-            </section>
-          ))}
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr><th>Payment</th><th>Date</th><th>Reference</th><th>Status</th><th className="num">Amount</th></tr>
+            </thead>
+            <tbody>
+              {payments.map((p) => (
+                <tr key={p.reference}>
+                  <td data-label=""><strong>{PURPOSE_LABEL[p.purpose] ?? p.purpose}</strong></td>
+                  <td data-label="Date"><span className="nowrap">{stamp(p.created_at)}</span></td>
+                  <td data-label="Reference"><span className="kuid small">{p.reference}</span></td>
+                  <td data-label="Status"><span className={STATE_PILL[p.state]}>{STATE_LABEL[p.state]}</span></td>
+                  <td data-label="Amount" className="num"><strong>{formatNaira(p.amount_kobo)}</strong></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
-
-      <p className="hint"><a href="/me">Back to my account</a></p>
     </div>
   );
 }

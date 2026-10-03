@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { CoordinatorNav } from "@/components/CoordinatorNav";
+import { EmptyState } from "@/components/EmptyState";
 import { Flash } from "@/components/Flash";
+import { PageHead } from "@/components/PageHead";
+import { Pager } from "@/components/Pager";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ApiError, type CardBatch, getCardBatch, getMe } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
@@ -46,7 +50,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
       <div className="stack no-print">
         <h1>Print cards</h1>
         <Flash variant="warn" title="No LGA to print for">
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             Choose a local government area on <a href="/coordinator">your dashboard</a> first.
           </p>
         </Flash>
@@ -75,51 +79,54 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
   const marked = one(params.marked);
 
   return (
-    <div className="stack">
+    <div className="page page--wide stack">
+      <CoordinatorNav current="/coordinator/cards" lga={lga} />
       <div className="stack no-print">
-        <p className="eyebrow">Coordinator</p>
-        <h1>Print cards</h1>
+        <PageHead
+          eyebrow="Coordinator"
+          title="Print cards"
+          lede="Find the athletes whose cards you need, then print or download them."
+          app
+        />
 
         {problem ? (
           <Flash variant="bad" title="That did not work">
-            <p style={{ marginBottom: 0 }}>{problem}</p>
+            <p className="mb0">{problem}</p>
           </Flash>
         ) : null}
         {marked ? (
           <Flash variant="good" title="Recorded">
-            <p style={{ marginBottom: 0 }}>
+            <p className="mb0">
               {marked === "1" ? "One card is" : `${marked} cards are`} now marked as printed.
             </p>
           </Flash>
         ) : null}
 
-        <form method="get" className="doc">
-          <div className="doc__body">
-            <input type="hidden" name="lga" value={lga} />
-            <div className="field">
-              <label htmlFor="since">Registered from</label>
-              <input id="since" name="since" type="date" defaultValue={since} />
-            </div>
-            <div className="field">
-              <label htmlFor="until">Registered to</label>
-              <input id="until" name="until" type="date" defaultValue={until} />
-            </div>
-            <div className="field">
-              <label htmlFor="unprinted">Show</label>
-              <select id="unprinted" name="unprinted" defaultValue={String(unprinted)}>
-                <option value="true">Not yet printed</option>
-                <option value="false">All</option>
-              </select>
-            </div>
-            <button type="submit" className="btn btn--primary btn--block">Find</button>
+        <form method="get" className="panel toolbar toolbar--3">
+          <input type="hidden" name="lga" value={lga} />
+          <div className="field">
+            <label htmlFor="since">Registered from</label>
+            <input id="since" name="since" type="date" defaultValue={since} />
           </div>
+          <div className="field">
+            <label htmlFor="until">Registered to</label>
+            <input id="until" name="until" type="date" defaultValue={until} />
+          </div>
+          <div className="field">
+            <label htmlFor="unprinted">Show</label>
+            <select id="unprinted" name="unprinted" defaultValue={String(unprinted)}>
+              <option value="true">Not yet printed</option>
+              <option value="false">All</option>
+            </select>
+          </div>
+          <button type="submit" className="btn btn--primary btn--block">Find</button>
         </form>
 
-        {batch && batch.total === 0 ? <p className="hint">No athletes match.</p> : null}
+        {batch && batch.total === 0 ? <EmptyState title="No athletes match" /> : null}
 
         {batch && batch.total > 0 ? (
-          <>
-            <p>
+          <div className="panel stack">
+            <p className="mb0">
               <strong>{batch.total}</strong> {batch.total === 1 ? "athlete" : "athletes"} &middot;{" "}
               {Math.ceil(batch.total / batch.per_sheet)} sheets of A4, {batch.per_sheet} cards per sheet.
               {batch.pages > 1 ? ` This is page ${batch.page} of ${batch.pages}: ${onPage} cards, ${sheets} sheets.` : ""}
@@ -128,7 +135,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
               Use your browser&rsquo;s Print option (Ctrl+P). The cards print eight to a sheet at
               card size. If it cannot print from here, download the PDF instead.
             </p>
-            <div style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>
+            <div className="cluster">
               <a
                 href={`/coordinator/cards/pdf?${keep()}`}
                 className="btn btn--primary"
@@ -147,13 +154,12 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
                 </SubmitButton>
               </form>
             </div>
-            {batch.pages > 1 ? (
-              <nav aria-label="Pages" style={{ display: "flex", gap: "var(--s4)" }}>
-                {batch.page > 1 ? <a href={pageLink(batch.page - 1)}>Previous page</a> : null}
-                {batch.page < batch.pages ? <a href={pageLink(batch.page + 1)}>Next page</a> : null}
-              </nav>
-            ) : null}
-          </>
+            <Pager
+              page={batch.page}
+              prev={batch.page > 1 ? pageLink(batch.page - 1) : null}
+              next={batch.page < batch.pages ? pageLink(batch.page + 1) : null}
+            />
+          </div>
         ) : null}
       </div>
 
@@ -173,7 +179,6 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
         </div>
       ) : null}
 
-      <p className="no-print"><a href={`/coordinator?lga=${encodeURIComponent(lga)}`}>Back to today</a></p>
     </div>
   );
 }

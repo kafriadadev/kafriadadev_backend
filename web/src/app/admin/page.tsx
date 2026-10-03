@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { AdminNav } from "@/components/AdminNav";
+import { NoAccess } from "@/components/NoAccess";
+import { AdminShell } from "@/components/AdminNav";
+import { PageHead } from "@/components/PageHead";
 import { Flash } from "@/components/Flash";
+import { Stat } from "@/components/Stat";
 import { type AdminOverview, ApiError, getAdminOverview } from "@/lib/api";
 import { formatNaira } from "@/lib/money";
 import { sessionToken } from "@/lib/session";
@@ -34,12 +37,7 @@ export default async function AdminHome() {
       if (error.status === 401) redirect("/sign-in?ended=1");
       if (error.status === 403) {
         return (
-          <div className="stack">
-            <h1>Administrator</h1>
-            <Flash variant="bad" title="You do not have access to this">
-              <p style={{ marginBottom: 0 }}>Only a super administrator can open this.</p>
-            </Flash>
-          </div>
+          <NoAccess title="Administrator" />
         );
       }
     }
@@ -47,13 +45,12 @@ export default async function AdminHome() {
   }
 
   return (
-    <div className="stack">
-      <AdminNav current="/admin" />
-      <h1>Overview</h1>
+    <AdminShell current="/admin">
+      <PageHead eyebrow="Administrator" title="Overview" app />
 
       {o.ledger_ok === false ? (
         <Flash variant="bad" title="The ledger check failed">
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             The last nightly check found a problem
             {o.ledger_checked_at ? ` (${stamp(o.ledger_checked_at)})` : ""}. Nothing else matters
             until it is resolved.
@@ -62,49 +59,49 @@ export default async function AdminHome() {
       ) : null}
       {o.unresolved > 0 ? (
         <Flash variant="warn" title={`${o.unresolved} unresolved ${o.unresolved === 1 ? "payment" : "payments"}`}>
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             These need a person: the amount paid did not match what was agreed.
           </p>
         </Flash>
       ) : null}
       {o.review_median_hours !== null && o.review_median_hours > REVIEW_TARGET_HOURS ? (
         <Flash variant="warn" title="Reviews are slower than the target">
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             The median decision took {o.review_median_hours} hours this month; the target is{" "}
             {REVIEW_TARGET_HOURS}.
           </p>
         </Flash>
       ) : null}
 
-      <section className="doc" aria-label="Money, last 24 hours">
-        <div className="doc__body">
-          <p className="eyebrow">Money — last 24 hours</p>
-          <dl className="facts">
-            <div className="fact"><dt>Collected</dt><dd><span className="amount">{formatNaira(o.collected_kobo)}</span></dd></div>
-            <div className="fact"><dt>Payments</dt><dd>{o.payments}</dd></div>
-            <div className="fact"><dt>Unresolved</dt><dd>{o.unresolved}</dd></div>
-            <div className="fact">
-              <dt>Ledger check</dt>
-              <dd>{o.ledger_ok === null ? "Not run yet" : o.ledger_ok ? "Pass" : "Fail"}</dd>
-            </div>
-          </dl>
+      <section aria-labelledby="money-h">
+        <h2 className="section-title" id="money-h">Money, last 24 hours</h2>
+        <div className="stats">
+          <Stat label="Collected" value={formatNaira(o.collected_kobo)} tone="good" />
+          <Stat label="Payments" value={o.payments} />
+          <Stat label="Unresolved" value={o.unresolved} tone={o.unresolved > 0 ? "warn" : undefined} />
+          <Stat
+            label="Ledger check"
+            value={o.ledger_ok === null ? "Not run" : o.ledger_ok ? "Pass" : "Fail"}
+            sub={o.ledger_checked_at ? stamp(o.ledger_checked_at) : undefined}
+            tone={o.ledger_ok === false ? "bad" : o.ledger_ok ? "good" : undefined}
+          />
         </div>
       </section>
 
-      <section className="doc" aria-label="Funnel">
-        <div className="doc__body">
-          <p className="eyebrow">Funnel</p>
-          <dl className="facts">
-            <div className="fact"><dt>Registered</dt><dd>{o.registered}</dd></div>
-            <div className="fact"><dt>Paid for verification</dt><dd>{o.paid}</dd></div>
-            <div className="fact"><dt>Conversion</dt><dd>{o.conversion_percent}%</dd></div>
-            <div className="fact"><dt>Clubs</dt><dd>{o.clubs} ({o.verified_clubs} verified)</dd></div>
-            <div className="fact">
-              <dt>Review median, 30 days</dt>
-              <dd>{o.review_median_hours === null ? "No decisions yet" : `${o.review_median_hours}h`}</dd>
-            </div>
-            <div className="fact"><dt>LGAs open</dt><dd>{o.live_lgas}</dd></div>
-          </dl>
+      <section aria-labelledby="funnel-h">
+        <h2 className="section-title" id="funnel-h">Funnel</h2>
+        <div className="stats">
+          <Stat label="Registered" value={o.registered} href="/admin/users" />
+          <Stat label="Paid for verification" value={o.paid} />
+          <Stat label="Conversion" value={`${o.conversion_percent}%`} />
+          <Stat label="Clubs" value={o.clubs} sub={`${o.verified_clubs} verified`} href="/admin/clubs" />
+          <Stat
+            label="Review median, 30 days"
+            value={o.review_median_hours === null ? "None yet" : `${o.review_median_hours}h`}
+            sub={`Target ${REVIEW_TARGET_HOURS}h`}
+            tone={o.review_median_hours !== null && o.review_median_hours > REVIEW_TARGET_HOURS ? "warn" : undefined}
+          />
+          <Stat label="LGAs open" value={o.live_lgas} />
         </div>
       </section>
 
@@ -113,6 +110,6 @@ export default async function AdminHome() {
           <a href="/admin/club-verification" className="btn btn--primary">Review clubs</a>
         </Flash>
       ) : null}
-    </div>
+    </AdminShell>
   );
 }

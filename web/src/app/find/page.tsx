@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { PageHead } from "@/components/PageHead";
+
 export const metadata: Metadata = { title: "Look up an athlete" };
 
 /**
@@ -21,12 +23,12 @@ export default function FindPage() {
   }
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Public lookup</p>
-      <h1>Look up an athlete</h1>
-      <p className="lede">
-        Enter the KAFRIADA ID printed on the card. No account needed.
-      </p>
+    <div className="page">
+      <PageHead
+        eyebrow="Public lookup"
+        title="Look up an athlete"
+        lede="Enter the KAFRIADA ID printed on the card. No account needed."
+      />
 
       <form action={find} className="doc">
         <div className="doc__body">
@@ -43,7 +45,7 @@ export default function FindPage() {
               spellCheck={false}
               placeholder="KA-NG-JG-___-____-______"
               aria-describedby="kuid-hint"
-              style={{ fontFamily: "var(--font-mono)", letterSpacing: ".04em" }}
+              className="input-mono"
             />
           </div>
           <button type="submit" className="btn btn--primary btn--block">
@@ -52,7 +54,7 @@ export default function FindPage() {
         </div>
       </form>
 
-      <p className="hint" style={{ color: "var(--muted)" }}>
+      <p className="hint mt-lg">
         Easier still: point your phone camera at the QR code on the card.
       </p>
     </div>

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { CoordinatorNav } from "@/components/CoordinatorNav";
+import { PageHead } from "@/components/PageHead";
+import { Stat } from "@/components/Stat";
 import { Flash } from "@/components/Flash";
 import {
   ApiError,
@@ -51,10 +54,10 @@ export default async function CoordinatorPage({ searchParams }: { searchParams: 
   if (!lga) {
     if (!canChoose) {
       return (
-        <div className="stack">
+        <div className="page stack">
           <h1>Coordinator</h1>
           <Flash variant="warn" title="No LGA to show">
-            <p style={{ marginBottom: 0 }}>This account does not coordinate a local government area.</p>
+            <p className="mb0">This account does not coordinate a local government area.</p>
           </Flash>
         </div>
       );
@@ -70,10 +73,10 @@ export default async function CoordinatorPage({ searchParams }: { searchParams: 
       if (error.status === 401) redirect("/sign-in?ended=1");
       if (error.status === 403 || error.status === 404) {
         return (
-          <div className="stack">
+          <div className="page stack">
             <h1>Coordinator</h1>
             <Flash variant="bad" title="You do not have access to this">
-              <p style={{ marginBottom: 0 }}>You can only open your own local government area.</p>
+              <p className="mb0">You can only open your own local government area.</p>
             </Flash>
             {canChoose ? <Chooser /> : null}
           </div>
@@ -87,24 +90,29 @@ export default async function CoordinatorPage({ searchParams }: { searchParams: 
   const hours = d.oldest_waiting_hours;
 
   return (
-    <div className="stack">
-      <p className="eyebrow">{d.lga_name} LGA &middot; {me.full_name}</p>
-      <h1>Today</h1>
+    <div className="page page--wide stack">
+      <CoordinatorNav current="/coordinator" lga={d.lga_id} />
+      <PageHead
+        eyebrow={<>{d.lga_name} LGA &middot; {me.full_name}</>}
+        title="Today"
+        app
+      />
 
-      <section className="doc" aria-label="The register">
-        <div className="doc__body">
-          <dl className="facts">
-            <div className="fact"><dt>Registered</dt><dd>{d.registered}</dd></div>
-            <div className="fact"><dt>Paid</dt><dd>{d.paid}</dd></div>
-            <div className="fact"><dt>To review</dt><dd>{d.to_review}</dd></div>
-            <div className="fact"><dt>Clubs</dt><dd>{d.clubs}</dd></div>
-          </dl>
-        </div>
-      </section>
+      <div className="stats">
+        <Stat label="Registered" value={d.registered} />
+        <Stat label="Paid" value={d.paid} />
+        <Stat
+          label="To review"
+          value={d.to_review}
+          href={`/review?${q}`}
+          tone={d.to_review > 0 ? "warn" : "good"}
+        />
+        <Stat label="Clubs" value={d.clubs} />
+      </div>
 
       {d.to_review === 0 ? (
         <Flash variant="good" title="Nothing is waiting">
-          <p style={{ marginBottom: 0 }}>Every verification in this LGA has been decided.</p>
+          <p className="mb0">Every verification in this LGA has been decided.</p>
         </Flash>
       ) : (
         <Flash
@@ -119,15 +127,29 @@ export default async function CoordinatorPage({ searchParams }: { searchParams: 
         </Flash>
       )}
 
-      <h2>What do you need to do?</h2>
-      <div style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>
-        <a href={`/review?${q}`} className="btn btn--ghost">Review verifications</a>
-        <a href={`/coordinator/find?${q}`} className="btn btn--ghost">Find an athlete</a>
-        <a href={`/coordinator/cards?${q}`} className="btn btn--ghost">Print QR cards</a>
-        {d.can_assist && !d.cap_reached ? (
-          <a href={`/assist-pay?${q}`} className="btn btn--ghost">Pay for an athlete</a>
-        ) : null}
-      </div>
+      <section aria-labelledby="todo-h">
+        <h2 className="section-title" id="todo-h">What do you need to do?</h2>
+        <div className="tiles">
+          <a href={`/review?${q}`} className="tile">
+            <span className="tile__title">Review verifications</span>
+            <span className="tile__text">Check photographs and ID documents.</span>
+          </a>
+          <a href={`/coordinator/find?${q}`} className="tile">
+            <span className="tile__title">Find an athlete</span>
+            <span className="tile__text">Search this LGA by name, phone or ID.</span>
+          </a>
+          <a href={`/coordinator/cards?${q}`} className="tile">
+            <span className="tile__title">Print QR cards</span>
+            <span className="tile__text">Eight cards to an A4 sheet.</span>
+          </a>
+          {d.can_assist && !d.cap_reached ? (
+            <a href={`/assist-pay?${q}`} className="tile">
+              <span className="tile__title">Pay for an athlete</span>
+              <span className="tile__text">Record a cash payment for verification.</span>
+            </a>
+          ) : null}
+        </div>
+      </section>
 
       {d.can_assist ? (
         <section className="doc" aria-label="Cash collected today">
@@ -144,7 +166,7 @@ export default async function CoordinatorPage({ searchParams }: { searchParams: 
               </div>
             </dl>
             {d.cap_reached ? (
-              <p className="hint" style={{ marginBottom: 0 }}>
+              <p className="hint mb0">
                 You have reached today&rsquo;s limit. Assisted payments start again tomorrow.
               </p>
             ) : null}
@@ -165,19 +187,17 @@ async function Chooser({ current }: { current?: string }) {
     /* an unreachable list leaves an empty selector; the page still works for the LGA already chosen */
   }
   return (
-    <form method="get" className="doc">
-      <div className="doc__body">
-        <div className="field">
-          <label htmlFor="lga">Local government area</label>
-          <select id="lga" name="lga" defaultValue={current ?? ""}>
-            <option value="">Choose an area</option>
-            {options.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
-        </div>
-        <button type="submit" className="btn btn--ghost btn--block">Show</button>
+    <form method="get" className="panel toolbar toolbar--2">
+      <div className="field">
+        <label htmlFor="lga">Local government area</label>
+        <select id="lga" name="lga" defaultValue={current ?? ""}>
+          <option value="">Choose an area</option>
+          {options.map((l) => (
+            <option key={l.id} value={l.id}>{l.name}</option>
+          ))}
+        </select>
       </div>
+      <button type="submit" className="btn btn--ghost btn--block">Show</button>
     </form>
   );
 }

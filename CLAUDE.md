@@ -52,7 +52,7 @@ bash scripts/release.sh smoke http://127.0.0.1:8010
 Probes: `/healthz` (alive) and `/readyz` (can reach the database on each role;
 503 otherwise, and which role failed goes to the log, not the response).
 `check:render` drives the installed Edge (playwright-core, no download): WCAG
-contrast of every text element, overflow, split IDs at 360px light/dark and 320px,
+contrast of every text element, overflow, split IDs at 320/360/768/1280px, light and dark,
 plus JS-off registration and sign-in round trips that write nothing. Run it after
 any UI change. With `SIGNIN_PHONE`/`SIGNIN_PASSWORD` set it also signs in, audits
 `/me` and signs out — register a throwaway athlete for it; never commit its password.
@@ -516,6 +516,12 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   (`POST /v1/admin/club-verification/{id}/revoke`, `/admin/clubs/[id]/revoke`, ADM-03's
   reason-and-password shape) and the 30-day purge of a club's document, joined into the
   hourly `documents` job. 17 tests total in `tests/test_club_verification.py`.
+- **Interface overhaul — done and verified 2026-10-03.** Same identity, new structure:
+  site header (no-JS `<details>` menu on phones; reads no cookie, so cached pages stay
+  cached), footer, `PageHead`, tabs (`SubNav`, `CoordinatorNav`), an admin sidebar
+  (`AdminShell`), stat tiles, tables that restack under 720px, `/me` as a hub. No inline
+  `style={{}}` remains — use the utilities in `globals.css`. Wrap a page in
+  `.page` (680px) or `.page page--wide` (1180px); sign-in screens use `.auth`.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.

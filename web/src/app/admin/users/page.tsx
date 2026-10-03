@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { AdminNav } from "@/components/AdminNav";
-import { Flash } from "@/components/Flash";
+import { NoAccess } from "@/components/NoAccess";
+import { AdminShell } from "@/components/AdminNav";
+import { EmptyState } from "@/components/EmptyState";
+import { PageHead } from "@/components/PageHead";
+import { Pager } from "@/components/Pager";
 import { type AdminUsers, ApiError, findAdminUsers, getRoleKinds } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 
@@ -39,12 +42,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
       if (error.status === 401) redirect("/sign-in?ended=1");
       if (error.status === 403) {
         return (
-          <div className="stack">
-            <h1>Users and roles</h1>
-            <Flash variant="bad" title="You do not have access to this">
-              <p style={{ marginBottom: 0 }}>Only a super administrator can open this.</p>
-            </Flash>
-          </div>
+          <NoAccess title="Users and roles" />
         );
       }
     }
@@ -54,57 +52,58 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const link = (p: number) => `/admin/users?${new URLSearchParams({ q, role, page: String(p) })}`;
 
   return (
-    <div className="stack">
-      <AdminNav current="/admin/users" />
-      <h1>Users and roles</h1>
+    <AdminShell current="/admin/users">
+      <PageHead eyebrow="Administrator" title="Users and roles" app />
 
-      <form method="get" className="doc">
-        <div className="doc__body">
-          <div className="field">
-            <label htmlFor="q">Name, phone or KAFRIADA ID</label>
-            <input id="q" name="q" defaultValue={q} />
-          </div>
-          <div className="field">
-            <label htmlFor="role">Role</label>
-            <select id="role" name="role" defaultValue={role}>
-              <option value="">All roles</option>
-              {roles.map((r) => (
-                <option key={r.code} value={r.code}>{r.code}</option>
-              ))}
-            </select>
-          </div>
-          <button type="submit" className="btn btn--primary btn--block">Search</button>
+      <form method="get" className="panel toolbar" role="search">
+        <div className="field">
+          <label htmlFor="q">Name, phone or KAFRIADA ID</label>
+          <input id="q" name="q" defaultValue={q} />
         </div>
+        <div className="field">
+          <label htmlFor="role">Role</label>
+          <select id="role" name="role" defaultValue={role}>
+            <option value="">All roles</option>
+            {roles.map((r) => (
+              <option key={r.code} value={r.code}>{r.code}</option>
+            ))}
+          </select>
+        </div>
+        <button type="submit" className="btn btn--primary btn--block">Search</button>
       </form>
 
-      {result.users.length === 0 ? <p className="hint">No one matches.</p> : null}
+      {result.users.length === 0 ? (
+        <EmptyState title="No one matches">
+          <p className="small">Try part of a name, the last digits of a phone number, or a full ID.</p>
+        </EmptyState>
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr><th>Name</th><th>Phone</th><th>KAFRIADA ID</th><th>Roles</th><th>Last seen</th></tr>
+            </thead>
+            <tbody>
+              {result.users.map((u) => (
+                <tr key={u.user_id}>
+                  <td data-label=""><a href={`/admin/users/${u.user_id}`}><strong>{u.full_name}</strong></a></td>
+                  <td data-label="Phone"><span>{u.phone_masked}</span></td>
+                  <td data-label="ID">{u.kuid ? <span className="kuid">{u.kuid}</span> : <span className="muted">None</span>}</td>
+                  <td data-label="Roles">
+                    <span>
+                      {u.roles.length
+                        ? u.roles.map((r) => `${r.role}${r.scope_name ? ` — ${r.scope_name}` : ""}`).join(", ")
+                        : "No roles"}
+                    </span>
+                  </td>
+                  <td data-label="Last seen"><span className="nowrap">{seen(u.last_seen)}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {result.users.map((u) => (
-        <section className="doc" key={u.user_id} aria-label={u.full_name}>
-          <div className="doc__body">
-            <p style={{ fontWeight: 700, marginBottom: "var(--s2)" }}>
-              <a href={`/admin/users/${u.user_id}`}>{u.full_name}</a>
-            </p>
-            <p style={{ marginBottom: "var(--s2)" }}>
-              {u.phone_masked}
-              {u.kuid ? <> &middot; <span className="kuid">{u.kuid}</span></> : null}
-            </p>
-            <p className="hint" style={{ marginBottom: "var(--s2)" }}>Last seen {seen(u.last_seen)}</p>
-            <p style={{ marginBottom: 0 }}>
-              {u.roles.length
-                ? u.roles.map((r) => `${r.role}${r.scope_name ? ` — ${r.scope_name}` : ""}`).join(", ")
-                : "No roles"}
-            </p>
-          </div>
-        </section>
-      ))}
-
-      {page > 1 || result.has_more ? (
-        <nav aria-label="Pages" style={{ display: "flex", gap: "var(--s4)" }}>
-          {page > 1 ? <a href={link(page - 1)}>Previous</a> : null}
-          {result.has_more ? <a href={link(page + 1)}>Next</a> : null}
-        </nav>
-      ) : null}
-    </div>
+      <Pager page={page} prev={page > 1 ? link(page - 1) : null} next={result.has_more ? link(page + 1) : null} />
+    </AdminShell>
   );
 }

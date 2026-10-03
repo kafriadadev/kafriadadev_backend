@@ -1,3 +1,4 @@
+import { PageHead } from "@/components/PageHead";
 import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -52,22 +53,20 @@ export default async function ConfirmPhonePage({
   const emailSentTo = waiting?.email;
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Step 2 of 3</p>
-      <h1>Enter the code we sent</h1>
-      <p className="lede">
-        {emailSentTo
-          ? `Sent by email to ${emailSentTo}.`
-          : `Sent by text message to ${shown}.`}
-      </p>
+    <div className="auth stack">
+      <PageHead
+        eyebrow="Step 2 of 3"
+        title="Enter the code we sent"
+        lede={<>{emailSentTo ? `Sent by email to ${emailSentTo}.` : `Sent by text message to ${shown}.`}</>}
+      />
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : sent ? (
         <Flash variant="good" title="Another code is on its way" autoDismissMs={8000}>
-          <p style={{ marginBottom: 0 }}>Check your messages — the timer below shows when you can ask again.</p>
+          <p className="mb0">Check your messages — the timer below shows when you can ask again.</p>
         </Flash>
       ) : null}
 
@@ -88,7 +87,7 @@ export default async function ConfirmPhonePage({
               maxLength={6}
               placeholder="000000"
               aria-describedby="code-hint"
-              style={{ fontFamily: "var(--font-mono)", letterSpacing: ".3em" }}
+              className="code-input"
             />
           </div>
           <SubmitButton pending="Checking your code…">Confirm my number</SubmitButton>
@@ -104,7 +103,7 @@ export default async function ConfirmPhonePage({
 
       <div className="notice">
         <p className="notice__title">Your ID is already yours</p>
-        <p style={{ marginBottom: kuid ? "var(--s3)" : 0 }}>
+        <p className={kuid ? "mb-3" : "mb0"}>
           Confirming your number is how we know the phone is yours, and it is
           needed before you can be verified. It does not affect your KAFRIADA ID,
           which was issued the moment you registered.
@@ -114,7 +113,7 @@ export default async function ConfirmPhonePage({
         ) : null}
       </div>
 
-      <p className="hint" style={{ color: "var(--muted)" }}>
+      <p className="hint muted">
         Wrong number? <a href="/register">Start again with the right one</a>.
       </p>
     </div>

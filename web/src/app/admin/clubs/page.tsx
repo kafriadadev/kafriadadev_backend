@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { AdminNav } from "@/components/AdminNav";
+import { NoAccess } from "@/components/NoAccess";
+import { AdminShell } from "@/components/AdminNav";
+import { EmptyState } from "@/components/EmptyState";
+import { PageHead } from "@/components/PageHead";
+import { Pager } from "@/components/Pager";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { type AdminClubs, ApiError, listAdminClubs } from "@/lib/api";
@@ -45,12 +49,7 @@ export default async function AdminClubsPage({ searchParams }: { searchParams: P
       if (error.status === 401) redirect("/sign-in?ended=1");
       if (error.status === 403) {
         return (
-          <div className="stack">
-            <h1>Clubs</h1>
-            <Flash variant="bad" title="You do not have access to this">
-              <p style={{ marginBottom: 0 }}>Only a super administrator can open this.</p>
-            </Flash>
-          </div>
+          <NoAccess title="Clubs" />
         );
       }
     }
@@ -62,16 +61,15 @@ export default async function AdminClubsPage({ searchParams }: { searchParams: P
   const link = (p: number) => `/admin/clubs?${new URLSearchParams({ status, page: String(p) })}`;
 
   return (
-    <div className="stack">
-      <AdminNav current="/admin/clubs" />
-      <h1>Clubs</h1>
+    <AdminShell current="/admin/clubs">
+      <PageHead eyebrow="Administrator" title="Clubs" app />
 
       {done ? (
         <Flash
           variant="good"
           title={done === "approved" ? "Club approved" : done === "revoked" ? "Verification withdrawn" : "Club suspended"}
         >
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             {done === "approved"
               ? "The club can now build a roster."
               : done === "revoked"
@@ -82,11 +80,11 @@ export default async function AdminClubsPage({ searchParams }: { searchParams: P
       ) : null}
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
 
-      <nav aria-label="Filter" style={{ display: "flex", gap: "var(--s4)", flexWrap: "wrap" }}>
+      <nav aria-label="Filter" className="filters">
         {FILTERS.map((f) =>
           f.key === status ? (
             <strong key={f.key} aria-current="page">{f.label}</strong>
@@ -96,53 +94,51 @@ export default async function AdminClubsPage({ searchParams }: { searchParams: P
         )}
       </nav>
 
-      {result.clubs.length === 0 ? <p className="hint">No clubs.</p> : null}
+      {result.clubs.length === 0 ? (
+        <EmptyState title="No clubs here" />
+      ) : (
+        <ul className="list">
+          {result.clubs.map((c) => (
+            <li className="list__item" key={c.club_id}>
+              <div className="list__main">
+                <p className="list__title">
+                  <a href={`/clubs/${c.club_id}`}>{c.name}</a>{" "}
+                  <span className={c.status === "approved" ? "pill pill--issued" : "pill pill--pending"}>
+                    {STATUS_LABEL[c.status] ?? c.status}
+                  </span>{" "}
+                  {c.verified ? <span className="pill pill--issued">Verified</span> : null}
+                </p>
+                <p className="list__meta">
+                  {c.sport} &middot; {c.lga_name} &middot; run by {c.representative}
+                </p>
+              </div>
+              <div className="list__actions">
+                {c.status !== "approved" ? (
+                  <form action={clubStatusAction}>
+                    <input type="hidden" name="club" value={c.club_id} />
+                    <input type="hidden" name="status" value={status} />
+                    <input type="hidden" name="change" value="approve" />
+                    <SubmitButton className="btn btn--primary btn--sm" pending="Approving…">Approve</SubmitButton>
+                  </form>
+                ) : null}
+                {c.status !== "suspended" ? (
+                  <form action={clubStatusAction}>
+                    <input type="hidden" name="club" value={c.club_id} />
+                    <input type="hidden" name="status" value={status} />
+                    <input type="hidden" name="change" value="suspend" />
+                    <SubmitButton className="btn btn--ghost btn--sm" pending="Suspending…">Suspend</SubmitButton>
+                  </form>
+                ) : null}
+                {c.verified ? (
+                  <a href={`/admin/clubs/${c.club_id}/revoke`} className="btn btn--ghost btn--sm">Withdraw verification</a>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
-      {result.clubs.map((c) => (
-        <section className="doc" key={c.club_id} aria-label={c.name}>
-          <div className="doc__body">
-            <p style={{ fontWeight: 700, marginBottom: "var(--s2)" }}>{c.name}</p>
-            <p style={{ marginBottom: "var(--s2)" }}>
-              <span className={c.status === "approved" ? "pill pill--issued" : "pill pill--pending"}>
-                {STATUS_LABEL[c.status] ?? c.status}
-              </span>{" "}
-              {c.verified ? <span className="pill pill--issued">Verified</span> : null}
-            </p>
-            <p className="hint" style={{ marginBottom: "var(--s3)" }}>
-              {c.sport} &middot; {c.lga_name} &middot; run by {c.representative}
-            </p>
-            <div style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>
-              {c.status !== "approved" ? (
-                <form action={clubStatusAction}>
-                  <input type="hidden" name="club" value={c.club_id} />
-                  <input type="hidden" name="status" value={status} />
-                  <input type="hidden" name="change" value="approve" />
-                  <SubmitButton className="btn btn--primary" pending="Approving…">Approve</SubmitButton>
-                </form>
-              ) : null}
-              {c.status !== "suspended" ? (
-                <form action={clubStatusAction}>
-                  <input type="hidden" name="club" value={c.club_id} />
-                  <input type="hidden" name="status" value={status} />
-                  <input type="hidden" name="change" value="suspend" />
-                  <SubmitButton className="btn btn--ghost" pending="Suspending…">Suspend</SubmitButton>
-                </form>
-              ) : null}
-              <a href={`/clubs/${c.club_id}`} className="btn btn--ghost">Open</a>
-              {c.verified ? (
-                <a href={`/admin/clubs/${c.club_id}/revoke`} className="btn btn--ghost">Withdraw verification</a>
-              ) : null}
-            </div>
-          </div>
-        </section>
-      ))}
-
-      {page > 1 || result.has_more ? (
-        <nav aria-label="Pages" style={{ display: "flex", gap: "var(--s4)" }}>
-          {page > 1 ? <a href={link(page - 1)}>Previous</a> : null}
-          {result.has_more ? <a href={link(page + 1)}>Next</a> : null}
-        </nav>
-      ) : null}
-    </div>
+      <Pager page={page} prev={page > 1 ? link(page - 1) : null} next={result.has_more ? link(page + 1) : null} />
+    </AdminShell>
   );
 }

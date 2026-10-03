@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { CoordinatorNav } from "@/components/CoordinatorNav";
+import { EmptyState } from "@/components/EmptyState";
+import { PageHead } from "@/components/PageHead";
 import {
   ApiError,
   getMe,
@@ -65,11 +68,11 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
   const lga = one(params.lga) || own;
   if (!lga) {
     return (
-      <div className="stack">
+      <div className="page stack">
         <h1>Review</h1>
         <div className="notice notice--warn" role="status">
           <p className="notice__title">No LGA to review</p>
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             This account is not an LGA coordinator. Reviews are done by the coordinator of the
             athlete&rsquo;s LGA.
           </p>
@@ -85,11 +88,11 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
     if (error instanceof ApiError && error.status === 401) redirect("/sign-in?ended=1");
     if (error instanceof ApiError && error.status === 403) {
       return (
-        <div className="stack">
+        <div className="page stack">
           <h1>Review</h1>
           <div className="notice notice--bad" role="alert">
             <p className="notice__title">You do not have access to this</p>
-            <p style={{ marginBottom: 0 }}>You can only review athletes in your own LGA.</p>
+            <p className="mb0">You can only review athletes in your own LGA.</p>
           </div>
         </div>
       );
@@ -114,31 +117,32 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
   const banner = error ? (
     <div className="notice notice--bad" role="alert" tabIndex={-1}>
       <p className="notice__title">That did not work</p>
-      <p style={{ marginBottom: 0 }}>{error}</p>
+      <p className="mb0">{error}</p>
     </div>
   ) : done ? (
     <div className="notice notice--good" role="status">
       <p className="notice__title">
         {done === "approved" ? "Approved" : done === "escalated" ? "Rejected — sent to the coordinator" : "Rejected"}
       </p>
-      <p style={{ marginBottom: 0 }}>The athlete has been told by SMS.</p>
+      <p className="mb0">The athlete has been told by SMS.</p>
     </div>
   ) : null;
 
   if (!current || !detail) {
     return (
-      <div className="stack">
-        <p className="eyebrow">Review</p>
-        <h1>{queue.length ? "Nothing more here" : "All caught up"}</h1>
+      <div className="page page--wide stack">
+        <CoordinatorNav current="/review" lga={lga} />
+        <PageHead
+          eyebrow="Review"
+          title={<>{queue.length ? "Nothing more here" : "All caught up"}</>}
+          app
+        />
         {banner}
-        <p className="hint">
-          {queue.length
-            ? <a href={`/review?lga=${encodeURIComponent(lga)}`}>Back to the first case</a>
-            : "No verifications are waiting in this LGA."}
-        </p>
-        <p className="hint">
-          <a href={`/assist-pay?lga=${encodeURIComponent(lga)}`}>Pay for an athlete who cannot pay online</a>
-        </p>
+        <EmptyState title={queue.length ? "You have reached the end of the queue" : "No verifications are waiting in this LGA"}>
+          {queue.length ? (
+            <p className="mt-3"><a href={`/review?lga=${encodeURIComponent(lga)}`} className="btn btn--primary">Back to the first case</a></p>
+          ) : null}
+        </EmptyState>
       </div>
     );
   }
@@ -148,18 +152,25 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
   const next = `/review?${new URLSearchParams({ lga, n: String(index + 1) }).toString()}`;
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Review — {queue.length} waiting</p>
-      <h1>{index + 1} of {queue.length}</h1>
+    <div className="page page--wide stack">
+      <CoordinatorNav current="/review" lga={lga} />
+      <PageHead
+        eyebrow={<>Review — {queue.length} waiting</>}
+        title={<>Case {index + 1} of {queue.length}</>}
+        lede={
+          <>
+            Waiting {waiting(current.submitted_at)}
+            {detail.paid_kobo !== null ? ` · paid ${formatNaira(detail.paid_kobo)} on ${stamp(detail.paid_at)}` : ""}
+          </>
+        }
+        actions={<a href={next} className="btn btn--ghost">Skip for now</a>}
+        app
+      />
       {banner}
 
-      <p className="hint">
-        Waiting {waiting(current.submitted_at)}
-        {detail.paid_kobo !== null ? ` · paid ${formatNaira(detail.paid_kobo)} on ${stamp(detail.paid_at)}` : ""}
-      </p>
-
-      <section className="doc" aria-label="The case">
-        <div className="doc__body">
+      <div className="split">
+      <section className="doc" aria-label="Evidence">
+        <div className="doc__body grid grid-2">
           <figure className="evidence">
             <figcaption>Submitted photo</figcaption>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -170,7 +181,12 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={media("document")} alt="The identity document the athlete submitted" width={320} />
           </figure>
+        </div>
+      </section>
 
+      <div className="stack">
+      <section className="doc" aria-label="The case">
+        <div className="doc__body">
           <p className="eyebrow">Check against the document</p>
           <dl className="facts">
             <div className="fact"><dt>Name</dt><dd>{detail.full_name}</dd></div>
@@ -181,7 +197,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
             <div className="fact"><dt>KAFRIADA ID</dt><dd><span className="kuid">{detail.kuid}</span></dd></div>
             <div className="fact"><dt>Attempt</dt><dd>{detail.attempt} of 3</dd></div>
           </dl>
-          <p className="hint">Face matches · name matches · 18 or older</p>
+          <p className="hint mt-4 mb0">Face matches · name matches · 18 or older</p>
         </div>
       </section>
 
@@ -207,11 +223,8 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
           </button>
         </div>
       </form>
-
-      <p style={{ textAlign: "center" }}><a href={next}>Skip for now</a></p>
-      <p className="hint" style={{ textAlign: "center" }}>
-        <a href={`/assist-pay?lga=${encodeURIComponent(lga)}`}>Pay for an athlete who cannot pay online</a>
-      </p>
+      </div>
+      </div>
     </div>
   );
 }

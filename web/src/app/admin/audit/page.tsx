@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { AdminNav } from "@/components/AdminNav";
+import { NoAccess } from "@/components/NoAccess";
+import { AdminShell } from "@/components/AdminNav";
+import { EmptyState } from "@/components/EmptyState";
+import { PageHead } from "@/components/PageHead";
+import { Pager } from "@/components/Pager";
 import { Flash } from "@/components/Flash";
 import { ApiError, type AuditPage, getAuditLog } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
@@ -45,12 +49,7 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
       if (error.status === 401) redirect("/sign-in?ended=1");
       if (error.status === 403) {
         return (
-          <div className="stack">
-            <h1>Audit log</h1>
-            <Flash variant="bad" title="You do not have access to this">
-              <p style={{ marginBottom: 0 }}>Only a super administrator can open this.</p>
-            </Flash>
-          </div>
+          <NoAccess title="Audit log" />
         );
       }
       if (error.status === 422) problem = "Check the dates: use the form year-month-day.";
@@ -64,66 +63,75 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
     })}`;
 
   return (
-    <div className="stack">
-      <AdminNav current="/admin/audit" />
-      <h1>Audit log</h1>
+    <AdminShell current="/admin/audit">
+      <PageHead eyebrow="Administrator" title="Audit log" app />
 
-      <form method="get" className="doc">
-        <div className="doc__body">
-          <div className="field">
-            <label htmlFor="actor">Who</label>
-            <input id="actor" name="actor" defaultValue={filters.actor} />
-          </div>
-          <div className="field">
-            <label htmlFor="action">Action</label>
-            <input id="action" name="action" defaultValue={filters.action} placeholder="verification.approved" />
-          </div>
-          <div className="field">
-            <label htmlFor="since">From</label>
-            <input id="since" name="since" type="date" defaultValue={filters.since} />
-          </div>
-          <div className="field">
-            <label htmlFor="until">To</label>
-            <input id="until" name="until" type="date" defaultValue={filters.until} />
-          </div>
-          <button type="submit" className="btn btn--primary btn--block">Filter</button>
+      <form method="get" className="panel toolbar toolbar--4" role="search">
+        <div className="field">
+          <label htmlFor="actor">Who</label>
+          <input id="actor" name="actor" defaultValue={filters.actor} />
         </div>
+        <div className="field">
+          <label htmlFor="action">Action</label>
+          <input id="action" name="action" defaultValue={filters.action} placeholder="verification.approved" />
+        </div>
+        <div className="field">
+          <label htmlFor="since">From</label>
+          <input id="since" name="since" type="date" defaultValue={filters.since} />
+        </div>
+        <div className="field">
+          <label htmlFor="until">To</label>
+          <input id="until" name="until" type="date" defaultValue={filters.until} />
+        </div>
+        <button type="submit" className="btn btn--primary btn--block">Filter</button>
       </form>
 
       {problem ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{problem}</p>
+          <p className="mb0">{problem}</p>
         </Flash>
       ) : null}
 
-      {log && log.entries.length === 0 ? <p className="hint">No entries match.</p> : null}
+      {log && log.entries.length === 0 ? <EmptyState title="No entries match" /> : null}
 
-      {log?.entries.map((e) => (
-        <section className="doc" key={e.entry_id} aria-label={e.action}>
-          <div className="doc__body">
-            <p style={{ fontWeight: 700, marginBottom: "var(--s2)", overflowWrap: "anywhere" }}>{e.action}</p>
-            <p style={{ marginBottom: "var(--s2)" }}>
-              {e.actor}
-              {e.actor_role ? ` (${e.actor_role})` : ""} &middot; {when(e.occurred_at)}
-            </p>
-            <p className="hint" style={{ marginBottom: 0, overflowWrap: "anywhere" }}>
-              {e.subject_type} {e.subject_id}
-              {e.reference ? ` · ref ${e.reference}` : ""}
-            </p>
-          </div>
-        </section>
-      ))}
+      {log && log.entries.length > 0 ? (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr><th>When</th><th>Action</th><th>Who</th><th>Subject</th></tr>
+            </thead>
+            <tbody>
+              {log.entries.map((e) => (
+                <tr key={e.entry_id}>
+                  <td data-label="When"><span className="nowrap">{when(e.occurred_at)}</span></td>
+                  <td data-label="Action"><span className="mono break">{e.action}</span></td>
+                  <td data-label="Who">
+                    <span>{e.actor}{e.actor_role ? ` (${e.actor_role})` : ""}</span>
+                  </td>
+                  <td data-label="Subject">
+                    <span className="small break">
+                      {e.subject_type} {e.subject_id}
+                      {e.reference ? ` · ref ${e.reference}` : ""}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
 
-      {log && (filters.page > 1 || log.has_more) ? (
-        <nav aria-label="Pages" style={{ display: "flex", gap: "var(--s4)" }}>
-          {filters.page > 1 ? <a href={link(filters.page - 1)}>Previous</a> : null}
-          {log.has_more ? <a href={link(filters.page + 1)}>Next</a> : null}
-        </nav>
+      {log ? (
+        <Pager
+          page={filters.page}
+          prev={filters.page > 1 ? link(filters.page - 1) : null}
+          next={log.has_more ? link(filters.page + 1) : null}
+        />
       ) : null}
 
       <p className="hint">
         Audit records cannot be edited or deleted by anyone, including administrators.
       </p>
-    </div>
+    </AdminShell>
   );
 }

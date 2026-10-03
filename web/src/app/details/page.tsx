@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { PageHead } from "@/components/PageHead";
 import { Flash } from "@/components/Flash";
 import { ApiError, getMyAthleteDetails } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
@@ -32,10 +33,10 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
     if (error instanceof ApiError && error.status === 401) redirect("/sign-in?ended=1");
     if (error instanceof ApiError && error.status === 404) {
       return (
-        <div className="stack">
+        <div className="page stack">
           <h1>Edit my details</h1>
           <Flash variant="warn" title="No athlete record">
-            <p style={{ marginBottom: 0 }}>This account is not registered as an athlete.</p>
+            <p className="mb0">This account is not registered as an athlete.</p>
           </Flash>
         </div>
       );
@@ -49,24 +50,23 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
   const errClass = (field: string) => (badField === field ? "field field--error" : "field");
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Account</p>
-      <h1>Edit my details</h1>
-      <p className="lede">
-        {details.sport}
-        {details.playing_position ? ` · ${details.playing_position}` : ""} — set at
-        registration. Everything below is optional.
-      </p>
+    <div className="page stack">
+      <PageHead
+        back={{ href: "/me", label: "My account" }}
+        eyebrow="Account"
+        title="Edit my details"
+        lede={<>{details.sport} {details.playing_position ? ` · ${details.playing_position}` : ""} — set at registration. Everything below is optional.</>}
+      />
 
       {saved ? (
         <Flash variant="good" title="Saved" autoDismissMs={4000}>
-          <p style={{ marginBottom: 0 }}>Your details are updated.</p>
+          <p className="mb0">Your details are updated.</p>
         </Flash>
       ) : null}
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
 
@@ -125,7 +125,6 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
         </div>
       </form>
 
-      <p className="hint"><a href="/me">Back to my account</a></p>
     </div>
   );
 }

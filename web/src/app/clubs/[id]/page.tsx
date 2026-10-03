@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { EmptyState } from "@/components/EmptyState";
+import { PageHead } from "@/components/PageHead";
+import { Stat } from "@/components/Stat";
+import { SubNav } from "@/components/SubNav";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ApiError, type ClubDashboard, type ClubRosterRow, getClub } from "@/lib/api";
@@ -57,10 +61,10 @@ export default async function ClubPage({
       if (error.status === 401) redirect("/sign-in?ended=1");
       if (error.status === 403 || error.status === 404) {
         return (
-          <div className="stack">
+          <div className="page stack">
             <h1>Club</h1>
             <Flash variant="bad" title="You do not have access to this">
-              <p style={{ marginBottom: 0 }}>
+              <p className="mb0">
                 You can only open a club you administer. <a href="/me">Back to your account</a>
               </p>
             </Flash>
@@ -77,86 +81,87 @@ export default async function ClubPage({
   const invited = club.roster.filter((r) => r.state === "invited");
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Club &middot; {club.sport} &middot; {club.lga_name}</p>
-      <h1>{club.name}</h1>
+    <div className="page page--wide stack">
+      <PageHead
+        back={{ href: "/clubs", label: "My clubs" }}
+        eyebrow={<>Club &middot; {club.sport} &middot; {club.lga_name}</>}
+        title={club.name}
+        app
+        actions={
+          club.status === "approved" ? (
+            <>
+              <a href={`${base}/invite`} className="btn btn--primary">Add a player</a>
+              {club.verified ? null : (
+                <a href={`${base}/verify`} className="btn btn--ghost">Verify club</a>
+              )}
+            </>
+          ) : undefined
+        }
+      />
 
       {one(query.registered) ? (
         <Flash variant="good" title="Club registered">
-          <p style={{ marginBottom: 0 }}>You are now this club&rsquo;s administrator.</p>
+          <p className="mb0">You are now this club&rsquo;s administrator.</p>
         </Flash>
       ) : null}
 
       {one(query.invited) ? (
         <Flash variant="good" title="Invitation sent">
-          <p style={{ marginBottom: 0 }}>The player appears on your roster once they accept.</p>
+          <p className="mb0">The player appears on your roster once they accept.</p>
         </Flash>
       ) : null}
       {one(query.saved) ? (
         <Flash variant="good" title="Details saved">
-          <p style={{ marginBottom: 0 }}>The club&rsquo;s details are updated.</p>
+          <p className="mb0">The club&rsquo;s details are updated.</p>
         </Flash>
       ) : null}
       {one(query.removed) ? (
         <Flash variant="good" title="Done">
-          <p style={{ marginBottom: 0 }}>The roster has been updated.</p>
+          <p className="mb0">The roster has been updated.</p>
         </Flash>
       ) : null}
       {one(query.error) ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{one(query.error)}</p>
+          <p className="mb0">{one(query.error)}</p>
         </Flash>
       ) : null}
 
       {club.status === "pending_review" ? (
         <Flash variant="warn" title="Waiting for approval">
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             An administrator reviews every new club. Once it is approved you can build a roster.
           </p>
         </Flash>
       ) : club.status === "suspended" ? (
         <Flash variant="bad" title="This club is suspended">
-          <p style={{ marginBottom: 0 }}>Contact your local government area coordinator.</p>
+          <p className="mb0">Contact your local government area coordinator.</p>
         </Flash>
       ) : null}
 
-      <section className="doc" aria-label="Club summary">
-        <div className="doc__body">
-          <p className="eyebrow">{club.verified ? "Verified club" : "Not a verified club"}</p>
-          <dl className="facts">
-            <div className="fact"><dt>Players</dt><dd>{club.players}</dd></div>
-            <div className="fact"><dt>Verified players</dt><dd>{club.verified_players}</dd></div>
-            <div className="fact"><dt>Invitations out</dt><dd>{club.invites_out}</dd></div>
-          </dl>
-        </div>
-      </section>
+      <div className="stats">
+        <Stat
+          label="Club status"
+          value={club.verified ? "Verified" : "Not verified"}
+          tone={club.verified ? "good" : undefined}
+        />
+        <Stat label="Players" value={club.players} />
+        <Stat label="Verified players" value={club.verified_players} />
+        <Stat label="Invitations out" value={club.invites_out} />
+      </div>
 
-      {club.status === "approved" ? (
-        <p style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>
-          <a href={`${base}/invite`} className="btn btn--primary">Add a player</a>
-          {club.verified ? null : (
-            <a href={`${base}/verify`} className="btn btn--ghost">Verify club</a>
-          )}
-        </p>
-      ) : null}
-
-      <nav aria-label="Club sections" style={{ display: "flex", gap: "var(--s4)", flexWrap: "wrap" }}>
-        {TABS.map((t) =>
-          t.key === tab ? (
-            <strong key={t.key} aria-current="page">{t.label}</strong>
-          ) : (
-            <a key={t.key} href={`${base}?tab=${t.key}`}>{t.label}</a>
-          ),
-        )}
-      </nav>
+      <SubNav
+        links={TABS.map((t) => ({ href: `${base}?tab=${t.key}`, label: t.label }))}
+        current={`${base}?tab=${tab}`}
+        label="Club sections"
+      />
 
       {tab === "roster" ? (
         players.length ? (
           <RosterList rows={players} clubId={club.club_id} tab="roster" action="Remove" />
         ) : (
-          <p className="hint">
-            No players yet. A player joins by accepting an invitation from this club.
-          </p>
+          <EmptyState title="No players yet">
+            <p className="small">A player joins by accepting an invitation from this club.</p>
+          </EmptyState>
         )
       ) : null}
 
@@ -164,12 +169,12 @@ export default async function ClubPage({
         invited.length ? (
           <RosterList rows={invited} clubId={club.club_id} tab="invitations" action="Withdraw" />
         ) : (
-          <p className="hint">No invitations are waiting for an answer.</p>
+          <EmptyState title="No invitations are waiting for an answer" />
         )
       ) : null}
 
       {tab === "details" ? (
-        <section className="doc" aria-label="Club details">
+        <section className="doc narrow" aria-label="Club details">
           <div className="doc__body">
             <dl className="facts">
               <div className="fact"><dt>Name</dt><dd>{club.name}</dd></div>
@@ -180,7 +185,7 @@ export default async function ClubPage({
               ) : null}
               <div className="fact"><dt>Contact</dt><dd>{club.contact_phone}</dd></div>
             </dl>
-            <p style={{ marginTop: "var(--s4)", marginBottom: 0 }}>
+            <p className="mt-4 mb0">
               <a href={`${base}/edit`} className="btn btn--ghost">Edit details</a>
             </p>
           </div>
@@ -202,27 +207,36 @@ function RosterList({
   action: string;
 }) {
   return (
-    <div className="stack">
-      {rows.map((r) => (
-        <section className="doc" key={r.kuid} aria-label={r.full_name}>
-          <div className="doc__body">
-            <p style={{ fontWeight: 700, marginBottom: "var(--s2)" }}>{r.full_name}</p>
-            <p style={{ marginBottom: "var(--s2)" }}><span className="kuid">{r.kuid}</span></p>
-            <p style={{ marginBottom: 0 }}>
-              <span className={STATE_PILL[r.state]}>{STATE_LABEL[r.state]}</span>
-              {r.position ? ` ${r.position}` : ""}
-            </p>
-            <form action={removeAction} style={{ marginTop: "var(--s3)" }}>
-              <input type="hidden" name="club" value={clubId} />
-              <input type="hidden" name="roster" value={r.roster_id} />
-              <input type="hidden" name="tab" value={tab} />
-              <SubmitButton className="btn btn--ghost" pending="Updating the roster…">
-                {action}
-              </SubmitButton>
-            </form>
-          </div>
-        </section>
-      ))}
+    <div className="table-wrap">
+      <table className="table">
+        <thead>
+          <tr><th>Player</th><th>KAFRIADA ID</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.kuid}>
+              <td data-label="">
+                <span>
+                  <strong>{r.full_name}</strong>
+                  {r.position ? <><br /><span className="hint">{r.position}</span></> : null}
+                </span>
+              </td>
+              <td data-label="ID"><span className="kuid">{r.kuid}</span></td>
+              <td data-label="Status"><span className={STATE_PILL[r.state]}>{STATE_LABEL[r.state]}</span></td>
+              <td data-label="">
+                <form action={removeAction}>
+                  <input type="hidden" name="club" value={clubId} />
+                  <input type="hidden" name="roster" value={r.roster_id} />
+                  <input type="hidden" name="tab" value={tab} />
+                  <SubmitButton className="btn btn--ghost btn--sm" pending="Updating the roster…">
+                    {action}
+                  </SubmitButton>
+                </form>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

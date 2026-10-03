@@ -53,11 +53,11 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
     if (error instanceof ApiError && error.status === 401) redirect("/sign-in?ended=1");
     if (error instanceof ApiError && error.status === 404) {
       return (
-        <div className="stack">
+        <div className="page stack">
           <h1>Get verified</h1>
           <div className="notice notice--warn" role="status">
             <p className="notice__title">Only athletes can be verified</p>
-            <p style={{ marginBottom: 0 }}>This account has no athlete record.</p>
+            <p className="mb0">This account has no athlete record.</p>
           </div>
         </div>
       );
@@ -69,18 +69,21 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
   const saved = one(params.saved);
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Verification</p>
+    <div className="page stack">
+      <div>
+        <a href="/me" className="back">My account</a>
+        <p className="eyebrow mb0">Verification</p>
+      </div>
 
       {error ? (
         <div className="notice notice--bad" role="alert" tabIndex={-1}>
           <p className="notice__title">That did not work</p>
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </div>
       ) : saved ? (
         <div className="notice notice--good" role="status">
           <p className="notice__title">Received</p>
-          <p style={{ marginBottom: 0 }}>Your file is saved. You can add the other one now.</p>
+          <p className="mb0">Your file is saved. You can add the other one now.</p>
         </div>
       ) : null}
 
@@ -96,7 +99,6 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
         <Start v={v} withdrawn={v.state === "revoked"} />
       )}
 
-      <p><a href="/me">Back to my account</a></p>
     </div>
   );
 }
@@ -131,7 +133,7 @@ function UploadForm({ v }: { v: Verification }) {
         </div>
 
         <SubmitButton className="btn btn--ghost btn--block" pending="Uploading your files…" detail="Please keep this page open. This can take a few seconds.">Save my files</SubmitButton>
-        <p className="hint" style={{ marginTop: "var(--s4)" }}>
+        <p className="hint mt-4">
           Maximum 10MB per image. Your document is used only to check your identity and age, and is
           deleted 30 days after a decision. Your photo stays on your profile.
         </p>
@@ -148,14 +150,14 @@ function Start({ v, withdrawn }: { v: Verification; withdrawn: boolean }) {
       {withdrawn ? (
         <div className="notice notice--warn" role="status">
           <p className="notice__title">Your earlier verification was withdrawn</p>
-          <p style={{ marginBottom: 0 }}>You can start again below.</p>
+          <p className="mb0">You can start again below.</p>
         </div>
       ) : null}
 
       <section className="doc" aria-label="What you get">
         <div className="doc__body">
           <p className="eyebrow">Add your photo and verified badge</p>
-          <ul style={{ margin: "0 0 var(--s4)", paddingLeft: "1.1em" }}>
+          <ul className="bullets">
             <li>Your photo on your public profile</li>
             <li>A verified badge scouts can trust</li>
             <li>Checked by your LGA coordinator</li>
@@ -193,7 +195,7 @@ function UnderReview({ v, me }: { v: Verification; me: Me }) {
       <h1>Under review</h1>
       <div className="notice" role="status">
         <p className="notice__title">Your LGA coordinator is checking your documents</p>
-        <p style={{ marginBottom: 0 }}>Usually decided within 24 hours.</p>
+        <p className="mb0">Usually decided within 24 hours.</p>
       </div>
 
       <section className="doc" aria-label="Progress">
@@ -263,7 +265,7 @@ function Rejected({ v }: { v: Verification }) {
       <div className="notice notice--bad" role="status">
         <p className="notice__title">Reason from the reviewer</p>
         <blockquote className="quote">{v.reason}</blockquote>
-        <p style={{ marginBottom: 0 }}>
+        <p className="mb0">
           <strong>You do not pay again.</strong> Your {formatNaira(v.paid_amount_kobo ?? v.price_kobo)}{" "}
           still covers this. You have {v.attempts_left} more attempt{v.attempts_left === 1 ? "" : "s"}.
         </p>

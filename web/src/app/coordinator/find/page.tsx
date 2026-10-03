@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { CoordinatorNav } from "@/components/CoordinatorNav";
+import { EmptyState } from "@/components/EmptyState";
+import { PageHead } from "@/components/PageHead";
+import { Pager } from "@/components/Pager";
 import { Flash } from "@/components/Flash";
 import { ApiError, type AthleteSearch, getMe, searchAthletes } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
@@ -39,10 +43,10 @@ export default async function FindAthletePage({ searchParams }: { searchParams: 
 
   if (!lga) {
     return (
-      <div className="stack">
+      <div className="page stack">
         <h1>Find an athlete</h1>
         <Flash variant="warn" title="No LGA to search">
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             Choose a local government area on <a href="/coordinator">your dashboard</a> first.
           </p>
         </Flash>
@@ -68,66 +72,76 @@ export default async function FindAthletePage({ searchParams }: { searchParams: 
     `/coordinator/find?${new URLSearchParams({ lga, q, page: String(p) })}`;
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Coordinator</p>
-      <h1>Find an athlete</h1>
+    <div className="page page--wide stack">
+      <CoordinatorNav current="/coordinator/find" lga={lga} />
+      <PageHead
+        eyebrow="Coordinator"
+        title="Find an athlete"
+        lede="Searches this local government area only."
+        app
+      />
 
-      <form method="get" className="doc">
-        <div className="doc__body">
-          <input type="hidden" name="lga" value={lga} />
-          <div className="field">
-            <label htmlFor="q">KAFRIADA ID, phone or name</label>
-            <span className="hint">Searches this local government area only.</span>
-            <input id="q" name="q" required minLength={2} defaultValue={q} placeholder="Musa Ibrahim" />
-          </div>
-          <button type="submit" className="btn btn--primary btn--block">Search</button>
+      <form method="get" className="panel toolbar toolbar--2" role="search">
+        <input type="hidden" name="lga" value={lga} />
+        <div className="field">
+          <label htmlFor="q">KAFRIADA ID, phone or name</label>
+          <input id="q" name="q" required minLength={2} defaultValue={q} placeholder="Musa Ibrahim" />
         </div>
+        <button type="submit" className="btn btn--primary btn--block">Search</button>
       </form>
 
       {denied ? (
         <Flash variant="bad" title="You do not have access to this">
-          <p style={{ marginBottom: 0 }}>You can only search your own local government area.</p>
+          <p className="mb0">You can only search your own local government area.</p>
         </Flash>
       ) : null}
 
-      {results && !results.people.length ? (
-        <p className="hint">No results.</p>
+      {results && !results.people.length ? <EmptyState title="No results" /> : null}
+
+      {results && results.people.length ? (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr><th>Name</th><th>KAFRIADA ID</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr>
+            </thead>
+            <tbody>
+              {results.people.map((p) => (
+                <tr key={p.kuid}>
+                  <td data-label="">
+                    <span>
+                      <strong>{p.full_name}</strong>
+                      {p.playing_position ? <><br /><span className="hint">{p.playing_position}</span></> : null}
+                    </span>
+                  </td>
+                  <td data-label="ID"><span className="kuid">{p.kuid}</span></td>
+                  <td data-label="Status">
+                    <span className={p.verified ? "pill pill--issued" : "pill pill--pending"}>
+                      {p.verified ? "Verified" : "Not verified"}
+                    </span>
+                  </td>
+                  <td data-label="">
+                    <span className="list__actions">
+                      <a href={`/a/${encodeURIComponent(p.kuid)}`} className="btn btn--ghost btn--sm">Profile</a>
+                      {p.verified ? null : (
+                        <a
+                          href={`/assist-pay?${new URLSearchParams({ lga, kuid: p.kuid })}`}
+                          className="btn btn--ghost btn--sm"
+                        >
+                          Pay for this athlete
+                        </a>
+                      )}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
 
-      {results?.people.map((p) => (
-        <section className="doc" key={p.kuid} aria-label={p.full_name}>
-          <div className="doc__body">
-            <p style={{ fontWeight: 700, marginBottom: "var(--s2)" }}>{p.full_name}</p>
-            <p style={{ marginBottom: "var(--s2)" }}><span className="kuid">{p.kuid}</span></p>
-            <p style={{ marginBottom: "var(--s3)" }}>
-              <span className={p.verified ? "pill pill--issued" : "pill pill--pending"}>
-                {p.verified ? "Verified" : "Not verified"}
-              </span>
-              {p.playing_position ? ` ${p.playing_position}` : ""}
-            </p>
-            <div style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>
-              <a href={`/a/${encodeURIComponent(p.kuid)}`} className="btn btn--ghost">Open profile</a>
-              {p.verified ? null : (
-                <a
-                  href={`/assist-pay?${new URLSearchParams({ lga, kuid: p.kuid })}`}
-                  className="btn btn--ghost"
-                >
-                  Pay for this athlete
-                </a>
-              )}
-            </div>
-          </div>
-        </section>
-      ))}
-
-      {results && (page > 1 || results.has_more) ? (
-        <nav aria-label="Pages" style={{ display: "flex", gap: "var(--s4)" }}>
-          {page > 1 ? <a href={link(page - 1)}>Previous</a> : null}
-          {results.has_more ? <a href={link(page + 1)}>Next</a> : null}
-        </nav>
+      {results ? (
+        <Pager page={page} prev={page > 1 ? link(page - 1) : null} next={results.has_more ? link(page + 1) : null} />
       ) : null}
-
-      <p><a href={`/coordinator?lga=${encodeURIComponent(lga)}`}>Back to today</a></p>
     </div>
   );
 }

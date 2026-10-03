@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { PageHead } from "@/components/PageHead";
+import { NoAccess } from "@/components/NoAccess";
+import { AdminShell } from "@/components/AdminNav";
 import { Flash } from "@/components/Flash";
 import {
   ApiError,
@@ -49,12 +52,7 @@ export default async function ReversalPage({ searchParams }: { searchParams: Pro
   }
   if (!me.roles.some((r) => r.role === "super_admin")) {
     return (
-      <div className="stack">
-        <h1>Record a refund</h1>
-        <Flash variant="bad" title="You do not have access to this">
-          <p style={{ marginBottom: 0 }}>Only a super administrator can record a refund.</p>
-        </Flash>
-      </div>
+      <NoAccess title="Record a refund" message="Only a super administrator can record a refund." />
     );
   }
 
@@ -79,18 +77,19 @@ export default async function ReversalPage({ searchParams }: { searchParams: Pro
   }
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Admin &middot; ADM-04</p>
-      <h1>Record a refund</h1>
-      <p className="lede">
-        Finds a payment by its reference, so a refund already made in the
+    <AdminShell current="/admin/reversal">
+      <PageHead
+        eyebrow="Administrator"
+        title="Record a refund"
+        lede="Finds a payment by its reference, so a refund already made in the
         Paystack dashboard can be recorded against it. This never moves money —
-        it only makes the ledger match the bank.
-      </p>
+        it only makes the ledger match the bank."
+        app
+      />
 
       {done ? (
         <Flash variant="good" title="Recorded">
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             The refund for <span className="kuid">{done}</span> is recorded in
             the ledger. It cannot be recorded again against the same payment.
           </p>
@@ -99,36 +98,34 @@ export default async function ReversalPage({ searchParams }: { searchParams: Pro
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
 
-      <form method="GET" className="doc" noValidate>
-        <div className="doc__body">
-          <div className="field">
-            <label htmlFor="reference">Payment reference</label>
-            <span className="hint">From the Paystack dashboard. Starts with KAF-.</span>
-            <input
-              id="reference"
-              name="reference"
-              required
-              placeholder="KAF-…"
-              defaultValue={reference}
-              style={{ fontFamily: "var(--font-mono)" }}
-            />
-          </div>
-          <button type="submit" className="btn btn--primary btn--block">Find</button>
+      <form method="GET" className="panel toolbar toolbar--2" role="search" noValidate>
+        <div className="field">
+          <label htmlFor="reference">Payment reference</label>
+          <span className="hint">From the Paystack dashboard. Starts with KAF-.</span>
+          <input
+            id="reference"
+            name="reference"
+            required
+            placeholder="KAF-…"
+            defaultValue={reference}
+            className="input-mono"
+          />
         </div>
+        <button type="submit" className="btn btn--primary btn--block">Find</button>
       </form>
 
       {lookupError ? (
         <Flash variant="warn" title="Not found">
-          <p style={{ marginBottom: 0 }}>{lookupError}</p>
+          <p className="mb0">{lookupError}</p>
         </Flash>
       ) : null}
 
       {found ? (
-        <section className="doc" aria-label="What was found">
+        <section className="doc narrow" aria-label="What was found">
           <div className="doc__body">
             <dl className="facts">
               <div className="fact"><dt>Reference</dt><dd><span className="kuid">{found.reference}</span></dd></div>
@@ -154,7 +151,7 @@ export default async function ReversalPage({ searchParams }: { searchParams: Pro
             </dl>
 
             {found.reversible ? (
-              <form action={reverseAction} style={{ marginTop: "var(--s5)" }}>
+              <form action={reverseAction} className="mt-5">
                 <input type="hidden" name="reference" value={found.reference} />
                 <div className="field">
                   <label htmlFor="amount_naira">Amount refunded</label>
@@ -193,7 +190,7 @@ export default async function ReversalPage({ searchParams }: { searchParams: Pro
                 </button>
               </form>
             ) : (
-              <p className="hint" style={{ marginTop: "var(--s4)", marginBottom: 0 }}>
+              <p className="hint mt-4 mb0">
                 Nothing to record — only a settled payment with no refund on it
                 already can have one recorded.
               </p>
@@ -201,6 +198,6 @@ export default async function ReversalPage({ searchParams }: { searchParams: Pro
           </div>
         </section>
       ) : null}
-    </div>
+    </AdminShell>
   );
 }

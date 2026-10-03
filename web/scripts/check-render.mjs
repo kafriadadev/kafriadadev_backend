@@ -177,13 +177,16 @@ function check(label, pass) {
 try {
   // 320px is the narrowest screen the pilot designs for; one pass there is
   // enough to catch what only breaks when space runs out.
-  const RUNS = [["light", PHONE.width], ["dark", PHONE.width], ["dark", 320]];
+  // 768 and 1280 cover the tablet and desktop layouts: the inline header, the
+  // administrator sidebar, tables shown as tables rather than stacked cards.
+  const RUNS = [["light", PHONE.width], ["dark", PHONE.width], ["dark", 320], ["light", 768], ["dark", 1280]];
   for (const [scheme, width] of RUNS) {
+    const mobile = width < 700;
     const ctx = await browser.newContext({
-      viewport: { width, height: PHONE.height },
-      deviceScaleFactor: 2,
-      isMobile: true,
-      hasTouch: true,
+      viewport: { width, height: mobile ? PHONE.height : 900 },
+      deviceScaleFactor: mobile ? 2 : 1,
+      isMobile: mobile,
+      hasTouch: mobile,
       colorScheme: scheme,
     });
     const page = await ctx.newPage();
@@ -193,6 +196,20 @@ try {
       const res = await page.goto(BASE + path, { waitUntil: "load", timeout: 90_000 });
       await report(page, name, res?.status() ?? 0, `${scheme}-${width}`);
     }
+    await ctx.close();
+  }
+
+  // -- The phone menu with JavaScript OFF --------------------------------------
+  // A <details> disclosure: the browser opens it, no script involved.
+  {
+    const ctx = await browser.newContext({ viewport: PHONE, javaScriptEnabled: false, isMobile: true });
+    const page = await ctx.newPage();
+    console.log("\n=== MENU, JavaScript OFF ===");
+    await page.goto(BASE + "/privacy", { waitUntil: "load", timeout: 90_000 });
+    const hidden = !(await page.locator(".nav-menu__panel").isVisible());
+    await page.locator(".nav-menu > summary").click();
+    const shown = await page.locator(".nav-menu__panel a[href='/me']").isVisible();
+    check("menu is closed on arrival and opens without any script", hidden && shown);
     await ctx.close();
   }
 
@@ -339,17 +356,19 @@ try {
   //   EXTRA_SESSIONS='[{"token":"...","paths":["/verify"]}]'
   if (process.env.EXTRA_SESSIONS) {
     console.log("\n=== SCREENS THAT DEPEND ON STATE ===");
-    for (const [scheme, width] of [["light", PHONE.width], ["dark", 320]]) {
+    for (const [scheme, width] of [["light", PHONE.width], ["dark", 320], ["light", 768], ["dark", 1280]]) {
+      console.log(`  -- ${scheme} · ${width}px`);
       for (const { token, paths } of JSON.parse(process.env.EXTRA_SESSIONS)) {
+        const mobile = width < 700;
         const ctx = await browser.newContext({
-          viewport: { width, height: PHONE.height }, isMobile: true,
+          viewport: { width, height: mobile ? PHONE.height : 900 }, isMobile: mobile,
           javaScriptEnabled: false, colorScheme: scheme,
         });
         await ctx.addCookies([{ name: "kaf_session", value: token, url: BASE }]);
         const page = await ctx.newPage();
         for (const path of paths) {
           const res = await page.goto(BASE + path, { waitUntil: "load", timeout: 90_000 });
-          await report(page, path.replace(/[^a-z]/gi, "").slice(0, 9) || "page", res?.status() ?? 0, `${scheme}-${width}`);
+          await report(page, path.split("?")[0].replace(/[^a-z/]/gi, "").slice(0, 24) || "page", res?.status() ?? 0, `${scheme}-${width}`);
         }
         await ctx.close();
       }

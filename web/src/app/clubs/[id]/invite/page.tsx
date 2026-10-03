@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { PageHead } from "@/components/PageHead";
+import { NoAccess } from "@/components/NoAccess";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ApiError, type PlayerMatch, findPlayer } from "@/lib/api";
@@ -57,23 +59,21 @@ export default async function InvitePage({
 
   if (denied) {
     return (
-      <div className="stack">
-        <h1>Add a player</h1>
-        <Flash variant="bad" title="You do not have access to this">
-          <p style={{ marginBottom: 0 }}>You can only add players to a club you administer.</p>
-        </Flash>
-      </div>
+      <NoAccess title="Add a player" message="You can only add players to a club you administer." />
     );
   }
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Club</p>
-      <h1>Add a player</h1>
+    <div className="page stack">
+      <PageHead
+        back={{ href: back, label: "Club" }}
+        eyebrow="Club"
+        title="Add a player"
+      />
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
 
@@ -88,7 +88,7 @@ export default async function InvitePage({
               required
               defaultValue={q}
               placeholder="KA-NG-JG-BKD-2026-000123"
-              style={{ fontFamily: "var(--font-mono)" }}
+              className="input-mono"
             />
           </div>
           <button type="submit" className="btn btn--ghost btn--block">Search</button>
@@ -97,16 +97,16 @@ export default async function InvitePage({
 
       {notFound ? (
         <Flash variant="warn" title="No player found">
-          <p style={{ marginBottom: 0 }}>Check the ID or number and try again.</p>
+          <p className="mb0">Check the ID or number and try again.</p>
         </Flash>
       ) : null}
 
       {match ? (
         <section className="doc" aria-label="Player found">
           <div className="doc__body">
-            <p style={{ fontWeight: 700, marginBottom: "var(--s2)" }}>{match.full_name}</p>
-            <p style={{ marginBottom: "var(--s2)" }}><span className="kuid">{match.kuid}</span></p>
-            <p style={{ marginBottom: "var(--s3)" }}>
+            <p className="bold mb-2">{match.full_name}</p>
+            <p className="mb-2"><span className="kuid">{match.kuid}</span></p>
+            <p className="mb-3">
               <span className={match.verified ? "pill pill--issued" : "pill pill--pending"}>
                 {match.verified ? "Verified" : "Not verified"}
               </span>{" "}
@@ -114,9 +114,9 @@ export default async function InvitePage({
             </p>
 
             {match.state === "on_roster" ? (
-              <p style={{ marginBottom: 0 }}>This player is already on your roster.</p>
+              <p className="mb0">This player is already on your roster.</p>
             ) : match.state === "invited" ? (
-              <p style={{ marginBottom: 0 }}>You have already invited this player.</p>
+              <p className="mb0">You have already invited this player.</p>
             ) : (
               <form action={inviteAction}>
                 <input type="hidden" name="club" value={id} />
@@ -128,7 +128,7 @@ export default async function InvitePage({
                   </p>
                 ) : null}
                 <SubmitButton pending="Sending invitation…">Send invitation</SubmitButton>
-                <p className="hint" style={{ marginTop: "var(--s3)", marginBottom: 0 }}>
+                <p className="hint mt-3 mb0">
                   The player must accept before they appear on your roster.
                 </p>
               </form>
@@ -137,7 +137,6 @@ export default async function InvitePage({
         </section>
       ) : null}
 
-      <p><a href={back}>Back to the club</a></p>
     </div>
   );
 }

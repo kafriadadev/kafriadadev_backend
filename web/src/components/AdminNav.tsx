@@ -1,3 +1,5 @@
+import { SubNav } from "./SubNav";
+
 const LINKS = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/users", label: "Users and roles" },
@@ -8,20 +10,12 @@ const LINKS = [
   { href: "/admin/reversal", label: "Record a refund" },
 ] as const;
 
-/** The administrator console's navigation: plain links, current page not a link. */
-export function AdminNav({ current }: { current: string }) {
+/** The administrator console: a sidebar on a desktop, tabs on a phone. */
+export function AdminShell({ current, children }: { current: string; children: React.ReactNode }) {
   return (
-    <nav
-      aria-label="Administrator"
-      style={{ display: "flex", gap: "var(--s4)", flexWrap: "wrap", marginBottom: "var(--s3)" }}
-    >
-      {LINKS.map((l) =>
-        l.href === current ? (
-          <strong key={l.href} aria-current="page">{l.label}</strong>
-        ) : (
-          <a key={l.href} href={l.href}>{l.label}</a>
-        ),
-      )}
-    </nav>
+    <div className="page page--wide console">
+      <SubNav links={LINKS} current={current} label="Administrator" heading="Administrator" />
+      <div className="stack">{children}</div>
+    </div>
   );
 }

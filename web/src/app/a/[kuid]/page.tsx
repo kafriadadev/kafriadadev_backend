@@ -53,10 +53,10 @@ export default async function ProfilePage({
   }
 
   return (
-    <div className="stack">
+    <div className="page stack">
       <article className="doc">
         <div className="doc__body">
-          <div style={{ display: "flex", gap: "var(--s4)", alignItems: "flex-start" }}>
+          <div className="media-row">
             {profile.is_verified && profile.photo_url ? (
               <div className="portrait">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -73,19 +73,19 @@ export default async function ProfilePage({
               </div>
             )}
 
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <p className="eyebrow" style={{ marginBottom: "var(--s2)" }}>
+            <div className="grow">
+              <p className="eyebrow mb-2">
                 Registered athlete
               </p>
-              <h1 style={{ fontSize: "clamp(1.5rem, 6vw, 2.1rem)", marginBottom: "var(--s2)" }}>
+              <h1 className="doc__title">
                 {profile.full_name}
               </h1>
-              <p style={{ color: "var(--plate-muted)", margin: 0 }}>
+              <p className="doc__sub">
                 {profile.sport}
                 {profile.playing_position ? ` · ${profile.playing_position}` : ""}
               </p>
 
-              <p style={{ margin: "var(--s3) 0 0" }}>
+              <p className="mt-3 mb0">
                 {profile.issued_by_kafriada ? (
                   <span className="pill pill--issued">
                     <Tick /> Issued by KAFRIADA
@@ -103,13 +103,12 @@ export default async function ProfilePage({
               can be photocopied and the signature copied with it. Saying
               "verified athlete" here would mislead a scout. */}
           <div
-            className={profile.issued_by_kafriada ? "notice notice--good" : "notice"}
-            style={{ marginTop: "var(--s5)" }}
+            className={profile.issued_by_kafriada ? "notice notice--good mt-5" : "notice mt-5"}
           >
             <p className="notice__title">
               {profile.issued_by_kafriada ? "This code is genuine" : "About this page"}
             </p>
-            <p style={{ marginBottom: 0 }}>
+            <p className="mb0">
               {profile.issued_by_kafriada
                 ? "This QR code was issued by KAFRIADA. Check that the photograph matches the person in front of you."
                 : "This page was opened without a KAFRIADA QR code, so we cannot confirm where the link came from. The record below is still correct."}
@@ -119,7 +118,7 @@ export default async function ProfilePage({
           <dl className="facts">
             <div className="fact">
               <dt>KAFRIADA ID</dt>
-              <dd className="kuid" style={{ fontWeight: 500 }}>{profile.kuid}</dd>
+              <dd className="kuid">{profile.kuid}</dd>
             </div>
             <div className="fact">
               <dt>Age</dt>
@@ -141,7 +140,7 @@ export default async function ProfilePage({
                 ) : profile.verification_withdrawn ? (
                   "Verification withdrawn"
                 ) : (
-                  <span style={{ color: "var(--plate-muted)", fontWeight: 400 }}>
+                  <span className="unset">
                     Not yet added
                   </span>
                 )}
@@ -157,7 +156,7 @@ export default async function ProfilePage({
         </div>
       </article>
 
-      <p className="hint" style={{ color: "var(--muted)", fontSize: ".88rem" }}>
+      <p className="hint hint">
         This page shows only what an athlete has agreed to publish. It never
         shows a phone number, a date of birth or any identity document.
       </p>

@@ -1,3 +1,4 @@
+import { PageHead } from "@/components/PageHead";
 import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
 
@@ -49,25 +50,25 @@ export default async function RegisterPage({
     badField === field ? "field field--error" : "field";
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Step 1 of 3 · Free</p>
-      <h1>Get your KAFRIADA ID</h1>
-      <p className="lede">
-        About two minutes. You need a phone number and an email address.
-      </p>
+    <div className="auth stack">
+      <PageHead
+        eyebrow="Step 1 of 3 · Free"
+        title="Get your KAFRIADA ID"
+        lede="About two minutes. You need a phone number and an email address."
+      />
 
       {/* An error summary AND an error beside the field. The summary is what a
           screen reader announces on arrival; the inline message is what tells a
           sighted person which box to fix. Both, not either. */}
       {error ? (
         <Flash variant="bad" title="We could not register you yet">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
 
       {loadFailed ? (
         <Flash variant="bad" title="Cannot reach KAFRIADA">
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             We could not load the list of Local Government Areas. Please try
             again in a moment.
           </p>
@@ -76,6 +77,8 @@ export default async function RegisterPage({
 
       <form action={registerAthlete} className="doc" noValidate>
         <div className="doc__body">
+          <fieldset className="fieldset">
+          <legend>About you</legend>
           <div className={errClass("full_name")}>
             <label htmlFor="full_name">Full name</label>
             <span className="hint" id="name-hint">
@@ -146,6 +149,10 @@ export default async function RegisterPage({
             ) : null}
           </div>
 
+          </fieldset>
+
+          <fieldset className="fieldset">
+          <legend>Your sport</legend>
           <div className={errClass("lga_id")}>
             <label htmlFor="lga_id">Local Government Area</label>
             <span className="hint" id="lga-hint">
@@ -181,6 +188,7 @@ export default async function RegisterPage({
             {badField === "lga_id" ? <span className="error">{error}</span> : null}
           </div>
 
+          <div className="field-row">
           <div className={errClass("sport")}>
             <label htmlFor="sport">Sport</label>
             <select
@@ -205,6 +213,11 @@ export default async function RegisterPage({
               {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
+          </div>
+          </fieldset>
+
+          <fieldset className="fieldset">
+          <legend>Your account</legend>
 
           <div className={errClass("password")}>
             <label htmlFor="password">Choose a password</label>
@@ -226,6 +239,8 @@ export default async function RegisterPage({
             ) : null}
           </div>
 
+          </fieldset>
+
           <div className="consent">
             <input
               id="accept_privacy_notice"
@@ -242,11 +257,11 @@ export default async function RegisterPage({
             </label>
           </div>
 
-          <div style={{ marginTop: "var(--s5)" }}>
+          <div className="mt-5">
             <SubmitButton pending="Creating your ID…">Create my KAFRIADA ID</SubmitButton>
           </div>
 
-          <p className="hint" style={{ textAlign: "center", marginTop: "var(--s4)" }}>
+          <p className="hint form-foot">
             Already registered? <a href="/sign-in">Sign in</a> or{" "}
             <a href="/find">look up your ID</a>
           </p>

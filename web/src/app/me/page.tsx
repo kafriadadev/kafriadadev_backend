@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { PageHead } from "@/components/PageHead";
 import { ApiError, getMe, type Me } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 import { signOutAction } from "./actions";
@@ -37,107 +38,165 @@ export default async function MePage() {
   }
 
   const staffRoles = me.roles.filter((r) => r.role !== "athlete");
+  const isAdmin = staffRoles.some((r) => r.role === "super_admin");
+  const isCoordinator = staffRoles.some(
+    (r) => r.role === "lga_coordinator" || r.role === "state_coordinator",
+  );
+  const clubs = me.roles.filter((r) => r.role === "club_admin" && r.scope_id);
+  const hasWorkAreas = isAdmin || isCoordinator || clubs.length > 0;
+  const kuid = me.kuid ? encodeURIComponent(me.kuid) : null;
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Signed in</p>
-      <h1>{me.full_name}</h1>
+    <div className="page page--wide">
+      <PageHead
+        eyebrow="My account"
+        title={me.full_name}
+        app
+        actions={
+          <form action={signOutAction}>
+            <button type="submit" className="btn btn--ghost">Sign out</button>
+          </form>
+        }
+      />
 
-      <section className="doc" aria-label="Your account">
-        <div className="doc__body">
-          <dl className="facts">
-            {me.kuid ? (
-              <div className="fact">
-                <dt>KAFRIADA ID</dt>
-                <dd><span className="kuid">{me.kuid}</span></dd>
-              </div>
-            ) : null}
-            {me.lga_name ? (
-              <div className="fact">
-                <dt>LGA</dt>
-                <dd>{me.lga_name}</dd>
-              </div>
-            ) : null}
-            <div className="fact">
-              <dt>Phone</dt>
-              <dd>{me.phone}</dd>
+      <div className="split">
+        <div className="stack--lg">
+          {!me.phone_verified ? (
+            <div className="notice notice--warn">
+              <p className="notice__title">Confirm your phone number</p>
+              <p className="mb-3">
+                Your ID is already yours. Confirming the number is how we know the
+                phone belongs to you, and it is needed before you can be verified.
+              </p>
+              <a href="/register/confirm" className="btn btn--primary">Enter the code</a>
             </div>
-          </dl>
-        </div>
-      </section>
-
-      {!me.phone_verified ? (
-        <div className="notice notice--warn">
-          <p className="notice__title">Confirm your phone number</p>
-          <p style={{ marginBottom: "var(--s3)" }}>
-            Your ID is already yours. Confirming the number is how we know the
-            phone belongs to you, and it is needed before you can be verified.
-          </p>
-          <a href="/register/confirm">Enter the code</a>
-        </div>
-      ) : null}
-
-      {me.kuid ? (
-        <div style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>
-          <a href={`/card/${encodeURIComponent(me.kuid)}`} className="btn btn--primary">
-            My card
-          </a>
-          <a href={`/a/${encodeURIComponent(me.kuid)}`} className="btn btn--ghost">
-            My public profile
-          </a>
-          {me.phone_verified ? (
-            <a href="/verify" className="btn btn--ghost">Get verified</a>
           ) : null}
-          <a href="/payments" className="btn btn--ghost">My payments</a>
-          <a href="/details" className="btn btn--ghost">Edit my details</a>
-          <a href="/clubs" className="btn btn--ghost">My clubs</a>
-          <a href="/clubs/new" className="btn btn--ghost">Register a club</a>
+
+          {kuid ? (
+            <section aria-labelledby="athlete-h">
+              <h2 className="section-title" id="athlete-h">My ID</h2>
+              <div className="tiles">
+                <a href={`/card/${kuid}`} className="tile tile--primary">
+                  <span className="tile__title">My card</span>
+                  <span className="tile__text">Print or download your ID card.</span>
+                </a>
+                <a href={`/a/${kuid}`} className="tile">
+                  <span className="tile__title">Public profile</span>
+                  <span className="tile__text">What a club or scout sees when they scan.</span>
+                </a>
+                {me.phone_verified ? (
+                  <a href="/verify" className="tile">
+                    <span className="tile__title">Get verified</span>
+                    <span className="tile__text">Add your photograph and a verified badge.</span>
+                  </a>
+                ) : null}
+                <a href="/details" className="tile">
+                  <span className="tile__title">Edit my details</span>
+                  <span className="tile__text">Gender, dominant side, experience.</span>
+                </a>
+                <a href="/payments" className="tile">
+                  <span className="tile__title">My payments</span>
+                  <span className="tile__text">Every payment you have started.</span>
+                </a>
+              </div>
+            </section>
+          ) : null}
+
+          {kuid ? (
+            <section aria-labelledby="clubs-h">
+              <h2 className="section-title" id="clubs-h">Clubs</h2>
+              <div className="tiles">
+                <a href="/clubs" className="tile">
+                  <span className="tile__title">My clubs</span>
+                  <span className="tile__text">Invitations and the club you play for.</span>
+                </a>
+                <a href="/clubs/new" className="tile">
+                  <span className="tile__title">Register a club</span>
+                  <span className="tile__text">Set up a club and add your players.</span>
+                </a>
+              </div>
+            </section>
+          ) : null}
+
+          {hasWorkAreas ? (
+            <section aria-labelledby="work-h">
+              <h2 className="section-title" id="work-h">Work areas</h2>
+              <div className="tiles">
+                {isAdmin ? (
+                  <a href="/admin" className="tile">
+                    <span className="tile__title">Administrator console</span>
+                    <span className="tile__text">Money, users, clubs and the audit log.</span>
+                  </a>
+                ) : null}
+                {isCoordinator ? (
+                  <a href="/coordinator" className="tile">
+                    <span className="tile__title">Coordinator dashboard</span>
+                    <span className="tile__text">Reviews, athletes and card printing.</span>
+                  </a>
+                ) : null}
+                {clubs.map((r) => (
+                  <a key={r.grant_id} href={`/clubs/${encodeURIComponent(r.scope_id as string)}`} className="tile">
+                    <span className="tile__title">{r.scope_name ?? "My club"}</span>
+                    <span className="tile__text">Roster, invitations and verification.</span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
-      ) : null}
 
-      {staffRoles.some((r) => r.role === "super_admin") ? (
-        <p>
-          <a href="/admin" className="btn btn--primary">Administrator console</a>
-        </p>
-      ) : null}
+        <aside className="stack">
+          <section className="doc" aria-label="Your account">
+            <div className="doc__body">
+              <p className="eyebrow">Account</p>
+              <dl className="facts">
+                {me.kuid ? (
+                  <div className="fact">
+                    <dt>KAFRIADA ID</dt>
+                    <dd><span className="kuid">{me.kuid}</span></dd>
+                  </div>
+                ) : null}
+                {me.lga_name ? (
+                  <div className="fact">
+                    <dt>LGA</dt>
+                    <dd>{me.lga_name}</dd>
+                  </div>
+                ) : null}
+                <div className="fact">
+                  <dt>Phone</dt>
+                  <dd>
+                    {me.phone}
+                    <br />
+                    {me.phone_verified ? (
+                      <span className="pill pill--issued">Confirmed</span>
+                    ) : (
+                      <span className="pill pill--pending">Not confirmed</span>
+                    )}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </section>
 
-      {staffRoles.some((r) => r.role === "lga_coordinator" || r.role === "state_coordinator") ? (
-        <p>
-          <a href="/coordinator" className="btn btn--primary">Coordinator dashboard</a>
-        </p>
-      ) : null}
-
-      {me.roles
-        .filter((r) => r.role === "club_admin" && r.scope_id)
-        .map((r) => (
-          <p key={r.grant_id}>
-            <a href={`/clubs/${encodeURIComponent(r.scope_id as string)}`} className="btn btn--ghost">
-              {r.scope_name ?? "My club"}
-            </a>
-          </p>
-        ))}
-
-      {staffRoles.length ? (
-        <div className="notice">
-          <p className="notice__title">Your roles</p>
-          <ul style={{ margin: "0 0 var(--s3)", paddingLeft: "1.1em" }}>
-            {staffRoles.map((r) => (
-              <li key={r.grant_id}>
-                {ROLE_NAMES[r.role] ?? r.role}
-                {r.scope_kind !== "global" ? ` — ${r.scope_name ?? r.scope_id}` : ""}
-              </li>
-            ))}
-          </ul>
-          <p style={{ marginBottom: 0 }}>
-            Staff are signed out after 30 minutes without activity, because
-            phones are shared in the field.
-          </p>
-        </div>
-      ) : null}
-
-      <form action={signOutAction}>
-        <button type="submit" className="btn btn--ghost">Sign out</button>
-      </form>
+          {staffRoles.length ? (
+            <div className="notice">
+              <p className="notice__title">Your roles</p>
+              <ul className="bullets mb-3">
+                {staffRoles.map((r) => (
+                  <li key={r.grant_id}>
+                    {ROLE_NAMES[r.role] ?? r.role}
+                    {r.scope_kind !== "global" ? ` — ${r.scope_name ?? r.scope_id}` : ""}
+                  </li>
+                ))}
+              </ul>
+              <p className="hint mb0">
+                Staff are signed out after 30 minutes without activity, because
+                phones are shared in the field.
+              </p>
+            </div>
+          ) : null}
+        </aside>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { PageHead } from "@/components/PageHead";
+import { NoAccess } from "@/components/NoAccess";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ApiError, type ClubDashboard, getClub } from "@/lib/api";
@@ -35,12 +37,7 @@ export default async function EditClubPage({
       if (error.status === 401) redirect("/sign-in?ended=1");
       if (error.status === 403 || error.status === 404) {
         return (
-          <div className="stack">
-            <h1>Edit club details</h1>
-            <Flash variant="bad" title="You do not have access to this">
-              <p style={{ marginBottom: 0 }}>You can only edit a club you administer.</p>
-            </Flash>
-          </div>
+          <NoAccess title="Edit club details" message="You can only edit a club you administer." />
         );
       }
     }
@@ -53,13 +50,15 @@ export default async function EditClubPage({
   const value = (key: string, fallback: string) => (one(query[key]) !== "" ? one(query[key]) : fallback);
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Club &middot; {club.name}</p>
-      <h1>Edit club details</h1>
+    <div className="page stack">
+      <PageHead
+        eyebrow={<>Club &middot; {club.name}</>}
+        title="Edit club details"
+      />
 
       {error ? (
         <Flash variant="bad" title="We could not save that">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
 

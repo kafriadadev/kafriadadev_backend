@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { PageHead } from "@/components/PageHead";
 import { SubmitButton } from "@/components/SubmitButton";
 import { Flash } from "@/components/Flash";
 import { listLgas } from "@/lib/api";
@@ -38,17 +39,16 @@ export default async function NewClubPage({ searchParams }: { searchParams: Prom
   const errClass = (field: string) => (badField === field ? "field field--error" : "field");
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Clubs</p>
-      <h1>Register a club</h1>
-      <p className="lede">
-        Registering is free. You become the club&rsquo;s administrator. A verified club badge is
-        optional and costs ₦15,000.
-      </p>
+    <div className="page stack">
+      <PageHead
+        eyebrow="Clubs"
+        title="Register a club"
+        lede={<>Registering is free. You become the club&rsquo;s administrator. A verified club badge is optional and costs ₦15,000.</>}
+      />
 
       {error ? (
         <Flash variant={duplicate ? "warn" : "bad"} title={duplicate ? "This name is already used" : "We could not register the club"}>
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             {error}
             {duplicate ? " If yours is a different club, tick the box below and register it again." : ""}
           </p>
@@ -57,7 +57,7 @@ export default async function NewClubPage({ searchParams }: { searchParams: Prom
 
       {loadFailed ? (
         <Flash variant="bad" title="Cannot reach KAFRIADA">
-          <p style={{ marginBottom: 0 }}>We could not load the list of areas. Please try again in a moment.</p>
+          <p className="mb0">We could not load the list of areas. Please try again in a moment.</p>
         </Flash>
       ) : null}
 
@@ -120,7 +120,7 @@ export default async function NewClubPage({ searchParams }: { searchParams: Prom
 
           {duplicate ? (
             <div className="field">
-              <label htmlFor="confirm_duplicate" style={{ display: "flex", gap: "var(--s3)", alignItems: "center" }}>
+              <label htmlFor="confirm_duplicate" className="cluster">
                 <input id="confirm_duplicate" name="confirm_duplicate" type="checkbox" />
                 This is a different club with the same name
               </label>

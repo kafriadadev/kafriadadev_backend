@@ -1,3 +1,4 @@
+import { PageHead } from "@/components/PageHead";
 import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -40,23 +41,25 @@ export default async function SignInPage({
   }
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Welcome back</p>
-      <h1>Sign in</h1>
+    <div className="auth stack">
+      <PageHead
+        eyebrow="Welcome back"
+        title="Sign in"
+      />
 
       {error ? (
         <Flash variant="bad" title="We could not sign you in">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : reset ? (
         <Flash variant="good" title="Your password is changed">
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             Sign in with your new password. Every other device was signed out.
           </p>
         </Flash>
       ) : ended ? (
         <Flash title="You were signed out">
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             Your session ended. Sign in again to continue.
           </p>
         </Flash>
@@ -91,10 +94,10 @@ export default async function SignInPage({
 
           <SubmitButton pending="Signing you in…">Sign in</SubmitButton>
 
-          <p className="hint" style={{ textAlign: "center", marginTop: "var(--s4)" }}>
+          <p className="hint form-foot">
             <a href="/forgot">Forgot your password?</a>
           </p>
-          <p className="hint" style={{ textAlign: "center", marginTop: "var(--s2)" }}>
+          <p className="hint center mt-2">
             No account yet? <a href="/register">Register free</a>
           </p>
         </div>

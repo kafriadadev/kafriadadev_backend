@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { AdminNav } from "@/components/AdminNav";
+import { PageHead } from "@/components/PageHead";
+import { AdminShell } from "@/components/AdminNav";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ApiError, type ClubDashboard, getClub } from "@/lib/api";
@@ -42,15 +43,14 @@ export default async function RevokeClubPage({
       if (error.status === 401) redirect("/sign-in?ended=1");
       if (error.status === 403 || error.status === 404) {
         return (
-          <div className="stack">
-            <AdminNav current="/admin/clubs" />
-            <h1>Withdraw a club&rsquo;s verification</h1>
+          <AdminShell current="/admin/clubs">
+            <PageHead eyebrow="Administrator" title="Withdraw a club&rsquo;s verification" app />
             <Flash variant="bad" title="Not found or not allowed">
-              <p style={{ marginBottom: 0 }}>
+              <p className="mb0">
                 There is no such club, or you do not have access. <a href="/admin/clubs">Back to clubs</a>
               </p>
             </Flash>
-          </div>
+          </AdminShell>
         );
       }
     }
@@ -60,18 +60,21 @@ export default async function RevokeClubPage({
   const error = one(query.error);
 
   return (
-    <div className="stack">
-      <AdminNav current="/admin/clubs" />
-      <p className="eyebrow">Clubs</p>
-      <h1>Withdraw a club&rsquo;s verification</h1>
+    <AdminShell current="/admin/clubs">
+      <PageHead
+        back={{ href: "/admin/clubs", label: "Clubs" }}
+        eyebrow="Administrator"
+        title={<>Withdraw a club&rsquo;s verification</>}
+        app
+      />
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
 
-      <section className="doc" aria-label={club.name}>
+      <section className="doc narrow" aria-label={club.name}>
         <div className="doc__body">
           <dl className="facts">
             <div className="fact"><dt>Club</dt><dd>{club.name}</dd></div>
@@ -83,7 +86,7 @@ export default async function RevokeClubPage({
           </dl>
 
           {club.verified ? (
-            <form action={revokeClubAction} style={{ marginTop: "var(--s5)" }}>
+            <form action={revokeClubAction} className="mt-5">
               <input type="hidden" name="club" value={id} />
               <div className="field">
                 <label htmlFor="reason">Reason</label>
@@ -104,14 +107,13 @@ export default async function RevokeClubPage({
               <SubmitButton pending="Withdrawing…">Withdraw this club&rsquo;s verification</SubmitButton>
             </form>
           ) : (
-            <p className="hint" style={{ marginTop: "var(--s4)", marginBottom: 0 }}>
+            <p className="hint mt-4 mb0">
               Nothing to withdraw — only a currently verified club can be.
             </p>
           )}
         </div>
       </section>
 
-      <p><a href="/admin/clubs">Back to clubs</a></p>
-    </div>
+    </AdminShell>
   );
 }

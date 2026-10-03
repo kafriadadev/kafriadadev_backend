@@ -1,3 +1,5 @@
+import { CoordinatorNav } from "@/components/CoordinatorNav";
+import { PageHead } from "@/components/PageHead";
 import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -46,10 +48,10 @@ export default async function AssistPayPage({ searchParams }: { searchParams: Pr
 
   if (!lga) {
     return (
-      <div className="stack">
+      <div className="page stack">
         <h1>Pay for an athlete</h1>
         <Flash variant="warn" title="No LGA to act in">
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             This account is not an LGA coordinator. Assisted payment is done by
             the coordinator of the athlete&rsquo;s own LGA.
           </p>
@@ -59,17 +61,19 @@ export default async function AssistPayPage({ searchParams }: { searchParams: Pr
   }
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Coordinator &middot; CRD-04</p>
-      <h1>Pay for an athlete</h1>
-      <p className="lede">
-        For someone who cannot pay online themselves. Your card is charged; the
-        badge and the receipt are theirs.
-      </p>
+    <div className="page page--wide">
+      <CoordinatorNav current="/assist-pay" lga={lga} />
+      <div className="page stack">
+      <PageHead
+        eyebrow="Coordinator"
+        title="Pay for an athlete"
+        lede="For someone who cannot pay online themselves. Your card is charged; the
+        badge and the receipt are theirs."
+      />
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
 
@@ -88,7 +92,7 @@ export default async function AssistPayPage({ searchParams }: { searchParams: Pr
               required
               placeholder="KA-NG-JG-BKD-2026-000001"
               defaultValue={kuid}
-              style={{ fontFamily: "var(--font-mono)" }}
+              className="input-mono"
               aria-describedby="kuid-hint"
             />
           </div>
@@ -98,7 +102,7 @@ export default async function AssistPayPage({ searchParams }: { searchParams: Pr
         </div>
       </form>
 
-      <p className="hint"><a href="/review">Back to review</a></p>
+      </div>
     </div>
   );
 }

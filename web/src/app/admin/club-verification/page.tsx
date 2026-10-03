@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { AdminNav } from "@/components/AdminNav";
+import { NoAccess } from "@/components/NoAccess";
+import { AdminShell } from "@/components/AdminNav";
+import { EmptyState } from "@/components/EmptyState";
+import { PageHead } from "@/components/PageHead";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ApiError, type ClubVerificationWaiting, getClubVerificationQueue } from "@/lib/api";
@@ -37,12 +40,7 @@ export default async function ClubReviewsPage({ searchParams }: { searchParams: 
       if (error.status === 401) redirect("/sign-in?ended=1");
       if (error.status === 403) {
         return (
-          <div className="stack">
-            <h1>Club reviews</h1>
-            <Flash variant="bad" title="You do not have access to this">
-              <p style={{ marginBottom: 0 }}>Only a super administrator can open this.</p>
-            </Flash>
-          </div>
+          <NoAccess title="Club reviews" />
         );
       }
     }
@@ -53,28 +51,28 @@ export default async function ClubReviewsPage({ searchParams }: { searchParams: 
   const error = one(params.error);
 
   return (
-    <div className="stack">
-      <AdminNav current="/admin/club-verification" />
-      <h1>Club reviews</h1>
+    <AdminShell current="/admin/club-verification">
+      <PageHead eyebrow="Administrator" title="Club reviews" app />
 
       {done ? (
         <Flash variant="good" title={done === "approved" ? "Club verified" : "Rejected"}>
-          <p style={{ marginBottom: 0 }}>The club has been told.</p>
+          <p className="mb0">The club has been told.</p>
         </Flash>
       ) : null}
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
 
-      {waiting.length === 0 ? <p className="hint">No club is waiting for a decision.</p> : null}
+      {waiting.length === 0 ? <EmptyState title="No club is waiting for a decision" /> : null}
 
       {waiting.map((w) => (
         <section className="doc" key={w.club_id} aria-label={w.club_name}>
           <div className="doc__body">
-            <p style={{ fontWeight: 700, marginBottom: "var(--s2)" }}>{w.club_name}</p>
+            <h2 className="doc__title">{w.club_name}</h2>
             <p className="hint">{w.lga_name} &middot; submitted {stamp(w.submitted_at)}</p>
+            <div className="split split--even">
             <figure className="evidence">
               <figcaption>Registration document or LGA letter</figcaption>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -86,6 +84,7 @@ export default async function ClubReviewsPage({ searchParams }: { searchParams: 
               />
             </figure>
 
+            <div>
             <form action={decideAction}>
               <input type="hidden" name="club" value={w.club_id} />
               <input type="hidden" name="decision" value="approve" />
@@ -94,7 +93,7 @@ export default async function ClubReviewsPage({ searchParams }: { searchParams: 
               </SubmitButton>
             </form>
 
-            <form action={decideAction} style={{ marginTop: "var(--s4)" }}>
+            <form action={decideAction} className="mt-4">
               <input type="hidden" name="club" value={w.club_id} />
               <input type="hidden" name="decision" value="reject" />
               <div className="field">
@@ -106,9 +105,11 @@ export default async function ClubReviewsPage({ searchParams }: { searchParams: 
                 Reject with reason
               </SubmitButton>
             </form>
+            </div>
+            </div>
           </div>
         </section>
       ))}
-    </div>
+    </AdminShell>
   );
 }

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { EmptyState } from "@/components/EmptyState";
+import { PageHead } from "@/components/PageHead";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ApiError, type Membership, type MyClubs, getMyClubs } from "@/lib/api";
@@ -32,34 +34,38 @@ export default async function MyClubsPage({ searchParams }: { searchParams: Prom
   const done = one(query.done);
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Clubs</p>
-      <h1>My clubs</h1>
+    <div className="page stack">
+      <PageHead
+        back={{ href: "/me", label: "My account" }}
+        eyebrow="Clubs"
+        title="My clubs"
+        actions={<a href="/clubs/new" className="btn btn--ghost">Register a club</a>}
+      />
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
       {done === "accept" ? (
         <Flash variant="good" title="You have joined the club">
-          <p style={{ marginBottom: 0 }}>Your club now shows on your record.</p>
+          <p className="mb0">Your club now shows on your record.</p>
         </Flash>
       ) : null}
       {done === "decline" ? (
         <Flash variant="good" title="Invitation declined">
-          <p style={{ marginBottom: 0 }}>It has been removed from your list.</p>
+          <p className="mb0">It has been removed from your list.</p>
         </Flash>
       ) : null}
 
-      <h2>Current club</h2>
+      <h2 className="section-title mt-lg">Current club</h2>
       {mine.current ? (
         <ClubCard m={mine.current} />
       ) : (
-        <p className="hint">You are not on a club roster.</p>
+        <EmptyState title="You are not on a club roster" />
       )}
 
-      <h2>Invitations</h2>
+      <h2 className="section-title mt-lg">Invitations</h2>
       {mine.invitations.length ? (
         mine.invitations.map((m) => (
           <ClubCard key={m.roster_id} m={m}>
@@ -68,7 +74,7 @@ export default async function MyClubsPage({ searchParams }: { searchParams: Prom
                 Accepting will move you from {mine.current.club_name} to {m.club_name}.
               </p>
             ) : null}
-            <div style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>
+            <div className="cluster">
               <form action={answerAction}>
                 <input type="hidden" name="roster" value={m.roster_id} />
                 <input type="hidden" name="answer" value="accept" />
@@ -83,13 +89,9 @@ export default async function MyClubsPage({ searchParams }: { searchParams: Prom
           </ClubCard>
         ))
       ) : (
-        <p className="hint">You have no invitations.</p>
+        <EmptyState title="You have no invitations" />
       )}
 
-      <p>
-        <a href="/clubs/new" className="btn btn--ghost">Register a club</a>
-      </p>
-      <p className="hint"><a href="/me">Back to your account</a></p>
     </div>
   );
 }
@@ -98,8 +100,8 @@ function ClubCard({ m, children }: { m: Membership; children?: React.ReactNode }
   return (
     <section className="doc" aria-label={m.club_name}>
       <div className="doc__body">
-        <p style={{ fontWeight: 700, marginBottom: "var(--s2)" }}>{m.club_name}</p>
-        <p style={{ marginBottom: children ? "var(--s3)" : 0 }}>
+        <h2 className="doc__title">{m.club_name}</h2>
+        <p className={children ? "mb-3" : "mb0"}>
           <span className={m.verified_club ? "pill pill--issued" : "pill pill--pending"}>
             {m.verified_club ? "Verified club" : "Not a verified club"}
           </span>{" "}

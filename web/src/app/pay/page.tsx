@@ -1,3 +1,4 @@
+import { PageHead } from "@/components/PageHead";
 import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -74,14 +75,17 @@ async function start(token: string, error: string) {
   }
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Verification</p>
-      <h1>Payment</h1>
+    <div className="page stack">
+      <PageHead
+        back={{ href: "/me", label: "My account" }}
+        eyebrow="Verification"
+        title="Payment"
+      />
 
       {problem ? (
         <div className="notice notice--bad" role="alert" tabIndex={-1}>
           <p className="notice__title">We could not start your payment</p>
-          <p style={{ marginBottom: 0 }}>{problem}</p>
+          <p className="mb0">{problem}</p>
         </div>
       ) : null}
 
@@ -108,7 +112,7 @@ async function start(token: string, error: string) {
                 <SubmitButton pending="Taking you to Paystack…" detail="Please do not close or refresh this page.">
                   Pay securely with Paystack
                 </SubmitButton>
-                <p className="hint" style={{ textAlign: "center", marginTop: "var(--s4)" }}>
+                <p className="hint form-foot">
                   You will leave KAFRIADA to pay. We never see your card details.
                 </p>
               </form>
@@ -117,7 +121,6 @@ async function start(token: string, error: string) {
         </section>
       ) : null}
 
-      <p><a href="/me">Back to my account</a></p>
     </div>
   );
 }
@@ -129,11 +132,11 @@ async function returned(token: string, reference: string) {
   } catch (caught) {
     if (caught instanceof ApiError && caught.status === 404) {
       return (
-        <div className="stack">
+        <div className="page stack">
           <h1>Payment</h1>
           <div className="notice notice--warn" role="status">
             <p className="notice__title">We could not find that payment</p>
-            <p style={{ marginBottom: 0 }}>
+            <p className="mb0">
               It may belong to another account. <a href="/pay">Start again</a>
             </p>
           </div>
@@ -148,9 +151,11 @@ async function returned(token: string, reference: string) {
   const amount = formatNaira(payment.amount_kobo);
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Verification</p>
-      <h1>Payment</h1>
+    <div className="page stack">
+      <PageHead
+        eyebrow="Verification"
+        title="Payment"
+      />
 
       {payment.state === "confirmed" ? (
         <div className="notice notice--good" role="status">
@@ -175,7 +180,7 @@ async function returned(token: string, reference: string) {
       ) : payment.state === "review" ? (
         <div className="notice notice--warn" role="status">
           <p className="notice__title">Your payment needs a check by our team</p>
-          <p style={{ marginBottom: 0 }}>
+          <p className="mb0">
             Please do not pay again. We will contact you on the phone number you
             registered with.
           </p>
@@ -187,7 +192,7 @@ async function returned(token: string, reference: string) {
             If money left your account, it will show here as confirmed once
             Paystack tells us. Otherwise you can try again.
           </p>
-          <div style={{ display: "flex", gap: "var(--s3)", flexWrap: "wrap" }}>
+          <div className="cluster">
             <a href="/pay" className="btn btn--primary">Try again</a>
             <a href={again} className="btn btn--ghost">Check again</a>
           </div>

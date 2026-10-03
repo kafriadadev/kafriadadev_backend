@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { PageHead } from "@/components/PageHead";
 import { Flash } from "@/components/Flash";
 import { resetPasswordAction, sendResetCodeAction } from "./actions";
 
@@ -28,13 +29,15 @@ export default async function ForgotPage({
   const phone = one(params.phone);
 
   return (
-    <div className="stack">
-      <p className="eyebrow">Account recovery</p>
-      <h1>Reset your password</h1>
+    <div className="auth stack">
+      <PageHead
+        eyebrow="Account recovery"
+        title="Reset your password"
+      />
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p style={{ marginBottom: 0 }}>{error}</p>
+          <p className="mb0">{error}</p>
         </Flash>
       ) : null}
 
@@ -67,7 +70,7 @@ export default async function ForgotPage({
       ) : (
         <>
           <Flash title="Check your messages">
-            <p style={{ marginBottom: 0 }}>
+            <p className="mb0">
               If that number has a KAFRIADA account, a code is on its way to it.
               The code expires in 10 minutes.
             </p>
@@ -86,7 +89,7 @@ export default async function ForgotPage({
                   required
                   maxLength={6}
                   placeholder="000000"
-                  style={{ fontFamily: "var(--font-mono)", letterSpacing: ".3em" }}
+                  className="code-input"
                 />
               </div>
               <div className="field">
@@ -108,7 +111,7 @@ export default async function ForgotPage({
               <button type="submit" className="btn btn--primary btn--block">
                 Set new password
               </button>
-              <p className="hint" style={{ textAlign: "center", marginTop: "var(--s4)" }}>
+              <p className="hint form-foot">
                 Every device signed in to this account will be signed out.
               </p>
             </div>
@@ -116,7 +119,7 @@ export default async function ForgotPage({
         </>
       )}
 
-      <p className="hint" style={{ color: "var(--muted)" }}>
+      <p className="hint muted">
         Remembered it? <a href="/sign-in">Sign in</a>.
       </p>
     </div>
