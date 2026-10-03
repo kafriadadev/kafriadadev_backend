@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { ClubFields } from "@/components/ClubFields";
 import { PageHead } from "@/components/PageHead";
 import { NoAccess } from "@/components/NoAccess";
 import { Flash } from "@/components/Flash";
@@ -16,7 +17,7 @@ type Search = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined): string =>
   Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
 
-/** Edit a club's name, contact number and founding year. Sport and area stay as registered. */
+/** Edit a club's record. Sport and area stay as registered. */
 export default async function EditClubPage({
   params,
   searchParams,
@@ -46,14 +47,30 @@ export default async function EditClubPage({
 
   const error = one(query.error);
   const badField = one(query.field);
-  const errClass = (field: string) => (badField === field ? "field field--error" : "field");
-  const value = (key: string, fallback: string) => (one(query[key]) !== "" ? one(query[key]) : fallback);
+  // After a refusal the typed values come back in the address; otherwise the record.
+  const edited = one(query.edited) === "1";
+  const stored = (club.profile ?? {}) as Record<string, unknown>;
+  const recordValue = (k: string): string => {
+    if (k === "name") return club.name;
+    if (k === "contact_phone") return club.contact_phone;
+    if (k === "year_founded") return club.year_founded ? String(club.year_founded) : "";
+    const v = stored[k];
+    return v === null || v === undefined ? "" : String(v);
+  };
+  const get = (k: string): string => (edited ? one(query[k]) : recordValue(k));
+  const all = (k: string): string[] => {
+    if (!edited) return Array.isArray(stored[k]) ? (stored[k] as string[]) : [];
+    const v = query[k];
+    return Array.isArray(v) ? v : v ? [v] : [];
+  };
 
   return (
     <div className="page stack">
       <PageHead
-        eyebrow={<>Club &middot; {club.name}</>}
+        back={{ href: `/clubs/${encodeURIComponent(id)}?tab=details`, label: club.name }}
+        eyebrow="Club"
         title="Edit club details"
+        lede="Every field is required unless it says optional. Sport and area stay as registered."
       />
 
       {error ? (
@@ -65,42 +82,15 @@ export default async function EditClubPage({
       <form action={updateClubAction} className="doc" noValidate>
         <div className="doc__body">
           <input type="hidden" name="club" value={id} />
-          <div className={errClass("name")}>
-            <label htmlFor="name">Club name</label>
-            <input id="name" name="name" required defaultValue={value("name", club.name)} />
-            {badField === "name" ? <span className="error">{error}</span> : null}
-          </div>
-          <div className={errClass("year_founded")}>
-            <label htmlFor="year_founded">Year founded</label>
-            <input
-              id="year_founded"
-              name="year_founded"
-              inputMode="numeric"
-              defaultValue={value("year_founded", club.year_founded ? String(club.year_founded) : "")}
-            />
-            {badField === "year_founded" ? <span className="error">{error}</span> : null}
-          </div>
-          <div className={errClass("contact_phone")}>
-            <label htmlFor="contact_phone">Contact phone</label>
-            <input
-              id="contact_phone"
-              name="contact_phone"
-              type="tel"
-              inputMode="tel"
-              required
-              defaultValue={value("contact_phone", club.contact_phone)}
-            />
-            {badField === "contact_phone" ? <span className="error">{error}</span> : null}
-          </div>
-          <p className="hint">
-            {club.sport} &middot; {club.lga_name}. The sport and area a club is registered under
-            do not change.
-          </p>
-          <SubmitButton pending="Saving…">Save</SubmitButton>
+          <ClubFields
+            values={{ get, all }}
+            badField={badField}
+            error={error}
+            fixed={{ sport: club.sport, lga_name: club.lga_name }}
+          />
+          <SubmitButton pending="Saving…">Save club details</SubmitButton>
         </div>
       </form>
-
-      <p><a href={`/clubs/${encodeURIComponent(id)}?tab=details`}>Cancel</a></p>
     </div>
   );
 }

@@ -1,6 +1,7 @@
-"""Clubs: registering one (CLB-01) and reading its dashboard (CLB-02).
+"""Clubs: signing one up or registering one (CLB-01) and reading its dashboard (CLB-02).
 
-Anyone signed in may register a club and becomes its administrator. Reading one is
+A club signs up through the public route, which creates its representative's account
+too. Coordinators and administrators may also register one. Reading one is
 scoped to that club: ``Requires(..., scope="club")`` reads ``club_id`` from the path
 and matches it against the caller's own grants, so an administrator of one club is
 refused another's, whatever they type into the address.
@@ -13,13 +14,16 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictInt
 
 from kafriada.api.client import client_ip
 from kafriada.api.client import request_id as header_request_id
-from kafriada.api.security import Requires, current_principal
+from kafriada.api.security import Public, Requires, current_principal
 from kafriada.api.throttle import Throttle
-from kafriada.contexts.clubs import service
+from kafriada.api.v1.athletes import PRIVACY_NOTICE_VERSION
+from kafriada.contexts.access import service as access
+from kafriada.contexts.clubs import service, signup
+from kafriada.contexts.clubs.profile import ClubProfile
 
 router = APIRouter(tags=["clubs"])
 
@@ -28,13 +32,56 @@ def _detail(message: str, field: str | None = None) -> dict[str, str | None]:
     return {"message": message, "field": field}
 
 
-class RegisterClubRequest(BaseModel):
+class ClubProfileIn(BaseModel):
+    """The club's record beyond name, sport, area and phone. See contexts/clubs/profile.py."""
+
+    short_name: str = Field(max_length=40)
+    type: str = Field(max_length=20)
+    category: str = Field(max_length=10)
+    age_groups: list[str] = Field(max_length=5)
+    level: str = Field(max_length=20)
+    year_founded: StrictInt
+    ground_name: str = Field(max_length=200)
+    ground_address: str = Field(max_length=300)
+    town: str = Field(max_length=100)
+    club_email: str = Field(max_length=254)
+    official2_name: str = Field(max_length=200)
+    official2_role: str = Field(max_length=40)
+    official2_phone: str = Field(max_length=30)
+    cac_number: str | None = Field(default=None, max_length=60)
+    affiliation: str | None = Field(default=None, max_length=200)
+    colours: str | None = Field(default=None, max_length=100)
+    website: str | None = Field(default=None, max_length=300)
+
+    def to_profile(self) -> ClubProfile:
+        data = self.model_dump(include=set(ClubProfileIn.model_fields))
+        data["age_groups"] = tuple(data["age_groups"])
+        return ClubProfile(**data)
+
+
+class RegisterClubRequest(ClubProfileIn):
     name: str = Field(max_length=200)
     sport: str = Field(max_length=40)
     lga_id: str = Field(max_length=40)
     contact_phone: str = Field(max_length=30)
-    year_founded: int | None = None
     confirm_duplicate: bool = False
+
+
+class ClubSignUpRequest(RegisterClubRequest):
+    rep_first_name: str = Field(max_length=60)
+    rep_surname: str = Field(max_length=60)
+    rep_role: str = Field(max_length=40)
+    rep_phone: str = Field(max_length=30)
+    rep_email: str = Field(max_length=254)
+    password: str = Field(max_length=1024)
+    accept_privacy_notice: bool
+
+
+class SignedUpResponse(BaseModel):
+    club_id: UUID
+    name: str
+    # Masked, for the confirm screen's "we sent a code to" line.
+    email: str
 
 
 class RegisteredResponse(BaseModel):
@@ -65,6 +112,9 @@ class DashboardResponse(BaseModel):
     invites_out: int
     roster: list[RosterRowOut]
     created_at: datetime
+    # The club's full record (see contexts/clubs/profile.py). Fields are null for a
+    # club registered before they were asked for.
+    profile: dict[str, object] | None = None
 
 
 @router.post(
@@ -72,9 +122,27 @@ class DashboardResponse(BaseModel):
     response_model=RegisteredResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Requires("club.create"), Throttle("register_club")],
-    summary="Register a club; the caller becomes its administrator",
+    summary="An administrator registers a club and becomes its administrator",
 )
 async def register_club(body: RegisterClubRequest, request: Request) -> RegisteredResponse:
+    return await _register(body, request, lga_id=body.lga_id)
+
+
+@router.post(
+    "/lgas/{lga_id}/clubs",
+    response_model=RegisteredResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Requires("club.create", scope="lga"), Throttle("register_club")],
+    summary="A coordinator registers a club in their own LGA",
+)
+async def register_club_in_lga(
+    lga_id: str, body: RegisterClubRequest, request: Request
+) -> RegisteredResponse:
+    # The area comes from the path the scope check approved, never from the body.
+    return await _register(body, request, lga_id=lga_id)
+
+
+async def _register(body: RegisterClubRequest, request: Request, *, lga_id: str) -> RegisteredResponse:
     principal = current_principal(request)
     try:
         made = await run_in_threadpool(
@@ -83,9 +151,9 @@ async def register_club(body: RegisterClubRequest, request: Request) -> Register
             principal.full_name,
             name=body.name,
             sport=body.sport,
-            lga_id=body.lga_id,
+            lga_id=lga_id,
             contact_phone=body.contact_phone,
-            year_founded=body.year_founded,
+            profile=body.to_profile(),
             confirm_duplicate=body.confirm_duplicate,
             request_id=header_request_id(request),
             ip_address=client_ip(request),
@@ -94,6 +162,49 @@ async def register_club(body: RegisterClubRequest, request: Request) -> Register
         code = status.HTTP_409_CONFLICT if exc.code == "duplicate" else status.HTTP_422_UNPROCESSABLE_ENTITY
         raise HTTPException(code, detail=_detail(exc.message, exc.field)) from None
     return RegisteredResponse(club_id=made.club_id, name=made.name)
+
+
+@router.post(
+    "/clubs/register",
+    response_model=SignedUpResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[
+        Public("a club signs up before it has an account"),
+        Throttle("register_club"),
+    ],
+    summary="Sign up a club: the representative's account and the club together",
+)
+async def sign_up_club(body: ClubSignUpRequest, request: Request) -> SignedUpResponse:
+    if not body.accept_privacy_notice:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=_detail("Please confirm the declaration and accept the privacy notice.",
+                           "accept_privacy_notice"),
+        )
+    rep = signup.Representative(
+        first_name=body.rep_first_name, surname=body.rep_surname, role=body.rep_role,
+        phone=body.rep_phone, email=body.rep_email, password=body.password,
+        consent_notice_version=PRIVACY_NOTICE_VERSION,
+    )
+    try:
+        made = await run_in_threadpool(
+            signup.sign_up,
+            rep,
+            name=body.name,
+            sport=body.sport,
+            lga_id=body.lga_id,
+            contact_phone=body.contact_phone,
+            profile=body.to_profile(),
+            confirm_duplicate=body.confirm_duplicate,
+            request_id=header_request_id(request),
+            ip_address=client_ip(request),
+        )
+    except service.Refused as exc:
+        code = status.HTTP_409_CONFLICT if exc.code == "duplicate" else status.HTTP_422_UNPROCESSABLE_ENTITY
+        raise HTTPException(code, detail=_detail(exc.message, exc.field)) from None
+    return SignedUpResponse(
+        club_id=made.club_id, name=made.name, email=access.mask_email(body.rep_email.strip().lower())
+    )
 
 
 @router.get(
@@ -316,10 +427,9 @@ async def _set_status(club_id: str, new_status: str, request: Request) -> None:
         raise _refuse(exc) from None
 
 
-class UpdateClubRequest(BaseModel):
+class UpdateClubRequest(ClubProfileIn):
     name: str = Field(max_length=200)
     contact_phone: str = Field(max_length=30)
-    year_founded: int | None = None
 
 
 @router.put(
@@ -338,7 +448,7 @@ async def update_club(club_id: str, body: UpdateClubRequest, request: Request) -
             principal.full_name,
             name=body.name,
             contact_phone=body.contact_phone,
-            year_founded=body.year_founded,
+            profile=body.to_profile(),
             request_id=header_request_id(request),
             ip_address=client_ip(request),
         )

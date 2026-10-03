@@ -827,6 +827,14 @@ def confirm_email(
                 request_id=request_id,
                 ip_address=ip_address,
             )
+            # A club signed up by this person now goes to an administrator for review.
+            session.execute(
+                text(
+                    "UPDATE identity.organizations SET status = 'pending_review' "
+                    "WHERE rep_user_id = :id AND status = 'unconfirmed'"
+                ),
+                {"id": user.id},
+            )
 
         issued = _issue(session, user.id, ip_address=ip_address, user_agent=user_agent)
         audit.record(

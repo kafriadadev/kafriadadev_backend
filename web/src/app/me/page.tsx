@@ -115,10 +115,6 @@ export default async function MePage({
                   <span className="tile__title">My clubs</span>
                   <span className="tile__text">Invitations and the club you play for.</span>
                 </a>
-                <a href="/clubs/new" className="tile">
-                  <span className="tile__title">Register a club</span>
-                  <span className="tile__text">Set up a club and add your players.</span>
-                </a>
               </div>
             </section>
           ) : null}
@@ -137,6 +133,12 @@ export default async function MePage({
                   <a href="/coordinator" className="tile">
                     <span className="tile__title">Coordinator dashboard</span>
                     <span className="tile__text">Reviews, athletes and card printing.</span>
+                  </a>
+                ) : null}
+                {isAdmin || isCoordinator ? (
+                  <a href="/clubs/new" className="tile">
+                    <span className="tile__title">Register a club for someone</span>
+                    <span className="tile__text">For a club that cannot sign itself up.</span>
                   </a>
                 ) : null}
                 {clubs.map((r) => (

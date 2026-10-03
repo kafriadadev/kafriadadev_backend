@@ -10,6 +10,8 @@
  * needs data it asks the API, in one place, through the functions below.
  */
 
+import type { ClubProfile } from "@/lib/clubProfile";
+
 // 8010, not the usual 8000: another project on this machine already holds
 // 8000, and a port clash presents as a baffling 404 from the wrong server.
 const API_BASE = process.env.KAFRIADA_API_URL ?? "http://127.0.0.1:8010";
@@ -417,31 +419,38 @@ export type ClubDashboard = {
   year_founded: number | null;
   lga_name: string;
   contact_phone: string;
-  status: "pending_review" | "approved" | "suspended";
+  status: "unconfirmed" | "pending_review" | "approved" | "suspended";
   verified: boolean;
   players: number;
   verified_players: number;
   invites_out: number;
   roster: ClubRosterRow[];
   created_at: string;
+  /** The full record; fields are null for a club registered before they were asked. */
+  profile: (Partial<Record<keyof ClubProfile | "rep_role", unknown>>) | null;
 };
 
-export type ClubInput = {
+export type ClubInput = ClubProfile & {
   name: string;
   sport: string;
   lga_id: string;
   contact_phone: string;
-  year_founded: number | null;
   confirm_duplicate: boolean;
 };
 
 /** CLB-01: register a club. The caller becomes its administrator. */
+/**
+ * Staff register a club: an administrator anywhere, a coordinator only in their own
+ * LGA (pass `inLga`). Clubs themselves use signUpClub.
+ */
 export function registerClub(
   token: string,
   input: ClubInput,
   meta: ClientMeta,
+  inLga?: string,
 ): Promise<{ club_id: string; name: string }> {
-  return call<{ club_id: string; name: string }>("/v1/clubs", {
+  const path = inLga ? `/v1/lgas/${encodeURIComponent(inLga)}/clubs` : "/v1/clubs";
+  return call<{ club_id: string; name: string }>(path, {
     method: "POST",
     body: JSON.stringify(input),
     token,
@@ -449,11 +458,33 @@ export function registerClub(
   });
 }
 
-/** Edit the club's name, contact number and founding year. */
+export type ClubSignUp = ClubInput & {
+  rep_first_name: string;
+  rep_surname: string;
+  rep_role: string;
+  rep_phone: string;
+  rep_email: string;
+  password: string;
+  accept_privacy_notice: boolean;
+};
+
+/** A club signs itself up: its representative's account and the club, together. */
+export function signUpClub(
+  input: ClubSignUp,
+  meta: ClientMeta,
+): Promise<{ club_id: string; name: string; email: string }> {
+  return call<{ club_id: string; name: string; email: string }>("/v1/clubs/register", {
+    method: "POST",
+    body: JSON.stringify(input),
+    meta,
+  });
+}
+
+/** Edit the club's record. Sport and area are not editable. */
 export function updateClub(
   token: string,
   clubId: string,
-  details: { name: string; contact_phone: string; year_founded: number | null },
+  details: ClubProfile & { name: string; contact_phone: string },
   meta: ClientMeta,
 ): Promise<void> {
   return call<void>(`/v1/clubs/${encodeURIComponent(clubId)}`, {

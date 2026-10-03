@@ -24,16 +24,15 @@ from sqlalchemy.orm import Session
 from kafriada.clock import today_in_nigeria
 from kafriada.contexts.access import phone as phone_mod
 from kafriada.contexts.audit.service import Actor, record
+from kafriada.contexts.clubs import profile as club_profile
+from kafriada.contexts.clubs.profile import ClubProfile
 from kafriada.contexts.identity import kuid as kuid_mod
+from kafriada.contexts.identity.profile import SPORTS
 from kafriada.db.engine import transaction
 from kafriada.outbox.service import queue_notification
 
 log = structlog.get_logger(__name__)
 
-SPORTS = (
-    "Football", "Athletics", "Basketball", "Volleyball", "Handball",
-    "Boxing", "Wrestling", "Table Tennis", "Badminton", "Swimming",
-)
 ROSTER_LIMIT = 200
 
 
@@ -78,6 +77,7 @@ class Dashboard:
     invites_out: int
     roster: tuple[RosterRow, ...]
     created_at: datetime
+    profile: dict[str, object] | None = None  # the club's full record; None before 0015
 
 
 def register_club(
@@ -88,91 +88,122 @@ def register_club(
     sport: str,
     lga_id: str,
     contact_phone: str,
-    year_founded: int | None = None,
+    profile: ClubProfile,
     confirm_duplicate: bool = False,
     request_id: str | None = None,
     ip_address: str | None = None,
 ) -> Registered:
+    """A coordinator or administrator registers a club; they become its administrator."""
+    checked = check_club(name=name, sport=sport, contact_phone=contact_phone, profile=profile)
+    with transaction() as session:
+        club_id = create_club(
+            session, user_id, actor_name, checked, lga_id=lga_id,
+            confirm_duplicate=confirm_duplicate, status="pending_review",
+            request_id=request_id, ip_address=ip_address,
+        )
+    log.info("club_registered", club_id=str(club_id), lga=lga_id)
+    return Registered(club_id=club_id, name=str(checked["name"]))
+
+
+def check_club(
+    *, name: str, sport: str, contact_phone: str, profile: ClubProfile,
+) -> dict[str, object]:
+    """Every rule a club's record must meet, before any database work."""
     name = " ".join(name.split())
     if len(name) < 3:
-        raise Refused("Enter the club's name.", code="invalid", field="name")
+        raise Refused("Enter the club's registered name.", code="invalid", field="name")
     if len(name) > 80:
         raise Refused("The name can be at most 80 characters.", code="invalid", field="name")
     if sport not in SPORTS:
         raise Refused("Choose the club's sport.", code="invalid", field="sport")
-    if year_founded is not None and not 1900 <= year_founded <= today_in_nigeria().year:
-        raise Refused("Enter a valid year.", code="invalid", field="year_founded")
     try:
         phone = phone_mod.normalise(contact_phone)
     except phone_mod.InvalidPhoneNumberError as exc:
         raise Refused(str(exc), code="invalid", field="contact_phone") from exc
+    try:
+        values = club_profile.clean(profile)
+    except club_profile.ProfileError as exc:
+        raise Refused(exc.message, code="invalid", field=exc.field) from None
+    return {"name": name, "sport": sport, "contact_phone": phone, **values}
 
-    with transaction() as session:
-        lga = session.execute(
-            text(
-                "SELECT parent_id FROM ops.locations "
-                "WHERE id = :id AND kind = 'lga' AND is_live"
-            ),
-            {"id": lga_id},
-        ).mappings().one_or_none()
-        if lga is None:
-            raise Refused("Choose a local government area that is open.", code="invalid", field="lga_id")
 
-        # Two clubs can honestly share a name, so this is a question, not a refusal.
-        if not confirm_duplicate:
-            twin = session.execute(
-                text(
-                    "SELECT 1 FROM identity.organizations "
-                    "WHERE lga_id = :lga AND lower(name) = lower(:name) LIMIT 1"
-                ),
-                {"lga": lga_id, "name": name},
-            ).first()
-            if twin is not None:
-                raise Refused(
-                    "A club with this name is already registered in this local government area.",
-                    code="duplicate",
-                    field="name",
-                )
+def create_club(
+    session: Session,
+    user_id: UUID,
+    actor_name: str,
+    checked: dict[str, object],
+    *,
+    lga_id: str,
+    confirm_duplicate: bool,
+    status: str,
+    request_id: str | None,
+    ip_address: str | None,
+) -> UUID:
+    """Insert the club, its default team and its administrator's grant, in the caller's
+    transaction. ``checked`` comes from :func:`check_club`."""
+    lga = session.execute(
+        text("SELECT parent_id FROM ops.locations WHERE id = :id AND kind = 'lga' AND is_live"),
+        {"id": lga_id},
+    ).mappings().one_or_none()
+    if lga is None:
+        raise Refused("Choose a local government area that is open.", code="invalid", field="lga_id")
 
-        club_id: UUID = session.execute(
+    # Two clubs can honestly share a name, so this is a question, not a refusal.
+    if not confirm_duplicate:
+        twin = session.execute(
             text(
-                """
-                INSERT INTO identity.organizations
-                    (name, sport, year_founded, state_id, lga_id, contact_phone, rep_user_id)
-                VALUES (:name, :sport, :year, :state, :lga, :phone, :user)
-                RETURNING id
-                """
+                "SELECT 1 FROM identity.organizations "
+                "WHERE lga_id = :lga AND lower(name) = lower(:name) LIMIT 1"
             ),
-            {
-                "name": name, "sport": sport, "year": year_founded,
-                "state": lga["parent_id"], "lga": lga_id, "phone": phone, "user": user_id,
-            },
-        ).scalar_one()
-        session.execute(
-            text("INSERT INTO identity.teams (org_id, name, sport) VALUES (:org, :name, :sport)"),
-            {"org": club_id, "name": name, "sport": sport},
-        )
-        session.execute(
-            text(
-                """
-                INSERT INTO ops.user_roles (user_id, role_code, scope_kind, scope_id, granted_by, reason)
-                VALUES (:user, 'club_admin', 'club', :club, :user, 'club registration')
-                """
-            ),
-            {"user": user_id, "club": str(club_id)},
-        )
-        record(
-            session,
-            actor=Actor(user_id=user_id, label=actor_name),
-            action="club.registered",
-            subject_type="club",
-            subject_id=str(club_id),
-            metadata={"lga": lga_id, "sport": sport},
-            request_id=request_id,
-            ip_address=ip_address,
-        )
-    log.info("club_registered", club_id=str(club_id), lga=lga_id)
-    return Registered(club_id=club_id, name=name)
+            {"lga": lga_id, "name": checked["name"]},
+        ).first()
+        if twin is not None:
+            raise Refused(
+                "A club with this name is already registered in this local government area.",
+                code="duplicate",
+                field="name",
+            )
+
+    columns = ("name", "sport", "contact_phone", *club_profile.COLUMNS)
+    club_id: UUID = session.execute(
+        text(
+            f"""
+            INSERT INTO identity.organizations
+                ({", ".join(columns)}, state_id, lga_id, rep_user_id, rep_role, status)
+            VALUES ({", ".join(":" + c for c in columns)}, :state, :lga, :user, :rep_role, :status)
+            RETURNING id
+            """  # noqa: S608 - column names are this module's own constants
+        ),
+        {
+            **{c: checked[c] for c in columns},
+            "state": lga["parent_id"], "lga": lga_id, "user": user_id,
+            "rep_role": checked.get("rep_role"), "status": status,
+        },
+    ).scalar_one()
+    session.execute(
+        text("INSERT INTO identity.teams (org_id, name, sport) VALUES (:org, :name, :sport)"),
+        {"org": club_id, "name": checked["name"], "sport": checked["sport"]},
+    )
+    session.execute(
+        text(
+            """
+            INSERT INTO ops.user_roles (user_id, role_code, scope_kind, scope_id, granted_by, reason)
+            VALUES (:user, 'club_admin', 'club', :club, :user, 'club registration')
+            """
+        ),
+        {"user": user_id, "club": str(club_id)},
+    )
+    record(
+        session,
+        actor=Actor(user_id=user_id, label=actor_name),
+        action="club.registered",
+        subject_type="club",
+        subject_id=str(club_id),
+        metadata={"lga": lga_id, "sport": checked["sport"], "status": status},
+        request_id=request_id,
+        ip_address=ip_address,
+    )
+    return club_id
 
 
 def dashboard(club_id: UUID) -> Dashboard | None:
@@ -182,7 +213,11 @@ def dashboard(club_id: UUID) -> Dashboard | None:
             text(
                 """
                 SELECT o.id, o.name, o.sport, o.type, o.year_founded, o.contact_phone,
-                       o.status, o.stage, o.created_at, lga.name AS lga_name
+                       o.status, o.stage, o.created_at, lga.name AS lga_name,
+                       o.short_name, o.category, o.age_groups, o.level, o.ground_name,
+                       o.ground_address, o.town, o.club_email, o.cac_number, o.affiliation,
+                       o.colours, o.website, o.rep_role, o.official2_name, o.official2_role,
+                       o.official2_phone
                   FROM identity.organizations o
                   JOIN ops.locations lga ON lga.id = o.lga_id
                  WHERE o.id = :club
@@ -237,6 +272,7 @@ def dashboard(club_id: UUID) -> Dashboard | None:
         invites_out=sum(1 for r in roster if r.state == "invited"),
         roster=roster,
         created_at=club["created_at"],
+        profile={c: club[c] for c in (*club_profile.COLUMNS, "rep_role")},
     )
 
 
@@ -259,15 +295,18 @@ def set_status(
         changed = session.execute(
             text(
                 "UPDATE identity.organizations SET status = :s "
-                "WHERE id = :c AND status <> :s RETURNING rep_user_id"
+                "WHERE id = :c AND status <> :s AND status <> 'unconfirmed' "
+                "RETURNING rep_user_id"
             ),
             {"s": status, "c": club_id},
         ).mappings().one_or_none()
         if changed is None:
-            exists = session.execute(
-                text("SELECT 1 FROM identity.organizations WHERE id = :c"), {"c": club_id}
-            ).first()
-            if exists is None:
+            current = session.execute(
+                text("SELECT status FROM identity.organizations WHERE id = :c"), {"c": club_id}
+            ).scalar_one_or_none()
+            if current is None or current == "unconfirmed":
+                # Not yet in the review queue: as far as an administrator is concerned,
+                # the club does not exist until its representative confirms their email.
                 raise Refused("No such club.", code="missing")
             return
         record(
@@ -646,24 +685,23 @@ def update_details(
     *,
     name: str,
     contact_phone: str,
-    year_founded: int | None,
+    profile: ClubProfile,
     request_id: str | None = None,
     ip_address: str | None = None,
 ) -> None:
-    """Change the name, contact number and founding year. Sport and area are not editable:
-    a club that moved sport or area is a different club, and rosters and reviews are
-    attached to what it was registered as."""
-    name = " ".join(name.split())
-    if len(name) < 3:
-        raise Refused("Enter the club's name.", code="invalid", field="name")
-    if len(name) > 80:
-        raise Refused("The name can be at most 80 characters.", code="invalid", field="name")
-    if year_founded is not None and not 1900 <= year_founded <= today_in_nigeria().year:
-        raise Refused("Enter a valid year.", code="invalid", field="year_founded")
-    try:
-        phone = phone_mod.normalise(contact_phone)
-    except phone_mod.InvalidPhoneNumberError as exc:
-        raise Refused(str(exc), code="invalid", field="contact_phone") from exc
+    """Change the club's record. Sport and area are not editable: a club that moved
+    sport or area is a different club, and rosters and reviews are attached to what it
+    was registered as."""
+    with transaction() as session:
+        sport = session.execute(
+            text("SELECT sport FROM identity.organizations WHERE id = :c"), {"c": club_id}
+        ).scalar_one_or_none()
+    if sport is None:
+        raise Refused("No such club.", code="missing")
+    checked = check_club(name=name, sport=sport, contact_phone=contact_phone, profile=profile)
+    name = str(checked["name"])
+    phone = checked["contact_phone"]
+    year_founded = checked["year_founded"]
 
     with transaction() as session:
         before = session.execute(
@@ -675,12 +713,13 @@ def update_details(
         ).mappings().one_or_none()
         if before is None:
             raise Refused("No such club.", code="missing")
+        editable = ("name", "contact_phone", *club_profile.COLUMNS)
+        # Column names come from this module's own constants, never from the caller.
+        assignments = ", ".join(f"{c} = :{c}" for c in editable)
+        statement = f"UPDATE identity.organizations SET {assignments} WHERE id = :club_id"  # noqa: S608
         session.execute(
-            text(
-                "UPDATE identity.organizations SET name = :n, contact_phone = :p, year_founded = :y "
-                "WHERE id = :c"
-            ),
-            {"n": name, "p": phone, "y": year_founded, "c": club_id},
+            text(statement),
+            {**{c: checked[c] for c in editable}, "club_id": club_id},
         )
         if name != before["name"]:
             # The default team was named for the club when it was registered.

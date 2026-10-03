@@ -22,6 +22,8 @@ from kafriada.contexts.payments.settlement import settle_charge
 from kafriada.db.engine import money_transaction
 from kafriada.main import create_app
 from tests._access_helpers import audit_actions, bearer, make_user, sql
+from tests._club_helpers import LGA as CLUB_LGA
+from tests._club_helpers import profile_body, registers_clubs
 from tests._media_helpers import LGA, make_jpeg, use_local_store
 from tests._payment_helpers import Athlete, charge_success_event, new_athlete
 
@@ -66,11 +68,12 @@ def fake(monkeypatch: pytest.MonkeyPatch) -> FakeProvider:
 
 def new_club(client: TestClient, root: dict[str, str], *, approve: bool = True) -> tuple[Athlete, str]:
     admin = new_athlete("Verifier")
+    registers_clubs(admin.user_id)
     made = client.post(
-        "/v1/clubs",
+        f"/v1/lgas/{CLUB_LGA}/clubs",
         headers=admin.headers,
         json={"name": f"Verify FC {uuid4().hex[:8]}", "sport": "Football", "lga_id": LGA,
-              "contact_phone": "08031234567"},
+              "contact_phone": "08031234567", **profile_body()},
     )
     assert made.status_code == 201, made.text
     club = str(made.json()["club_id"])
@@ -307,9 +310,9 @@ def test_one_administrator_of_two_clubs_cannot_move_a_file_between_them(
 ) -> None:
     admin, club_a = new_club(client, root)
     made = client.post(
-        "/v1/clubs", headers=admin.headers,
+        f"/v1/lgas/{CLUB_LGA}/clubs", headers=admin.headers,
         json={"name": f"Second FC {uuid4().hex[:8]}", "sport": "Football", "lga_id": LGA,
-              "contact_phone": "08031234567"},
+              "contact_phone": "08031234567", **profile_body()},
     )
     club_b = str(made.json()["club_id"])
     assert client.post(f"/v1/admin/clubs/{club_b}/approve", headers=root).status_code == 204

@@ -17,6 +17,8 @@ from kafriada.appoint import AppointRefused, appoint_super_admin
 from kafriada.contexts.access import service as access
 from kafriada.main import create_app
 from tests._access_helpers import bearer, make_user, sql
+from tests._club_helpers import LGA as CLUB_LGA
+from tests._club_helpers import profile_body, registers_clubs
 from tests._media_helpers import super_admin
 from tests._payment_helpers import new_athlete
 
@@ -106,10 +108,11 @@ def client() -> TestClient:
 def test_a_club_role_needs_a_real_club(client: TestClient) -> None:
     admin = super_admin(PASSWORD)
     founder = new_athlete("Club owner")
+    registers_clubs(founder.user_id)
     made = client.post(
-        "/v1/clubs", headers=founder.headers,
+        f"/v1/lgas/{CLUB_LGA}/clubs", headers=founder.headers,
         json={"name": f"Scope FC {uuid4().hex[:6]}", "sport": "Football", "lga_id": "NG-JG-BKD",
-              "contact_phone": "08031234567"},
+              "contact_phone": "08031234567", **profile_body()},
     )
     club = str(made.json()["club_id"])
     assistant, _ = make_user("Assistant")
@@ -130,9 +133,11 @@ def test_a_club_role_needs_a_real_club(client: TestClient) -> None:
     # The role now works where it is scoped, and only there.
     token = access.issue_session(assistant, method="test").token  # type: ignore[arg-type]
     assert client.get(f"/v1/clubs/{club}", headers=bearer(token)).status_code == 200
+    other_owner = new_athlete("Other owner")
+    registers_clubs(other_owner.user_id)
     other = client.post(
-        "/v1/clubs", headers=new_athlete("Other owner").headers,
+        f"/v1/lgas/{CLUB_LGA}/clubs", headers=other_owner.headers,
         json={"name": f"Other FC {uuid4().hex[:6]}", "sport": "Football", "lga_id": "NG-JG-BKD",
-              "contact_phone": "08031234567"},
+              "contact_phone": "08031234567", **profile_body()},
     )
     assert client.get(f"/v1/clubs/{other.json()['club_id']}", headers=bearer(token)).status_code == 403

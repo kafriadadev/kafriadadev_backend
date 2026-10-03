@@ -69,7 +69,7 @@ def overview() -> Overview:
                 SELECT (SELECT count(*) FROM identity.athletes a JOIN ops.users u ON u.id = a.user_id
                          WHERE u.anonymised_at IS NULL) AS registered,
                        (SELECT count(*) FROM identity.verification_requests WHERE payment_id IS NOT NULL) AS paid,
-                       (SELECT count(*) FROM identity.organizations) AS clubs,
+                       (SELECT count(*) FROM identity.organizations WHERE status <> 'unconfirmed') AS clubs,
                        (SELECT count(*) FROM identity.organizations WHERE stage = 2) AS verified_clubs,
                        (SELECT count(*) FROM identity.club_verification_requests
                          WHERE status = 'under_review') AS clubs_waiting,
@@ -269,7 +269,8 @@ def list_clubs(status: str = "", page: int = 1) -> ClubPage:
                   FROM identity.organizations o
                   JOIN ops.locations lga ON lga.id = o.lga_id
                   JOIN ops.users u ON u.id = o.rep_user_id
-                 WHERE (CAST(:status AS text) IS NULL OR o.status = :status)
+                 WHERE o.status <> 'unconfirmed'
+                   AND (CAST(:status AS text) IS NULL OR o.status = :status)
                  ORDER BY (o.status = 'pending_review') DESC, o.created_at DESC
                  LIMIT :n OFFSET :off
                 """

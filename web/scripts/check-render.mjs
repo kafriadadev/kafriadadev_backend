@@ -39,6 +39,7 @@ const SIGNIN_PASSWORD = process.env.SIGNIN_PASSWORD;
 const PAGES = [
   ["home", "/"],
   ["register", "/register"],
+  ["club-signup", "/clubs/register"],
   ["sign-in", "/sign-in"],
   ["forgot", "/forgot"],
   ["find", "/find"],

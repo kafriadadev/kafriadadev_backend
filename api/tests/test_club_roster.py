@@ -16,6 +16,8 @@ from fastapi.testclient import TestClient
 from kafriada.contexts.access import service as access
 from kafriada.main import create_app
 from tests._access_helpers import audit_actions, bearer, make_user, sql
+from tests._club_helpers import LGA as CLUB_LGA
+from tests._club_helpers import profile_body, registers_clubs
 from tests._media_helpers import LGA
 from tests._payment_helpers import Athlete, new_athlete
 
@@ -38,12 +40,13 @@ def root() -> dict[str, str]:
 
 def new_club(client: TestClient, root: dict[str, str], *, approve: bool = True) -> tuple[Athlete, str]:
     admin = new_athlete("Club admin")
+    registers_clubs(admin.user_id)
     made = client.post(
-        "/v1/clubs",
+        f"/v1/lgas/{CLUB_LGA}/clubs",
         headers=admin.headers,
         json={
             "name": f"Roster FC {uuid4().hex[:8]}", "sport": "Football", "lga_id": LGA,
-            "contact_phone": "08031234567",
+            "contact_phone": "08031234567", **profile_body(),
         },
     )
     assert made.status_code == 201, made.text

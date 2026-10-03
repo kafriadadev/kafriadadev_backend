@@ -529,6 +529,13 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   Privacy notice v1.1. Tests build a valid athlete with `tests/_registration.py`;
   `make_user` creates a confirmed email. **The ID is issued at registration and
   unverified athletes may join clubs** (decided 2026-10-03; the badge marks the difference).
+- **Club sign-up — done 2026-10-03** (migration 0015). Clubs sign up publicly
+  (`/clubs/register`, `POST /v1/clubs/register`): representative account + club, the club
+  `unconfirmed` (hidden, unapprovable) until the representative's email is confirmed.
+  Full club record validated in `contexts/clubs/profile.py`, rendered by
+  `web/src/components/ClubFields.tsx`. Athletes lost `club.create`; staff register at
+  `/clubs/new` (admins `POST /v1/clubs`, coordinators `POST /v1/lgas/{lga}/clubs`). Tests:
+  `tests/_club_helpers.py` (`sign_up_club`, `registers_clubs`).
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.

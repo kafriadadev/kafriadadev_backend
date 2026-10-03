@@ -39,7 +39,6 @@ export default async function MyClubsPage({ searchParams }: { searchParams: Prom
         back={{ href: "/me", label: "My account" }}
         eyebrow="Clubs"
         title="My clubs"
-        actions={<a href="/clubs/new" className="btn btn--ghost">Register a club</a>}
       />
 
       {error ? (

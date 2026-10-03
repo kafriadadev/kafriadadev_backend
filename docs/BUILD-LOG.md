@@ -30,6 +30,60 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-03 — Clubs sign up on their own, with a full record (migration 0015)
+**Commit(s):** see the commit that adds this entry; the badge change before it is `1f21717`.
+
+**Built:**
+- **A public club sign-up** (`POST /v1/clubs/register`, `/clubs/register`). It creates the
+  representative's account (no athlete record, no ID) and the club in one transaction. The
+  club waits as a new status, `unconfirmed`, invisible to administrators and impossible to
+  approve. It moves to `pending_review` when the representative confirms their email.
+  - The record covers: registered and short name, kind, sport, category, age groups,
+    level, year founded; home ground, address and town; club phone and email;
+    registration number, affiliation, colours and website (optional); the
+    representative's role; and a second official with a different number.
+- **One validator for all entry points.** `contexts/clubs/profile.py` checks the club record
+  whether a club signs up, staff register it, or it is edited. In the web tier it is one
+  `ClubFields` component.
+- **Athletes no longer hold `club.create`**, and "Register a club" is gone from athlete
+  screens. It is in the header, footer and landing page instead.
+- **Staff can still register a club for someone** at `/clubs/new`: administrators through
+  `POST /v1/clubs`, coordinators through the new `POST /v1/lgas/{lga_id}/clubs`. The area
+  comes from the scope-checked path.
+  - **Found on the way:** coordinators held `club.create` but could never use it. The old
+    route has no scope, and an LGA-scoped grant does not satisfy an unscoped check.
+- **Edit and details:** `PUT /v1/clubs/{id}` and the edit screen cover the whole record; the
+  details tab shows it and says when it is incomplete.
+- **Verified badge (previous commit):** the ID is issued at registration and unverified
+  athletes may join and move between clubs. A Verified / Unverified badge on the profile,
+  card page, roster, coordinator search and `/me` marks the difference.
+
+**Verified:**
+- Migration 0015 applies, reverses and re-applies on the local PostgreSQL;
+  `check_migration_safety.py` is clean. Its one deleted row is approved in the file.
+- New `test_club_signup.py` (16): the club stays unseen and unapprovable until the email is
+  confirmed; the representative is not an athlete and cannot sign in before confirming;
+  every required field is refused by name with nothing written; the duplicate
+  representative number and same-number second official are refused; an athlete gets 403.
+- `test_clubs.py` gains the coordinator-only-in-own-LGA case and the new field refusals.
+- Club, admin, appoint, route-manifest and permission-matrix tests: 331 passed.
+- Full suite: 973 passed, 4 failed. All four pass on their own with a cleared outbox. One
+  was a real assertion made too broad by registration now emailing a code
+  (`test_notifications.py`: "no email at all" became "not this message by email").
+- Live, JavaScript off, local DB: sign up a club through the form → the club is
+  `unconfirmed` → the emailed code → `pending_review`, the representative is on `/me` with
+  only the club tile → the details tab shows the record → the edit form is pre-filled.
+- `check:render` passed, including `/clubs/register` at all widths and the signed-in
+  `/clubs/new`, club details, club edit, `/admin/clubs`, card and `/details`. An earlier run
+  had passed on an expired session (every page was the sign-in screen); it was caught by
+  the text counts and re-run with a fresh session.
+
+**Not done / open:**
+- Migrations 0014 and 0015 are not yet on Supabase.
+- Clubs registered before today keep empty fields until edited.
+- Nothing yet lets an athlete transfer between clubs beyond accepting an invitation
+  (Slice 2, TRF-01..05); unverified athletes may do that today.
+
 ## 2026-10-03 — Full athlete registration and email confirmation (migration 0014)
 **Commit(s):** see the commit that adds this entry.
 

@@ -15,6 +15,8 @@ from fastapi.testclient import TestClient
 from kafriada.contexts.access import service as access
 from kafriada.main import create_app
 from tests._access_helpers import audit_actions, bearer, make_user, sql
+from tests._club_helpers import LGA as CLUB_LGA
+from tests._club_helpers import profile_body, registers_clubs
 from tests._media_helpers import LGA, OTHER_LGA
 from tests._payment_helpers import Athlete, new_athlete
 
@@ -35,12 +37,14 @@ def body(**over: object) -> dict[str, object]:
         "sport": "Football",
         "lga_id": LGA,
         "contact_phone": "08031234567",
+        **profile_body(),
         **over,
     }
 
 
 def register(client: TestClient, who: Athlete, **over: object):  # type: ignore[no-untyped-def]
-    return client.post("/v1/clubs", json=body(**over), headers=who.headers)
+    registers_clubs(who.user_id)
+    return client.post(f"/v1/lgas/{CLUB_LGA}/clubs", json=body(**over), headers=who.headers)
 
 
 def club_of(client: TestClient, who: Athlete) -> str:
@@ -102,8 +106,6 @@ def test_the_administrator_sees_an_empty_pending_club(client: TestClient) -> Non
         ({"name": "  "}, "name"),
         ({"name": "x" * 81}, "name"),
         ({"sport": "Curling"}, "sport"),
-        ({"lga_id": OTHER_LGA}, "lga_id"),
-        ({"lga_id": "NG-JG-NOPE"}, "lga_id"),
         ({"contact_phone": "12"}, "contact_phone"),
         ({"year_founded": 1850}, "year_founded"),
         ({"year_founded": 2999}, "year_founded"),
@@ -118,6 +120,18 @@ def test_bad_input_is_refused_on_its_field_and_writes_nothing(
     assert got.status_code == 422, got.text
     assert got.json()["error"]["message"]["field"] == field
     assert sql("SELECT count(*) AS n FROM identity.organizations")[0]["n"] == before
+
+
+def test_a_coordinator_registers_clubs_only_in_their_own_lga(client: TestClient) -> None:
+    who = new_athlete("Elsewhere")
+    registers_clubs(who.user_id)
+    elsewhere = client.post(f"/v1/lgas/{OTHER_LGA}/clubs", json=body(), headers=who.headers)
+    assert elsewhere.status_code == 403
+    # The area is the one in the path; a different one in the body is ignored.
+    made = register(client, who, lga_id=OTHER_LGA)
+    assert made.status_code == 201
+    (org,) = sql("SELECT lga_id FROM identity.organizations WHERE id = :c", c=made.json()["club_id"])
+    assert org["lga_id"] == LGA
 
 
 def test_a_repeated_name_in_the_same_lga_is_a_question_not_a_refusal(client: TestClient) -> None:
@@ -142,7 +156,7 @@ def test_a_signed_in_stranger_and_an_anonymous_caller_are_refused(client: TestCl
     club = club_of(client, owner)
     assert client.get(f"/v1/clubs/{club}", headers=stranger.headers).status_code == 403
     assert client.get(f"/v1/clubs/{club}").status_code == 401
-    assert client.post("/v1/clubs", json=body()).status_code == 401
+    assert client.post(f"/v1/lgas/{CLUB_LGA}/clubs", json=body()).status_code == 401
 
 
 def test_a_super_administrator_reads_any_club_and_gets_404_for_none(client: TestClient) -> None:
@@ -187,11 +201,13 @@ def test_an_administrator_can_edit_the_details_and_the_history_says_what_changed
     new_name = f"Renamed FC {uuid4().hex[:6]}"
     got = client.put(
         f"/v1/clubs/{club}", headers=who.headers,
-        json={"name": f"  {new_name}  ", "contact_phone": "0803 999 8888", "year_founded": 2001},
+        json={**profile_body(), "name": f"  {new_name}  ", "contact_phone": "0803 999 8888",
+              "year_founded": 2001, "town": "Dutse"},
     )
     assert got.status_code == 204, got.text
     seen = client.get(f"/v1/clubs/{club}", headers=who.headers).json()
     assert (seen["name"], seen["contact_phone"], seen["year_founded"]) == (new_name, "+2348039998888", 2001)
+    assert seen["profile"]["town"] == "Dutse"
     assert sql("SELECT name FROM identity.teams WHERE org_id = :c", c=club)[0]["name"] == new_name
     assert "club.details_updated" in audit_actions(club)
     (row,) = sql(
@@ -199,17 +215,20 @@ def test_an_administrator_can_edit_the_details_and_the_history_says_what_changed
         "AND action = 'club.details_updated'", c=club,
     )
     assert all(f in str(row["changed"]) for f in ("contact_phone", "name", "year_founded"))
+    # The record is complete or it is refused: a required field cannot be cleared.
     cleared = client.put(
         f"/v1/clubs/{club}", headers=who.headers,
-        json={"name": new_name, "contact_phone": "08039998888", "year_founded": None},
+        json={**profile_body(), "name": new_name, "contact_phone": "08039998888", "ground_name": ""},
     )
-    assert cleared.status_code == 204
-    assert client.get(f"/v1/clubs/{club}", headers=who.headers).json()["year_founded"] is None
+    assert cleared.status_code == 422
+    assert cleared.json()["error"]["message"]["field"] == "ground_name"
 
 
 @pytest.mark.parametrize(
     ("over", "field"),
-    [({"name": "x"}, "name"), ({"contact_phone": "12"}, "contact_phone"), ({"year_founded": 1800}, "year_founded")],
+    [({"name": "x"}, "name"), ({"contact_phone": "12"}, "contact_phone"), ({"year_founded": 1800}, "year_founded"),
+     ({"age_groups": []}, "age_groups"), ({"category": "kids"}, "category"),
+     ({"club_email": "nope"}, "club_email"), ({"official2_role": "Mascot"}, "official2_role")],
 )
 def test_a_bad_edit_is_refused_on_its_field_and_changes_nothing(
     client: TestClient, over: dict[str, object], field: str
@@ -217,7 +236,7 @@ def test_a_bad_edit_is_refused_on_its_field_and_changes_nothing(
     who = new_athlete("Bad edit")
     club = club_of(client, who)
     before = client.get(f"/v1/clubs/{club}", headers=who.headers).json()
-    body_ = {"name": before["name"], "contact_phone": "08031234567", "year_founded": None, **over}
+    body_ = {**profile_body(), "name": before["name"], "contact_phone": "08031234567", **over}
     got = client.put(f"/v1/clubs/{club}", headers=who.headers, json=body_)
     assert got.status_code == 422 and got.json()["error"]["message"]["field"] == field
     assert client.get(f"/v1/clubs/{club}", headers=who.headers).json()["name"] == before["name"]
@@ -226,7 +245,7 @@ def test_a_bad_edit_is_refused_on_its_field_and_changes_nothing(
 def test_only_the_clubs_own_administrator_can_edit_it(client: TestClient) -> None:
     a, b = new_athlete("Edit A"), new_athlete("Edit B")
     club_a = club_of(client, a)
-    payload = {"name": "Hijacked FC", "contact_phone": "08031234567", "year_founded": None}
+    payload = {**profile_body(), "name": "Hijacked FC", "contact_phone": "08031234567"}
     assert client.put(f"/v1/clubs/{club_a}", headers=b.headers, json=payload).status_code == 403
     assert client.put(f"/v1/clubs/{club_a}", json=payload).status_code == 401
     assert client.get(f"/v1/clubs/{club_a}", headers=a.headers).json()["name"] != "Hijacked FC"

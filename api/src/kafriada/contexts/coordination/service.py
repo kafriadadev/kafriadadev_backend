@@ -63,7 +63,8 @@ def dashboard(principal: Principal, lga_id: str) -> Dashboard | None:
                   (SELECT count(*) FROM identity.verification_requests v
                      JOIN identity.athletes a ON a.id = v.athlete_id
                     WHERE a.current_lga_id = :lga AND v.payment_id IS NOT NULL) AS paid,
-                  (SELECT count(*) FROM identity.organizations o WHERE o.lga_id = :lga) AS clubs
+                  (SELECT count(*) FROM identity.organizations o
+                    WHERE o.lga_id = :lga AND o.status <> 'unconfirmed') AS clubs
                 """
             ),
             {"lga": lga_id},

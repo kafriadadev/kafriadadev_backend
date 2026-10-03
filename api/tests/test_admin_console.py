@@ -21,6 +21,8 @@ from kafriada.contexts.payments.provider import FakeProvider
 from kafriada.contexts.payments.settlement import settle_charge
 from kafriada.main import create_app
 from tests._access_helpers import bearer, make_user, sql
+from tests._club_helpers import LGA as CLUB_LGA
+from tests._club_helpers import profile_body, registers_clubs
 from tests._media_helpers import LGA, athlete_with_files, pay, reviewer, use_local_store
 from tests._payment_helpers import PRICE, charge_success_event, new_athlete, pending_payment
 
@@ -164,9 +166,10 @@ def test_the_grantable_roles_say_what_each_is_scoped_to(client: TestClient, root
 # -- clubs ----------------------------------------------------------------------
 def test_clubs_awaiting_approval_come_first_and_can_be_filtered(client: TestClient, root: dict[str, str]) -> None:
     founder = new_athlete("Waiting founder")
+    registers_clubs(founder.user_id)
     made = client.post(
-        "/v1/clubs", headers=founder.headers,
-        json={"name": f"Queue FC {uuid4().hex[:6]}", "sport": "Football", "lga_id": LGA, "contact_phone": "08031234567"},
+        f"/v1/lgas/{CLUB_LGA}/clubs", headers=founder.headers,
+        json={"name": f"Queue FC {uuid4().hex[:6]}", "sport": "Football", "lga_id": LGA, "contact_phone": "08031234567", **profile_body()},
     )
     club = str(made.json()["club_id"])
     listing = client.get("/v1/admin/clubs", headers=root).json()["clubs"]
@@ -183,9 +186,10 @@ def test_clubs_awaiting_approval_come_first_and_can_be_filtered(client: TestClie
 # -- ADM-06 ---------------------------------------------------------------------
 def test_the_audit_log_shows_who_did_what_and_filters(client: TestClient, root: dict[str, str]) -> None:
     founder = new_athlete("Audited founder")
+    registers_clubs(founder.user_id)
     club = str(client.post(
-        "/v1/clubs", headers=founder.headers,
-        json={"name": f"Audit FC {uuid4().hex[:6]}", "sport": "Football", "lga_id": LGA, "contact_phone": "08031234567"},
+        f"/v1/lgas/{CLUB_LGA}/clubs", headers=founder.headers,
+        json={"name": f"Audit FC {uuid4().hex[:6]}", "sport": "Football", "lga_id": LGA, "contact_phone": "08031234567", **profile_body()},
     ).json()["club_id"])
     client.post(f"/v1/admin/clubs/{club}/approve", headers=root)
 

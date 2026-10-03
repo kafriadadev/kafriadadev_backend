@@ -90,11 +90,13 @@ export default function Home() {
             </p>
           </div>
           <div className="notice">
-            <p className="notice__title">For clubs and scouts</p>
-            <p className="mb0">
-              Scan the QR code on a card, or <Link href="/find">look up an ID</Link>. No
-              account is needed to check a player.
+            <p className="notice__title">For clubs</p>
+            <p>
+              Register your club, add your players and get a verified club badge. To check
+              any player, scan the QR code on their card or{" "}
+              <Link href="/find">look up an ID</Link>.
             </p>
+            <Link href="/clubs/register" className="btn btn--ghost">Register a club</Link>
           </div>
         </div>
       </section>

@@ -3,37 +3,33 @@
 import { redirect } from "next/navigation";
 
 import { ApiError, updateClub } from "@/lib/api";
+import { readClub } from "@/lib/clubProfile";
 import { clientMeta, sessionToken } from "@/lib/session";
 
-/** Save a club's details as a plain form post. Every rule is the API's. */
+/** Save a club's record as a plain form post. Every rule is the API's. */
 export async function updateClubAction(formData: FormData): Promise<void> {
   const token = await sessionToken();
   if (!token) redirect("/sign-in");
   const club = String(formData.get("club") ?? "");
-  const text = (name: string) => String(formData.get(name) ?? "").trim();
-  const submitted = {
-    name: text("name"),
-    contact_phone: text("contact_phone"),
-    year_founded: text("year_founded"),
-  };
+  const read = readClub(formData);
 
   const bounceBack = (message: string, field?: string): never => {
-    const params = new URLSearchParams({ error: message });
+    const params = new URLSearchParams(read.kept);
+    params.set("error", message);
+    params.set("edited", "1");
     if (field) params.set("field", field);
-    for (const [key, value] of Object.entries(submitted)) if (value) params.set(key, value);
     redirect(`/clubs/${encodeURIComponent(club)}/edit?${params}`);
   };
 
-  const year = submitted.year_founded ? Number.parseInt(submitted.year_founded, 10) : null;
-  if (submitted.year_founded && (year === null || Number.isNaN(year))) {
-    bounceBack("Enter a valid year.", "year_founded");
+  if (Number.isNaN(read.profile.year_founded)) {
+    bounceBack("Enter the year the club was founded.", "year_founded");
   }
 
   try {
     await updateClub(
       token,
       club,
-      { name: submitted.name, contact_phone: submitted.contact_phone, year_founded: year },
+      { ...read.profile, name: read.name, contact_phone: read.contact_phone },
       await clientMeta(),
     );
   } catch (error) {

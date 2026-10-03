@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { EmptyState } from "@/components/EmptyState";
+import { AGE_GROUPS, CATEGORIES, CLUB_LEVELS, CLUB_TYPES } from "@/lib/clubProfile";
 import { PageHead } from "@/components/PageHead";
 import { Stat } from "@/components/Stat";
 import { SubNav } from "@/components/SubNav";
@@ -174,17 +175,63 @@ export default async function ClubPage({
       ) : null}
 
       {tab === "details" ? (
-        <section className="doc narrow" aria-label="Club details">
+        <section className="doc" aria-label="Club details">
           <div className="doc__body">
-            <dl className="facts">
-              <div className="fact"><dt>Name</dt><dd>{club.name}</dd></div>
-              <div className="fact"><dt>Sport</dt><dd>{club.sport}</dd></div>
-              <div className="fact"><dt>Area</dt><dd>{club.lga_name}</dd></div>
-              {club.year_founded ? (
-                <div className="fact"><dt>Founded</dt><dd>{club.year_founded}</dd></div>
-              ) : null}
-              <div className="fact"><dt>Contact</dt><dd>{club.contact_phone}</dd></div>
-            </dl>
+            {(() => {
+              const p = (club.profile ?? {}) as Record<string, unknown>;
+              const t = (v: unknown): string | null =>
+                v === null || v === undefined || v === "" ? null : String(v);
+              const label = (map: Record<string, string>, v: unknown) =>
+                t(v) ? (map[String(v)] ?? String(v)) : null;
+              const groups = Array.isArray(p.age_groups)
+                ? (p.age_groups as string[]).map((g) => AGE_GROUPS[g] ?? g).join(", ")
+                : null;
+              const rows: [string, string | null][] = [
+                ["Registered name", club.name],
+                ["Short name", t(p.short_name)],
+                ["Kind", label(CLUB_TYPES, p.type)],
+                ["Sport", club.sport],
+                ["Category", label(CATEGORIES, p.category)],
+                ["Age groups", groups],
+                ["Level", label(CLUB_LEVELS, p.level)],
+                ["Founded", club.year_founded ? String(club.year_founded) : null],
+                ["Home ground", [t(p.ground_name), t(p.ground_address), t(p.town)].filter(Boolean).join(", ") || null],
+                ["Area", club.lga_name],
+                ["Club phone", club.contact_phone],
+                ["Club email", t(p.club_email)],
+                ["Registration number", t(p.cac_number)],
+                ["Affiliation", t(p.affiliation)],
+                ["Colours", t(p.colours)],
+                ["Website", t(p.website)],
+                ["Representative's role", t(p.rep_role)],
+                ["Second official", t(p.official2_name)
+                  ? `${t(p.official2_name)} (${t(p.official2_role) ?? ""}), ${t(p.official2_phone) ?? ""}`
+                  : null],
+              ];
+              const missing = rows.filter(([, v]) => v === null).length;
+              return (
+                <>
+                  {missing ? (
+                    <div className="notice notice--warn mb-4">
+                      <p className="notice__title">The club&rsquo;s record is incomplete</p>
+                      <p className="mb0">Fill in the missing details so reviewers have the full picture.</p>
+                    </div>
+                  ) : null}
+                  <div className="grid grid-2">
+                    {[rows.slice(0, 9), rows.slice(9)].map((half, i) => (
+                      <dl className="facts m0" key={i}>
+                        {half.map(([k, v]) => (
+                          <div className="fact" key={k}>
+                            <dt>{k}</dt>
+                            <dd className="break">{v ?? <span className="unset">Not given</span>}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
             <p className="mt-4 mb0">
               <a href={`${base}/edit`} className="btn btn--ghost">Edit details</a>
             </p>
