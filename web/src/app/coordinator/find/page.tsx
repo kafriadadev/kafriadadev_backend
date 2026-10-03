@@ -1,3 +1,4 @@
+import { VerificationBadge } from "@/components/VerificationBadge";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -115,9 +116,7 @@ export default async function FindAthletePage({ searchParams }: { searchParams: 
                   </td>
                   <td data-label="ID"><span className="kuid">{p.kuid}</span></td>
                   <td data-label="Status">
-                    <span className={p.verified ? "pill pill--issued" : "pill pill--pending"}>
-                      {p.verified ? "Verified" : "Not verified"}
-                    </span>
+                    <VerificationBadge verified={p.verified} />
                   </td>
                   <td data-label="">
                     <span className="list__actions">

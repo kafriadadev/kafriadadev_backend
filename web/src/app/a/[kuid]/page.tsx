@@ -1,3 +1,4 @@
+import { VerificationBadge } from "@/components/VerificationBadge";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -85,7 +86,8 @@ export default async function ProfilePage({
                 {profile.playing_position ? ` · ${profile.playing_position}` : ""}
               </p>
 
-              <p className="mt-3 mb0">
+              <p className="mt-3 mb0 cluster">
+                <VerificationBadge verified={profile.is_verified} />
                 {profile.issued_by_kafriada ? (
                   <span className="pill pill--issued">
                     <Tick /> Issued by KAFRIADA
@@ -133,16 +135,14 @@ export default async function ProfilePage({
               <dd>{profile.registered_year}</dd>
             </div>
             <div className="fact">
-              <dt>Photograph</dt>
+              <dt>Identity</dt>
               <dd>
                 {profile.is_verified ? (
-                  "Verified"
+                  "Checked by the LGA coordinator"
                 ) : profile.verification_withdrawn ? (
                   "Verification withdrawn"
                 ) : (
-                  <span className="unset">
-                    Not yet added
-                  </span>
+                  <span className="unset">Not yet checked</span>
                 )}
               </dd>
             </div>

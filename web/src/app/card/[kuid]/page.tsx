@@ -1,3 +1,4 @@
+import { VerificationBadge } from "@/components/VerificationBadge";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -43,6 +44,10 @@ export default async function CardPage({
           title={`${firstName}, this is your ID.`}
           lede="It is permanent and it is yours. Print it, download it, or simply write the number down. All three work."
         />
+        <p className="cluster mb-4">
+          <span className="hint">Status</span>
+          <VerificationBadge verified={profile.is_verified} />
+        </p>
       </div>
 
       <div className="split">
@@ -137,18 +142,21 @@ export default async function CardPage({
       </div>
 
       {/* -- The upsell. Deliberately AFTER the free thing is delivered. --- */}
+      {profile.is_verified ? null : (
       <div className="notice notice--warn">
-        <p className="notice__title">Optional</p>
+        <p className="notice__title">Get verified</p>
         <p>
-          <strong>Add your photograph for ₦2,500.</strong> Your LGA coordinator
-          checks your ID document, and your photo then appears on your public
-          profile with a verified badge.
+          <strong>Your profile shows as unverified.</strong> For ₦2,500 your LGA
+          coordinator checks your ID document, and your profile then shows the
+          verified badge and your photograph.
         </p>
         <p className="hint mb0">
           No bank card? Take ₦2,500 in cash to your LGA coordinator and they can
           do it for you.
         </p>
+        <a href="/verify" className="btn btn--primary mt-3">Get verified</a>
       </div>
+      )}
 
       <div className="notice">
         <p className="notice__title">Keep this number</p>

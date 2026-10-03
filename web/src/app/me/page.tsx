@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 
 import { PageHead } from "@/components/PageHead";
 import { Flash } from "@/components/Flash";
-import { ApiError, getMe, type Me } from "@/lib/api";
+import { VerificationBadge } from "@/components/VerificationBadge";
+import { ApiError, getMe, getProfile, type Me } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 import { signOutAction } from "./actions";
 
@@ -51,6 +52,9 @@ export default async function MePage({
   const clubs = me.roles.filter((r) => r.role === "club_admin" && r.scope_id);
   const hasWorkAreas = isAdmin || isCoordinator || clubs.length > 0;
   const kuid = me.kuid ? encodeURIComponent(me.kuid) : null;
+  const verified = me.kuid
+    ? Boolean((await getProfile(me.kuid).catch(() => null))?.is_verified)
+    : false;
 
   return (
     <div className="page page--wide">
@@ -85,10 +89,12 @@ export default async function MePage({
                   <span className="tile__title">Public profile</span>
                   <span className="tile__text">What a club or scout sees when they scan.</span>
                 </a>
-                <a href="/verify" className="tile">
-                  <span className="tile__title">Get verified</span>
-                  <span className="tile__text">Add your photograph and a verified badge.</span>
-                </a>
+                {verified ? null : (
+                  <a href="/verify" className="tile">
+                    <span className="tile__title">Get verified</span>
+                    <span className="tile__text">Add your photograph and the verified badge.</span>
+                  </a>
+                )}
                 <a href="/details" className="tile">
                   <span className="tile__title">My details</span>
                   <span className="tile__text">Address, height, weight, emergency contact.</span>
@@ -153,6 +159,12 @@ export default async function MePage({
                   <div className="fact">
                     <dt>KAFRIADA ID</dt>
                     <dd><span className="kuid">{me.kuid}</span></dd>
+                  </div>
+                ) : null}
+                {me.kuid ? (
+                  <div className="fact">
+                    <dt>Status</dt>
+                    <dd><VerificationBadge verified={verified} /></dd>
                   </div>
                 ) : null}
                 {me.lga_name ? (

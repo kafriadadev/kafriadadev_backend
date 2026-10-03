@@ -26,7 +26,7 @@ const TABS = [
 
 const STATE_LABEL: Record<ClubRosterRow["state"], string> = {
   verified: "Verified",
-  unverified: "Not verified",
+  unverified: "Unverified",
   invited: "Invited",
 };
 const STATE_PILL: Record<ClubRosterRow["state"], string> = {
