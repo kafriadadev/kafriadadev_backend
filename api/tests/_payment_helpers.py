@@ -11,7 +11,6 @@ import hashlib
 import hmac
 import json
 from dataclasses import dataclass
-from datetime import date
 from types import SimpleNamespace
 from uuid import UUID
 
@@ -24,6 +23,7 @@ from kafriada.contexts.identity import service as identity
 from kafriada.contexts.payments.rules import Purpose
 from kafriada.db.engine import money_transaction
 from tests._access_helpers import new_phone, sql
+from tests._registration import registration
 
 PRICE = 250_000
 FEE = 3_750
@@ -44,14 +44,7 @@ class Athlete:
 def new_athlete(name: str = "Payer") -> Athlete:
     phone = new_phone()
     result = identity.register(
-        identity.RegistrationInput(
-            full_name=f"{name} Test",
-            phone=phone,
-            password="a long test passphrase",
-            date_of_birth=date(1996, 4, 20),
-            lga_id="NG-JG-BKD",
-            sport="Football",
-        )
+        registration(phone, f"{name} Test")
     )
     token = access.issue_session(result.user_id, method="test").token
     return Athlete(user_id=result.user_id, kuid=result.kuid, token=token)

@@ -257,6 +257,12 @@ class Settings(BaseSettings):
     # account with no email on file still gets its code by SMS regardless of
     # this setting, since there is nowhere else to send it.
     otp_channel: OtpChannel = OtpChannel.SMS
+    # Every account confirms its email with a code before it can sign in. The
+    # code always goes by email, whatever otp_channel says.
+    require_email_confirmation: bool = True
+    # Off until the Twilio Nigerian sender ID is approved: the phone is recorded
+    # but not checked, and registration sends no SMS code.
+    require_phone_confirmation: bool = False
 
     # -- Per-address rate limits ------------------------------------------
     # These count what one SOURCE is doing. The per-person limits (account
@@ -354,6 +360,11 @@ class Settings(BaseSettings):
     def _resend_needs_its_key(self) -> Self:
         if self.email_provider is EmailProvider.RESEND and self.resend_api_key is None:
             raise ValueError("resend_api_key is required when email_provider is resend")
+        if self.require_email_confirmation and self.email_provider is EmailProvider.NONE                 and self.environment is Environment.PRODUCTION:
+            raise ValueError(
+                "require_email_confirmation is on but email_provider is 'none' — "
+                "nobody could finish registering"
+            )
         if self.otp_channel is OtpChannel.EMAIL and self.email_provider is EmailProvider.NONE:
             raise ValueError(
                 "otp_channel is 'email' but email_provider is 'none' — codes would "

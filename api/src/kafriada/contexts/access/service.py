@@ -29,6 +29,7 @@ is why the timing is kept close rather than claimed identical.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
@@ -77,6 +78,24 @@ class SignInRefused(Exception):
         self.message = SIGN_IN_REFUSED_MESSAGE
 
 
+class EmailUnconfirmed(Exception):
+    """The password was right but the account's email is not confirmed yet.
+
+    No session is issued. A fresh code has been sent to ``email_masked``.
+    """
+
+    def __init__(self, email_masked: str) -> None:
+        super().__init__("Confirm your email to sign in.")
+        self.email_masked = email_masked
+
+
+class EmailMissing(Exception):
+    """The password was right but the account has no email. Sign in again with one."""
+
+    def __init__(self) -> None:
+        super().__init__("Add your email address to continue.")
+
+
 class AccessError(Exception):
     """A role or session change was refused. The message is shown to the user."""
 
@@ -117,6 +136,7 @@ class _Found:
     email: str | None
     password_hash: str | None
     phone_verified_at: datetime | None
+    email_verified_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,6 +195,7 @@ class Account:
     phone_masked: str
     phone_verified: bool
     roles: tuple[RoleGrant, ...]
+    email_verified: bool = False
 
     @property
     def is_staff(self) -> bool:
@@ -188,6 +209,7 @@ def sign_in(
     raw_phone: str,
     raw_password: str,
     *,
+    email: str | None = None,
     ip_address: str | None = None,
     user_agent: str | None = None,
     request_id: str | None = None,
@@ -208,7 +230,7 @@ def sign_in(
         account = session.execute(
             text(
                 """
-                SELECT id, full_name, password_hash, status,
+                SELECT id, full_name, password_hash, status, email, email_verified_at,
                        (locked_until IS NOT NULL AND locked_until > now()) AS locked
                   FROM ops.users
                  WHERE phone_e164 = :phone AND anonymised_at IS NULL
@@ -234,6 +256,14 @@ def sign_in(
         raise SignInRefused()
 
     upgraded_hash = passwords.hash(raw_password) if checked.needs_rehash else None
+
+    if get_settings().require_email_confirmation and account["email_verified_at"] is None:
+        # The password was right, so saying why is safe. No session until the
+        # email is confirmed; the confirm screen issues one.
+        _hold_for_email(
+            user_id, account["full_name"], account["email"], email,
+            request_id=request_id, ip_address=ip_address,
+        )
 
     with transaction() as session:
         # Conditional, so a lock placed by a concurrent run of wrong guesses
@@ -648,6 +678,182 @@ def reset_password(
     log.info("password_reset", logins_ended=ended)
 
 
+def _hold_for_email(
+    user_id: UUID,
+    full_name: str,
+    on_file: str | None,
+    offered: str | None,
+    *,
+    request_id: str | None,
+    ip_address: str | None,
+) -> None:
+    """Send an email code to an account that has not confirmed one, then refuse.
+
+    Always raises: :class:`EmailUnconfirmed` once a code is on its way, or
+    :class:`EmailMissing` when there is no address to send it to.
+    """
+    address = on_file
+    if address is None:
+        cleaned = (offered or "").strip().lower()
+        if not cleaned:
+            raise EmailMissing()
+        if not EMAIL_RE.match(cleaned):
+            raise AccessError("Enter a valid email address.", field="email")
+        address = cleaned
+
+    with transaction() as session:
+        if on_file is None:
+            taken = session.execute(
+                text(
+                    "SELECT 1 FROM ops.users WHERE lower(email) = :email "
+                    "AND anonymised_at IS NULL AND id <> :id"
+                ),
+                {"email": address, "id": user_id},
+            ).first()
+            if taken:
+                raise AccessError(
+                    "This email is already registered. Use a different one.", field="email"
+                )
+            session.execute(
+                text("UPDATE ops.users SET email = :email WHERE id = :id"),
+                {"email": address, "id": user_id},
+            )
+        try:
+            otp.send_code(
+                session, user_id=user_id, purpose=otp.EMAIL_VERIFICATION,
+                phone_e164="", email=address,
+            )
+            audit.record(
+                session,
+                actor=audit.Actor(user_id=user_id, label=full_name),
+                action="email.code_sent",
+                subject_type="user",
+                subject_id=str(user_id),
+                request_id=request_id,
+                ip_address=ip_address,
+            )
+        except (otp.TooSoon, otp.TooMany):
+            # A code went out recently; the confirm screen offers another later.
+            log.info("email_code_not_resent_at_sign_in")
+    raise EmailUnconfirmed(mask_email(address))
+
+
+def send_email_code_at_registration(session: Session, user_id: UUID, email: str) -> None:
+    """The first email code, inside the registration's own transaction.
+
+    No limits on this one, for the same reason as the phone code: it is the first
+    code of a registration that has just been accepted.
+    """
+    otp.send_code(
+        session,
+        user_id=user_id,
+        purpose=otp.EMAIL_VERIFICATION,
+        phone_e164="",
+        email=email,
+        enforce_limits=False,
+    )
+
+
+def request_email_code(
+    raw_phone: str,
+    *,
+    request_id: str | None = None,
+    ip_address: str | None = None,
+) -> CodeRequested:
+    """Send another email-confirmation code to the account behind this phone."""
+    cfg = get_settings()
+    user = _user_for_phone(raw_phone)
+    if user is None or user.email is None or user.email_verified_at is not None:
+        # Nothing to confirm. Same shape as success: this screen is public.
+        return CodeRequested(resend_in=cfg.otp_resend_seconds)
+
+    with transaction() as session:
+        try:
+            otp.send_code(
+                session,
+                user_id=user.id,
+                purpose=otp.EMAIL_VERIFICATION,
+                phone_e164=user.phone_e164,
+                email=user.email,
+            )
+        except otp.TooSoon as exc:
+            return CodeRequested(resend_in=exc.seconds)
+        except otp.TooMany:
+            return CodeRequested(resend_in=cfg.otp_resend_seconds, daily_limit_reached=True)
+
+        audit.record(
+            session,
+            actor=audit.Actor(user_id=user.id, label=user.full_name),
+            action="email.code_sent",
+            subject_type="user",
+            subject_id=str(user.id),
+            request_id=request_id,
+            ip_address=ip_address,
+        )
+    return CodeRequested(resend_in=cfg.otp_resend_seconds)
+
+
+def confirm_email(
+    raw_phone: str,
+    code: str,
+    *,
+    request_id: str | None = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> PhoneConfirmed:
+    """Check the emailed code, mark the email confirmed, and sign the person in.
+
+    Keyed by phone, like every other code flow: the confirm screen carries the
+    number from registration or sign-in, never the address.
+    """
+    user = _user_for_phone(raw_phone)
+    if user is None or user.email is None:
+        raise CodeRefused("That code is wrong or has expired. Ask for a new one.")
+
+    _spend_code(user.id, otp.EMAIL_VERIFICATION, code)
+
+    with transaction() as session:
+        if user.email_verified_at is None:
+            session.execute(
+                text("UPDATE ops.users SET email_verified_at = now() WHERE id = :id"),
+                {"id": user.id},
+            )
+            audit.record(
+                session,
+                actor=audit.Actor(user_id=user.id, label=user.full_name),
+                action="email.verified",
+                subject_type="user",
+                subject_id=str(user.id),
+                request_id=request_id,
+                ip_address=ip_address,
+            )
+
+        issued = _issue(session, user.id, ip_address=ip_address, user_agent=user_agent)
+        audit.record(
+            session,
+            actor=audit.Actor(user_id=user.id, label=user.full_name),
+            action="session.issued",
+            subject_type="user",
+            subject_id=str(user.id),
+            metadata={"method": "email_code", "staff": issued.is_staff},
+            request_id=request_id,
+            ip_address=ip_address,
+        )
+
+    return PhoneConfirmed(user_id=user.id, session=issued)
+
+
+# Shape only: rejects what plainly is not an email without pretending to know
+# the full grammar of one.
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def mask_email(email: str) -> str:
+    """a***@example.com: enough for the owner to recognise, not enough to harvest."""
+    local, _, domain = email.partition("@")
+    return f"{local[:1]}***@{domain}"
+
+
 def _spend_code(user_id: UUID, purpose: str, code: str) -> None:
     """Check a code and commit the attempt, then refuse if it was wrong.
 
@@ -680,7 +886,8 @@ def _user_for_phone(raw_phone: str) -> _Found | None:
         row = session.execute(
             text(
                 """
-                SELECT id, full_name, phone_e164, email, password_hash, phone_verified_at
+                SELECT id, full_name, phone_e164, email, password_hash, phone_verified_at,
+                       email_verified_at
                   FROM ops.users
                  WHERE phone_e164 = :phone
                    AND anonymised_at IS NULL
@@ -698,6 +905,7 @@ def _user_for_phone(raw_phone: str) -> _Found | None:
         email=row["email"],
         password_hash=row["password_hash"],
         phone_verified_at=row["phone_verified_at"],
+        email_verified_at=row["email_verified_at"],
     )
 
 
@@ -873,7 +1081,7 @@ def describe_account(user_id: UUID) -> Account:
     with transaction() as session:
         user = session.execute(
             text(
-                "SELECT id, full_name, phone_e164, phone_verified_at "
+                "SELECT id, full_name, phone_e164, phone_verified_at, email_verified_at "
                 "FROM ops.users WHERE id = :id"
             ),
             {"id": user_id},
@@ -885,6 +1093,7 @@ def describe_account(user_id: UUID) -> Account:
         phone_masked=phone_mod.mask(user.phone_e164),
         phone_verified=user.phone_verified_at is not None,
         roles=grants,
+        email_verified=user.email_verified_at is not None,
     )
 
 

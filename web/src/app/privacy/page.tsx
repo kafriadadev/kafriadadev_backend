@@ -14,20 +14,24 @@ export const metadata: Metadata = { title: "Privacy notice" };
 export default function PrivacyPage() {
   return (
     <div className="page prose">
-      <PageHead eyebrow="Version 1.0 · Effective 1 October 2026" title="What we keep, and what we do with it" />
+      <PageHead eyebrow="Version 1.1 · Effective 3 October 2026" title="What we keep, and what we do with it" />
 
       <h2>What we collect</h2>
       <p>
-        Your name, phone number, date of birth, Local Government Area, sport and
-        position. If you choose paid verification, also a photograph and a
-        photograph of an identity document.
+        Your name, sex, date of birth, nationality and state of origin; your phone
+        number, email and home address; your sport, positions, stronger side, height,
+        weight, years playing and the highest level you have played; and the name,
+        relationship and phone number of an emergency contact. If you choose paid
+        verification, also a photograph and a photograph of an identity document.
       </p>
 
       <h2>What is public</h2>
       <p>
-        Your name, KAFRIADA ID, sport, position, LGA, age and — once verified —
-        your photograph. <strong>Your phone number and your date of birth are
-        never shown publicly</strong>, and neither is any identity document.
+        Your name, KAFRIADA ID, sport, position, LGA, age and, once verified, your
+        photograph. <strong>Your phone number, email, address, date of birth and
+        emergency contact are never shown publicly</strong>, and neither is any
+        identity document. Your LGA coordinator and KAFRIADA administrators can see
+        your full record.
       </p>
 
       <h2>Why we keep it</h2>
@@ -40,8 +44,8 @@ export default function PrivacyPage() {
       <div className="notice notice--warn">
         <p className="notice__title">If you ask us to delete your data</p>
         <p>
-          Your name, photograph, phone number, date of birth and any documents
-          are erased.
+          Your name, photograph, contact details, address, date of birth, emergency
+          contact and any documents are erased.
         </p>
         <p className="mb0">
           <strong>Your KAFRIADA ID and your payment records are kept.</strong> We

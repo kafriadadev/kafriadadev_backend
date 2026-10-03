@@ -49,9 +49,10 @@ from kafriada.contexts.access import phone as phone_mod
 from kafriada.contexts.access import service as access
 from kafriada.contexts.audit import service as audit
 from kafriada.contexts.identity import kuid as kuid_mod
+from kafriada.contexts.identity import profile
 from kafriada.db.engine import transaction
 from kafriada.security.passwords import get_password_service, password_policy_error
-from kafriada.settings import OtpChannel, get_settings
+from kafriada.settings import get_settings
 
 log = structlog.get_logger(__name__)
 
@@ -81,18 +82,38 @@ class RegistrationError(Exception):
 
 @dataclass(frozen=True, slots=True)
 class RegistrationInput:
-    full_name: str
+    """Everything a registration collects. All of it is required except where noted."""
+
+    first_name: str
+    surname: str
+    email: str
     phone: str
     password: str
     date_of_birth: date
-    lga_id: str
+    gender: str
+    nationality: str
+    state_of_origin: str          # "Not applicable" for a nationality other than Nigerian
+    address_line: str
+    town: str
+    lga_id: str                   # where they register and live; printed into the ID
     sport: str
-    playing_position: str | None = None
+    playing_position: str
+    dominant_side: str
+    height_cm: int
+    weight_kg: int
+    years_experience: int
+    level_played: str
+    emergency_name: str
+    emergency_relationship: str
+    emergency_phone: str
+    middle_name: str | None = None          # optional
+    secondary_position: str | None = None   # optional
     consent_notice_version: str | None = None
-    # Optional in general — the identity anchor is the phone. Required only
-    # while settings.otp_channel is 'email' (see there): a pilot stand-in for
-    # SMS, which is not registered yet.
-    email: str | None = None
+
+    @property
+    def full_name(self) -> str:
+        parts = (self.first_name, self.middle_name or "", self.surname)
+        return " ".join(" ".join(parts).split())
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,25 +138,27 @@ def register(
     # ---------------------------------------------------------------
     # Everything that can be rejected, rejected before any database work.
     # ---------------------------------------------------------------
-    full_name = " ".join(data.full_name.split())
-    if len(full_name) < 3:
-        raise RegistrationError("Enter your full name.", field="full_name")
+    _validate_profile(data)
+    full_name = data.full_name
 
     try:
         phone_e164 = phone_mod.normalise(data.phone)
     except phone_mod.InvalidPhoneNumberError as exc:
         raise RegistrationError(str(exc), field="phone") from exc
-
-    email = (data.email or "").strip().lower() or None
-    cfg = get_settings()
-    if email is not None and not _EMAIL_RE.match(email):
-        raise RegistrationError("Enter a valid email address.", field="email")
-    if email is None and cfg.otp_channel is OtpChannel.EMAIL:
-        # The pilot stand-in for SMS (settings.otp_channel) — see there.
+    try:
+        emergency_e164 = phone_mod.normalise(data.emergency_phone)
+    except phone_mod.InvalidPhoneNumberError as exc:
+        raise RegistrationError(str(exc), field="emergency_phone") from exc
+    if emergency_e164 == phone_e164:
         raise RegistrationError(
-            "Enter your email. Codes are sent there while SMS is being set up.",
-            field="email",
+            "The emergency contact needs a different number from yours.",
+            field="emergency_phone",
         )
+
+    email = data.email.strip().lower()
+    cfg = get_settings()
+    if not _EMAIL_RE.match(email):
+        raise RegistrationError("Enter a valid email address.", field="email")
 
     if (problem := password_policy_error(data.password)) is not None:
         raise RegistrationError(problem, field="password")
@@ -151,8 +174,6 @@ def register(
     if age > 120:
         raise RegistrationError("Check the date of birth.", field="date_of_birth")
 
-    if not data.sport.strip():
-        raise RegistrationError("Choose your sport.", field="sport")
 
     # ---------------------------------------------------------------
     # The expensive part, deliberately before BEGIN. See the module docstring:
@@ -168,6 +189,9 @@ def register(
             user_id = _insert_user(
                 session,
                 full_name=full_name,
+                first_name=data.first_name.strip(),
+                middle_name=(data.middle_name or "").strip() or None,
+                surname=data.surname.strip(),
                 phone_e164=phone_e164,
                 email=email,
                 password_hash=password_hash,
@@ -198,7 +222,9 @@ def register(
         # that rolls back sends nobody a code, and a code that is queued belongs
         # to a registration that really happened. Before the mint, so it costs
         # no time on the counter lock.
-        access.send_registration_code(session, user_id, phone_e164, email=email)
+        access.send_email_code_at_registration(session, user_id, email)
+        if cfg.require_phone_confirmation:
+            access.send_registration_code(session, user_id, phone_e164)
 
         # -- the mint ----------------------------------------------------
         # One statement allocates the serial, creates the athlete and records
@@ -232,12 +258,20 @@ def register(
                     INSERT INTO identity.athletes
                         (user_id, kuid, kuid_state, kuid_year, kuid_serial,
                          registration_lga_id, current_lga_id,
-                         date_of_birth, sport, playing_position)
+                         date_of_birth, sport, playing_position,
+                         gender, dominant_side, years_experience,
+                         nationality, state_of_origin, address_line, town,
+                         height_cm, weight_kg, level_played, secondary_position,
+                         emergency_name, emergency_relationship, emergency_phone)
                     SELECT :user_id,
                            :kuid_prefix || lpad(m.next_serial::text, 6, '0'),
                            :state_code, :year, m.next_serial,
                            :lga_id, :lga_id,
-                           :dob, :sport, :position
+                           :dob, :sport, :position,
+                           :gender, :side, :years,
+                           :nationality, :state_of_origin, :address, :town,
+                           :height, :weight, :level, :secondary,
+                           :em_name, :em_relationship, :em_phone
                       FROM minted m
                     RETURNING id, kuid
                 )
@@ -257,7 +291,21 @@ def register(
                 "lga_id": lga["id"],
                 "dob": data.date_of_birth,
                 "sport": data.sport.strip(),
-                "position": (data.playing_position or "").strip() or None,
+                "position": data.playing_position.strip(),
+                "gender": data.gender,
+                "side": data.dominant_side,
+                "years": data.years_experience,
+                "nationality": data.nationality,
+                "state_of_origin": data.state_of_origin,
+                "address": " ".join(data.address_line.split()),
+                "town": " ".join(data.town.split()),
+                "height": data.height_cm,
+                "weight": data.weight_kg,
+                "level": data.level_played,
+                "secondary": (data.secondary_position or "").strip() or None,
+                "em_name": " ".join(data.emergency_name.split()),
+                "em_relationship": " ".join(data.emergency_relationship.split()),
+                "em_phone": emergency_e164,
                 "meta": json.dumps({"lga": lga["lga_name"]}),
             },
         ).mappings().one()
@@ -288,6 +336,63 @@ def register(
         lga_name=lga["lga_name"],
         phone_masked=phone_mod.mask(phone_e164),
     )
+
+
+def _validate_profile(data: RegistrationInput) -> None:
+    """Every required field present and every choice one we offer."""
+
+    def need(value: str | None, field: str, message: str, longest: int = 120) -> None:
+        cleaned = " ".join((value or "").split())
+        if len(cleaned) < 2:
+            raise RegistrationError(message, field=field)
+        if len(cleaned) > longest:
+            raise RegistrationError(f"Keep this under {longest} characters.", field=field)
+
+    need(data.first_name, "first_name", "Enter your first name.", 60)
+    need(data.surname, "surname", "Enter your surname.", 60)
+    if data.middle_name and len(data.middle_name.strip()) > 60:
+        raise RegistrationError("Keep this under 60 characters.", field="middle_name")
+    if data.gender not in profile.GENDERS:
+        raise RegistrationError("Choose male or female.", field="gender")
+    if data.nationality not in profile.NATIONALITIES:
+        raise RegistrationError("Choose your nationality.", field="nationality")
+    if data.nationality == profile.NIGERIAN:
+        if data.state_of_origin not in profile.NIGERIAN_STATES:
+            raise RegistrationError("Choose your state of origin.", field="state_of_origin")
+    elif data.state_of_origin not in (*profile.NIGERIAN_STATES, profile.NOT_APPLICABLE):
+        raise RegistrationError("Choose your state of origin.", field="state_of_origin")
+    need(data.address_line, "address_line", "Enter your house number and street.", 200)
+    need(data.town, "town", "Enter your town or city.", 80)
+    if data.sport not in profile.SPORTS:
+        raise RegistrationError("Choose your sport.", field="sport")
+    if data.playing_position not in profile.positions_for(data.sport):
+        raise RegistrationError(
+            f"Choose a position or event in {data.sport}.", field="playing_position"
+        )
+    if data.secondary_position and data.secondary_position not in profile.positions_for(
+        data.sport
+    ):
+        raise RegistrationError(
+            f"Choose a second position in {data.sport}, or leave it empty.",
+            field="secondary_position",
+        )
+    if data.dominant_side not in profile.DOMINANT_SIDES:
+        raise RegistrationError("Choose your stronger side.", field="dominant_side")
+    low, high = profile.HEIGHT_CM
+    if not low <= data.height_cm <= high:
+        raise RegistrationError(f"Height in centimetres, {low} to {high}.", field="height_cm")
+    low, high = profile.WEIGHT_KG
+    if not low <= data.weight_kg <= high:
+        raise RegistrationError(f"Weight in kilograms, {low} to {high}.", field="weight_kg")
+    low, high = profile.YEARS_PLAYING
+    if not low <= data.years_experience <= high:
+        raise RegistrationError("Years playing, as a whole number.", field="years_experience")
+    if data.level_played not in profile.LEVELS:
+        raise RegistrationError("Choose the highest level you have played.",
+                                field="level_played")
+    need(data.emergency_name, "emergency_name", "Enter your emergency contact's name.")
+    need(data.emergency_relationship, "emergency_relationship",
+         "Say how they are related to you.", 40)
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +438,9 @@ def _insert_user(
     session: Session,
     *,
     full_name: str,
+    first_name: str | None = None,
+    middle_name: str | None = None,
+    surname: str | None = None,
     phone_e164: str,
     email: str | None,
     password_hash: str,
@@ -349,16 +457,19 @@ def _insert_user(
         text(
             """
             INSERT INTO ops.users
-                (full_name, phone_e164, email, password_hash,
-                 consent_notice_version, consent_given_at)
+                (full_name, first_name, middle_name, surname, phone_e164, email,
+                 password_hash, consent_notice_version, consent_given_at)
             VALUES
-                (:full_name, :phone_e164, :email, :password_hash,
-                 :consent_version, :consent_given_at)
+                (:full_name, :first_name, :middle_name, :surname, :phone_e164, :email,
+                 :password_hash, :consent_version, :consent_given_at)
             RETURNING id
             """
         ),
         {
             "full_name": full_name,
+            "first_name": first_name,
+            "middle_name": middle_name,
+            "surname": surname,
             "phone_e164": phone_e164,
             "email": email,
             "password_hash": password_hash,
@@ -532,9 +643,6 @@ def athlete_for_user(user_id: UUID) -> OwnAthlete | None:
 # ---------------------------------------------------------------------------
 # Athlete details registration never asked for (ATH-02, migration 0009)
 # ---------------------------------------------------------------------------
-GENDERS = ("male", "female", "other", "prefer_not_to_say")
-DOMINANT_SIDES = ("left", "right", "both")
-MAX_SECONDARY_SPORT_CHARS = 40
 
 
 class DetailsError(Exception):
@@ -552,79 +660,151 @@ class NoAthleteRecord(Exception):
 
 @dataclass(frozen=True, slots=True)
 class AthleteDetails:
-    kuid: str
-    sport: str
-    playing_position: str | None
+    """The athlete's own record, as the details screen shows it.
+
+    The first group is fixed at registration (identity and eligibility); the
+    second is what the athlete keeps up to date.
+    """
+
+    kuid: str | None
+    full_name: str
     gender: str | None
+    date_of_birth: date
+    nationality: str | None
+    state_of_origin: str | None
+    sport: str
+    lga_name: str
+    email: str | None
+    playing_position: str | None
+    secondary_position: str | None
     dominant_side: str | None
     secondary_sport: str | None
     years_experience: int | None
+    height_cm: int | None
+    weight_kg: int | None
+    level_played: str | None
+    address_line: str | None
+    town: str | None
+    emergency_name: str | None
+    emergency_relationship: str | None
+    emergency_phone: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class DetailsUpdate:
+    """Everything the athlete may change. All required except the two optional ones."""
+
+    playing_position: str
+    dominant_side: str
+    years_experience: int
+    height_cm: int
+    weight_kg: int
+    level_played: str
+    address_line: str
+    town: str
+    emergency_name: str
+    emergency_relationship: str
+    emergency_phone: str
+    secondary_position: str | None = None
+    secondary_sport: str | None = None
+
+
+_DETAILS_SELECT = """
+    SELECT a.kuid, u.full_name, a.gender, a.date_of_birth, a.nationality, a.state_of_origin,
+           a.sport, l.name AS lga_name, u.email, a.playing_position, a.secondary_position,
+           a.dominant_side, a.secondary_sport, a.years_experience, a.height_cm, a.weight_kg,
+           a.level_played, a.address_line, a.town, a.emergency_name,
+           a.emergency_relationship, a.emergency_phone
+      FROM identity.athletes a
+      JOIN ops.users u ON u.id = a.user_id
+      JOIN ops.locations l ON l.id = a.current_lga_id
+     WHERE a.user_id = :id
+"""
 
 
 def get_athlete_details(user_id: UUID) -> AthleteDetails | None:
-    """The signed-in athlete's own details, for the edit screen (ATH-02)."""
+    """The signed-in athlete's own record, for the details screen (ATH-02)."""
     with transaction() as session:
-        row = session.execute(
-            text(
-                """
-                SELECT kuid, sport, playing_position, gender, dominant_side,
-                       secondary_sport, years_experience
-                  FROM identity.athletes
-                 WHERE user_id = :id
-                """
-            ),
-            {"id": user_id},
-        ).mappings().one_or_none()
+        row = session.execute(text(_DETAILS_SELECT), {"id": user_id}).mappings().one_or_none()
     return AthleteDetails(**row) if row is not None else None
 
 
-def update_athlete_details(
-    user_id: UUID,
-    *,
-    gender: str | None,
-    dominant_side: str | None,
-    secondary_sport: str | None,
-    years_experience: int | None,
-) -> AthleteDetails:
-    """Fill in what registration didn't ask for. Every field is optional and
-    every field is replaced wholesale — the edit screen always submits its
-    whole form, so there is no "field not sent" to distinguish from "cleared".
-    """
-    if gender is not None and gender not in GENDERS:
-        raise DetailsError("Choose one of the listed options.", field="gender")
-    if dominant_side is not None and dominant_side not in DOMINANT_SIDES:
+def update_athlete_details(user_id: UUID, update: DetailsUpdate) -> AthleteDetails:
+    """Replace what the athlete keeps up to date. The whole form is always sent."""
+    existing = get_athlete_details(user_id)
+    if existing is None:
+        raise NoAthleteRecord()
+
+    def need(value: str, field: str, message: str, longest: int) -> str:
+        cleaned = " ".join(value.split())
+        if len(cleaned) < 2:
+            raise DetailsError(message, field=field)
+        if len(cleaned) > longest:
+            raise DetailsError(f"Keep this under {longest} characters.", field=field)
+        return cleaned
+
+    allowed = profile.positions_for(existing.sport)
+    if update.playing_position not in allowed:
+        raise DetailsError(f"Choose a position or event in {existing.sport}.",
+                           field="playing_position")
+    if update.secondary_position and update.secondary_position not in allowed:
+        raise DetailsError(f"Choose a second position in {existing.sport}, or none.",
+                           field="secondary_position")
+    if update.dominant_side not in profile.DOMINANT_SIDES:
         raise DetailsError("Choose one of the listed options.", field="dominant_side")
-    secondary_sport = (secondary_sport or "").strip() or None
-    if secondary_sport is not None and len(secondary_sport) > MAX_SECONDARY_SPORT_CHARS:
-        raise DetailsError(
-            f"Keep it under {MAX_SECONDARY_SPORT_CHARS} characters.", field="secondary_sport"
-        )
-    if years_experience is not None and not (0 <= years_experience <= 100):
-        raise DetailsError("Enter a number between 0 and 100.", field="years_experience")
+    secondary_sport = (update.secondary_sport or "").strip() or None
+    if secondary_sport is not None and secondary_sport not in profile.SPORTS:
+        raise DetailsError("Choose one of the listed sports, or none.", field="secondary_sport")
+    for field, (low, high), label in (
+        ("height_cm", profile.HEIGHT_CM, "Height in centimetres"),
+        ("weight_kg", profile.WEIGHT_KG, "Weight in kilograms"),
+        ("years_experience", profile.YEARS_PLAYING, "Years playing"),
+    ):
+        if not low <= getattr(update, field) <= high:
+            raise DetailsError(f"{label}, {low} to {high}.", field=field)
+    if update.level_played not in profile.LEVELS:
+        raise DetailsError("Choose one of the listed options.", field="level_played")
+    address = need(update.address_line, "address_line", "Enter your house number and street.", 200)
+    town = need(update.town, "town", "Enter your town or city.", 80)
+    em_name = need(update.emergency_name, "emergency_name", "Enter their full name.", 120)
+    em_rel = need(update.emergency_relationship, "emergency_relationship",
+                  "Say how they are related to you.", 40)
+    try:
+        em_phone = phone_mod.normalise(update.emergency_phone)
+    except phone_mod.InvalidPhoneNumberError as exc:
+        raise DetailsError(str(exc), field="emergency_phone") from exc
 
     with transaction() as session:
-        row = session.execute(
+        session.execute(
             text(
                 """
                 UPDATE identity.athletes
-                   SET gender = :gender,
-                       dominant_side = :dominant_side,
-                       secondary_sport = :secondary_sport,
-                       years_experience = :years_experience,
-                       updated_at = now()
+                   SET playing_position = :position, secondary_position = :secondary,
+                       dominant_side = :side, secondary_sport = :secondary_sport,
+                       years_experience = :years, height_cm = :height, weight_kg = :weight,
+                       level_played = :level, address_line = :address, town = :town,
+                       emergency_name = :em_name, emergency_relationship = :em_rel,
+                       emergency_phone = :em_phone, updated_at = now()
                  WHERE user_id = :user_id
-                RETURNING kuid, sport, playing_position, gender, dominant_side,
-                          secondary_sport, years_experience
                 """
             ),
             {
                 "user_id": user_id,
-                "gender": gender,
-                "dominant_side": dominant_side,
+                "position": update.playing_position,
+                "secondary": update.secondary_position or None,
+                "side": update.dominant_side,
                 "secondary_sport": secondary_sport,
-                "years_experience": years_experience,
+                "years": update.years_experience,
+                "height": update.height_cm,
+                "weight": update.weight_kg,
+                "level": update.level_played,
+                "address": address,
+                "town": town,
+                "em_name": em_name,
+                "em_rel": em_rel,
+                "em_phone": em_phone,
             },
-        ).mappings().one_or_none()
-    if row is None:
-        raise NoAthleteRecord()
-    return AthleteDetails(**row)
+        )
+    updated = get_athlete_details(user_id)
+    assert updated is not None
+    return updated

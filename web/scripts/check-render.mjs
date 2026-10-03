@@ -222,7 +222,10 @@ try {
   const page = await ctx.newPage();
   await page.goto(BASE + "/register", { waitUntil: "load", timeout: 90_000 });
   const secret = "correct horse battery staple";
-  await page.fill("#full_name", "No Script Tester");
+  await page.fill("#first_name", "Noscript");
+  await page.fill("#surname", "Tester");
+  await page.fill("#address_line", "4 Kano Road");
+  await page.fill("#height_cm", "180");
   await page.fill("#phone", "0803 000 0000");
   await page.fill("#date_of_birth", "1998-03-14");
   const firstOpen = await page.$eval("#lga_id optgroup:first-of-type option", (o) => o.value);
@@ -236,7 +239,10 @@ try {
     ["form posted and came back without any script", url.pathname === "/register"],
     ["the rejection names the consent box", url.searchParams.get("field") === "accept_privacy_notice"],
     ["the message is shown on the page", (await page.locator("[role=alert]").count()) > 0],
-    ["typed name survives the round trip", (await page.inputValue("#full_name")) === "No Script Tester"],
+    ["typed name survives the round trip", (await page.inputValue("#first_name")) === "Noscript"
+      && (await page.inputValue("#surname")) === "Tester"],
+    ["typed address and height survive", (await page.inputValue("#address_line")) === "4 Kano Road"
+      && (await page.inputValue("#height_cm")) === "180"],
     ["chosen LGA survives the round trip", (await page.inputValue("#lga_id")) === firstOpen],
     ["password is NOT in the URL", !page.url().includes(encodeURIComponent(secret)) && !page.url().includes(secret)],
     ["password box comes back empty", (await page.inputValue("#password")) === ""],
@@ -247,14 +253,14 @@ try {
   // -- The confirm screen (AUT-02) -------------------------------------------
   // Rendered from a pending-registration cookie, which is all that screen needs
   // when nobody is signed in. Nothing is written.
-  console.log("\n=== CONFIRM YOUR PHONE ===");
+  console.log("\n=== CONFIRM YOUR EMAIL ===");
   for (const [scheme, width] of [["light", PHONE.width], ["dark", 320]]) {
     const ctx = await browser.newContext({
       viewport: { width, height: PHONE.height }, isMobile: true, colorScheme: scheme,
     });
     await ctx.addCookies([{
       name: "kaf_pending",
-      value: JSON.stringify({ phone: "+2349000000000", kuid: KUID }),
+      value: JSON.stringify({ phone: "+2349000000000", kuid: "", email: "n***@example.test" }),
       domain: "localhost", path: "/", httpOnly: true, sameSite: "Lax",
     }]);
     const page = await ctx.newPage();

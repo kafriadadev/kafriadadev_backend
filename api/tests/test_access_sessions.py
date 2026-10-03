@@ -14,15 +14,16 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterator
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
 from kafriada.contexts.access import service as access
-from kafriada.contexts.identity.service import RegistrationInput, register
+from kafriada.contexts.identity.service import register
 from kafriada.main import create_app
 from tests._access_helpers import audit_actions, bearer, make_user, new_phone, sql
+from tests._registration import registration
 
 pytestmark = [
     pytest.mark.db,
@@ -188,15 +189,7 @@ def test_the_idle_window_slides_but_never_past_the_absolute_expiry(client: TestC
 # ---------------------------------------------------------------------------
 def test_registration_grants_the_athlete_role() -> None:
     result = register(
-        RegistrationInput(
-            full_name="Role Test Athlete",
-            phone=new_phone(),
-            password=PASSWORD,
-            date_of_birth=date(1999, 1, 1),
-            lga_id="NG-JG-BKD",
-            sport="Football",
-            consent_notice_version="1.0",
-        )
+        registration(new_phone(), "Role Test", password=PASSWORD)
     )
     rows = sql(
         "SELECT role_code, scope_kind, reason FROM ops.user_roles "

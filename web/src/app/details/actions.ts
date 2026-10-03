@@ -5,39 +5,46 @@ import { redirect } from "next/navigation";
 import { ApiError, updateMyAthleteDetails } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 
-/** Blank input means "leave it unset", not "invalid" — every field is optional. */
-function orNull(value: FormDataEntryValue | null): string | null {
-  const text = String(value ?? "").trim();
-  return text || null;
-}
-
 /**
- * Edit my details (ATH-02), as a plain form POST.
+ * My details (ATH-02), as a plain form POST.
  *
- * Every field is optional and the whole form is always submitted, so a blank
- * box clears that field rather than leaving it unchanged. The API is what
- * decides whether a value is one of the allowed choices.
+ * The whole form is always submitted and every field except the two optional ones
+ * is required. The API decides whether each value is allowed.
  */
 export async function updateDetailsAction(formData: FormData): Promise<void> {
   const token = await sessionToken();
   if (!token) redirect("/sign-in");
 
-  const yearsRaw = orNull(formData.get("years_experience"));
-  const years = yearsRaw === null ? null : Number.parseInt(yearsRaw, 10);
+  const text = (key: string): string => String(formData.get(key) ?? "").trim();
+  const bounce = (message: string, field?: string): never => {
+    const params = new URLSearchParams({ error: message });
+    if (field) params.set("field", field);
+    redirect(`/details?${params.toString()}`);
+  };
+  const whole = (key: string, label: string): number => {
+    const n = Number(text(key));
+    if (!text(key) || !Number.isInteger(n)) bounce(`Enter ${label} as a whole number.`, key);
+    return n;
+  };
 
   try {
     await updateMyAthleteDetails(token, {
-      gender: orNull(formData.get("gender")),
-      dominant_side: orNull(formData.get("dominant_side")),
-      secondary_sport: orNull(formData.get("secondary_sport")),
-      years_experience: years !== null && Number.isFinite(years) ? years : null,
+      playing_position: text("playing_position"),
+      secondary_position: text("secondary_position") || null,
+      dominant_side: text("dominant_side"),
+      secondary_sport: text("secondary_sport") || null,
+      years_experience: whole("years_experience", "years playing"),
+      height_cm: whole("height_cm", "your height in centimetres"),
+      weight_kg: whole("weight_kg", "your weight in kilograms"),
+      level_played: text("level_played"),
+      address_line: text("address_line"),
+      town: text("town"),
+      emergency_name: text("emergency_name"),
+      emergency_relationship: text("emergency_relationship"),
+      emergency_phone: text("emergency_phone"),
     });
   } catch (error) {
-    if (error instanceof ApiError) {
-      const params = new URLSearchParams({ error: error.message });
-      if (error.field) params.set("field", error.field);
-      redirect(`/details?${params.toString()}`);
-    }
+    if (error instanceof ApiError) bounce(error.message, error.field);
     throw error;
   }
 

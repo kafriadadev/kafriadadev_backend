@@ -87,6 +87,7 @@ export type Me = {
   lga_name: string | null;
   is_staff: boolean;
   phone_verified: boolean;
+  email_verified: boolean;
   roles: RoleGrant[];
   idle_expires_at: string;
   absolute_expires_at: string;
@@ -180,6 +181,9 @@ export class ApiError extends Error {
     message: string,
     readonly field?: string,
     readonly status?: number,
+    /** Why, when the API names it: "email_unconfirmed", "email_missing". */
+    readonly reason?: string,
+    readonly detail?: Record<string, unknown>,
   ) {
     super(message);
     this.name = "ApiError";
@@ -228,6 +232,8 @@ async function call<T>(
   // be { message, field } for a rejection the form should point at.
   let message = "Something went wrong. Please try again.";
   let field: string | undefined;
+  let reason: string | undefined;
+  let detail: Record<string, unknown> | undefined;
   try {
     const body = await response.json();
     const inner = body?.error?.message;
@@ -235,11 +241,13 @@ async function call<T>(
     else if (inner && typeof inner === "object") {
       message = inner.message ?? message;
       field = inner.field ?? undefined;
+      reason = inner.reason ?? undefined;
+      detail = inner;
     }
   } catch {
     /* a non-JSON error body is still an error; the default message stands */
   }
-  throw new ApiError(message, field, response.status);
+  throw new ApiError(message, field, response.status, reason, detail);
 }
 
 export function listLgas(): Promise<Lga[]> {
@@ -251,17 +259,35 @@ export function getProfile(kuid: string, signature?: string): Promise<PublicProf
   return call<PublicProfile>(`/v1/public/athletes/${encodeURIComponent(kuid)}${query}`);
 }
 
-export function register(input: {
-  full_name: string;
+export type RegistrationInput = {
+  first_name: string;
+  middle_name: string | null;
+  surname: string;
+  email: string;
   phone: string;
   password: string;
   date_of_birth: string;
+  gender: string;
+  nationality: string;
+  state_of_origin: string;
+  address_line: string;
+  town: string;
   lga_id: string;
   sport: string;
-  playing_position: string | null;
-  email: string | null;
+  playing_position: string;
+  secondary_position: string | null;
+  dominant_side: string;
+  height_cm: number;
+  weight_kg: number;
+  years_experience: number;
+  level_played: string;
+  emergency_name: string;
+  emergency_relationship: string;
+  emergency_phone: string;
   accept_privacy_notice: boolean;
-}): Promise<RegistrationResult> {
+};
+
+export function register(input: RegistrationInput): Promise<RegistrationResult> {
   return call<RegistrationResult>("/v1/register", {
     method: "POST",
     body: JSON.stringify(input),
@@ -269,7 +295,7 @@ export function register(input: {
 }
 
 export function signIn(
-  input: { phone: string; password: string },
+  input: { phone: string; password: string; email?: string },
   meta: ClientMeta,
 ): Promise<IssuedSession> {
   return call<IssuedSession>("/v1/sessions", {
@@ -296,6 +322,25 @@ export function confirmPhone(
   meta: ClientMeta,
 ): Promise<PhoneConfirmed> {
   return call<PhoneConfirmed>("/v1/phone/confirm", {
+    method: "POST",
+    body: JSON.stringify(input),
+    meta,
+  });
+}
+
+export function sendEmailCode(phone: string, meta: ClientMeta): Promise<CodeSent> {
+  return call<CodeSent>("/v1/email/code", {
+    method: "POST",
+    body: JSON.stringify({ phone }),
+    meta,
+  });
+}
+
+export function confirmEmail(
+  input: { phone: string; code: string },
+  meta: ClientMeta,
+): Promise<PhoneConfirmed> {
+  return call<PhoneConfirmed>("/v1/email/confirm", {
     method: "POST",
     body: JSON.stringify(input),
     meta,
@@ -1030,28 +1075,54 @@ export function listPayments(token: string): Promise<Payment[]> {
 }
 
 export type AthleteDetails = {
-  kuid: string;
-  sport: string;
-  playing_position: string | null;
+  kuid: string | null;
+  full_name: string;
   gender: string | null;
+  date_of_birth: string;
+  nationality: string | null;
+  state_of_origin: string | null;
+  sport: string;
+  lga_name: string;
+  email: string | null;
+  playing_position: string | null;
+  secondary_position: string | null;
   dominant_side: string | null;
   secondary_sport: string | null;
   years_experience: number | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  level_played: string | null;
+  address_line: string | null;
+  town: string | null;
+  emergency_name: string | null;
+  emergency_relationship: string | null;
+  emergency_phone: string | null;
 };
 
-/** ATH-02: the signed-in athlete's own details, for the edit screen. */
+export type DetailsUpdate = {
+  playing_position: string;
+  secondary_position: string | null;
+  dominant_side: string;
+  secondary_sport: string | null;
+  years_experience: number;
+  height_cm: number;
+  weight_kg: number;
+  level_played: string;
+  address_line: string;
+  town: string;
+  emergency_name: string;
+  emergency_relationship: string;
+  emergency_phone: string;
+};
+
+/** ATH-02: the signed-in athlete's own record, for the details screen. */
 export function getMyAthleteDetails(token: string): Promise<AthleteDetails> {
   return call<AthleteDetails>("/v1/athletes/me", { token });
 }
 
 export function updateMyAthleteDetails(
   token: string,
-  input: {
-    gender: string | null;
-    dominant_side: string | null;
-    secondary_sport: string | null;
-    years_experience: number | null;
-  },
+  input: DetailsUpdate,
 ): Promise<AthleteDetails> {
   return call<AthleteDetails>("/v1/athletes/me", {
     method: "PUT",

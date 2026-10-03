@@ -25,6 +25,9 @@ router = APIRouter(tags=["sessions"])
 class SignInRequest(BaseModel):
     phone: str = Field(min_length=1, max_length=40)
     password: str = Field(min_length=1, max_length=1024)
+    # Only read when the account has no email on file: it is added, and a
+    # confirmation code is sent to it.
+    email: str | None = Field(default=None, max_length=254)
 
 
 class SessionResponse(BaseModel):
@@ -54,6 +57,7 @@ class MeResponse(BaseModel):
     lga_name: str | None
     is_staff: bool
     phone_verified: bool
+    email_verified: bool
     roles: list[RoleGrantOut]
     idle_expires_at: datetime
     absolute_expires_at: datetime
@@ -77,10 +81,37 @@ def sign_in(body: SignInRequest, request: Request) -> SessionResponse:
         issued = access.sign_in(
             body.phone,
             body.password,
+            email=body.email,
             ip_address=client_ip(request),
             user_agent=user_agent(request),
             request_id=request_id(request),
         )
+    except access.EmailUnconfirmed as exc:
+        # The password was right, so the reason can be given.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "Confirm your email to sign in. We have sent a code to "
+                f"{exc.email_masked}.",
+                "field": None,
+                "reason": "email_unconfirmed",
+                "email_masked": exc.email_masked,
+            },
+        ) from None
+    except access.EmailMissing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "Add your email address. We will send a code to confirm it.",
+                "field": "email",
+                "reason": "email_missing",
+            },
+        ) from None
+    except access.AccessError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": exc.message, "field": exc.field},
+        ) from None
     except access.SignInRefused as exc:
         # No field: pointing at the phone or the password would say which was wrong.
         raise HTTPException(
@@ -128,6 +159,7 @@ def me(request: Request) -> MeResponse:
         lga_name=athlete.lga_name if athlete else None,
         is_staff=account.is_staff,
         phone_verified=account.phone_verified,
+        email_verified=account.email_verified,
         roles=[
             RoleGrantOut(
                 grant_id=g.grant_id,

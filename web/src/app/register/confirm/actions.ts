@@ -2,19 +2,18 @@
 
 import { redirect } from "next/navigation";
 
-import { ApiError, confirmPhone, sendPhoneCode } from "@/lib/api";
+import { ApiError, confirmEmail, sendEmailCode } from "@/lib/api";
 import { clientMeta, endPending, pending, startSession } from "@/lib/session";
 
 /**
- * Confirm the phone number (AUT-02), as a plain form POST.
+ * Confirm the email address with its code, as a plain form POST.
  *
- * A correct code confirms the number and signs the person in — holding the
- * phone is exactly what a session is meant to prove — and lands them on their
- * card, which already existed before the code was ever sent.
+ * A correct code confirms the address and signs the person in. Until it is
+ * confirmed there is no session at all, so this is the only way in.
  */
-export async function confirmPhoneAction(formData: FormData): Promise<void> {
+export async function confirmEmailAction(formData: FormData): Promise<void> {
   const code = String(formData.get("code") ?? "").trim();
-  const phone = String(formData.get("phone") ?? "").trim() || (await pending())?.phone;
+  const phone = (await pending())?.phone;
 
   const bounceBack = (message: string): never => {
     redirect(`/register/confirm?${new URLSearchParams({ error: message })}`);
@@ -25,7 +24,7 @@ export async function confirmPhoneAction(formData: FormData): Promise<void> {
 
   let confirmed;
   try {
-    confirmed = await confirmPhone({ phone, code }, await clientMeta());
+    confirmed = await confirmEmail({ phone, code }, await clientMeta());
   } catch (error) {
     if (error instanceof ApiError) bounceBack(error.message);
     throw error;
@@ -36,17 +35,17 @@ export async function confirmPhoneAction(formData: FormData): Promise<void> {
     absoluteExpiresAt: confirmed.absolute_expires_at,
   });
   await endPending();
-  redirect(confirmed.kuid ? `/card/${encodeURIComponent(confirmed.kuid)}` : "/me");
+  redirect("/me?welcome=1");
 }
 
 /** Send another code. The answer never says whether one was actually sent. */
-export async function resendCodeAction(formData: FormData): Promise<void> {
-  const phone = String(formData.get("phone") ?? "").trim() || (await pending())?.phone;
+export async function resendCodeAction(): Promise<void> {
+  const phone = (await pending())?.phone;
   if (!phone) redirect("/sign-in");
 
   let sent;
   try {
-    sent = await sendPhoneCode(phone, await clientMeta());
+    sent = await sendEmailCode(phone, await clientMeta());
   } catch (error) {
     if (error instanceof ApiError) {
       redirect(`/register/confirm?${new URLSearchParams({ error: error.message })}`);

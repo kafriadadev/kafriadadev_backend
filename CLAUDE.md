@@ -522,6 +522,13 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   (`AdminShell`), stat tiles, tables that restack under 720px, `/me` as a hub. No inline
   `style={{}}` remains — use the utilities in `globals.css`. Wrap a page in
   `.page` (680px) or `.page page--wide` (1180px); sign-in screens use `.auth`.
+- **Full registration and email confirmation — done 2026-10-03** (migration 0014). Every
+  athlete field required (see `contexts/identity/profile.py`, mirrored in
+  `web/src/lib/profile.ts`); sign-in refuses (409, no session) until the email is confirmed
+  with a code (`/v1/email/code|confirm`). `REQUIRE_PHONE_CONFIRMATION` is off until Twilio.
+  Privacy notice v1.1. Tests build a valid athlete with `tests/_registration.py`;
+  `make_user` creates a confirmed email. **The ID is issued at registration and
+  unverified athletes may join clubs** (decided 2026-10-03; the badge marks the difference).
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.

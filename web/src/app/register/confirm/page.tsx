@@ -1,15 +1,14 @@
-import { PageHead } from "@/components/PageHead";
-import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { Flash } from "@/components/Flash";
+import { PageHead } from "@/components/PageHead";
 import { ResendCountdown } from "@/components/ResendCountdown";
-import { getMe } from "@/lib/api";
-import { pending, sessionToken } from "@/lib/session";
-import { confirmPhoneAction, resendCodeAction } from "./actions";
+import { SubmitButton } from "@/components/SubmitButton";
+import { pending } from "@/lib/session";
+import { confirmEmailAction, resendCodeAction } from "./actions";
 
-export const metadata: Metadata = { title: "Confirm your phone" };
+export const metadata: Metadata = { title: "Confirm your email" };
 export const dynamic = "force-dynamic";
 
 type Search = Record<string, string | string[] | undefined>;
@@ -17,17 +16,14 @@ const one = (v: string | string[] | undefined): string =>
   Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
 
 /**
- * Confirm your phone (AUT-02).
- *
- * **The ID already exists by this point.** Registration mints it; only the
- * confirmed flag waits here. So a provider outage delays a confirmation, never
- * a registration — which is what you want in a hall with 200 people in it, and
- * why there is a plain link to the card on this page.
+ * Confirm your email. Reached straight after registering, or after signing in
+ * to an account whose email was never confirmed; both set the pending cookie.
+ * There is no session until the code is accepted.
  *
  * One input, not six boxes: a six-box widget needs JavaScript, and this screen
  * has to work without it.
  */
-export default async function ConfirmPhonePage({
+export default async function ConfirmEmailPage({
   searchParams,
 }: {
   searchParams: Promise<Search>;
@@ -37,27 +33,16 @@ export default async function ConfirmPhonePage({
   const sent = one(params.sent);
   const wait = one(params.wait);
 
-  // Either they have just registered (the pending cookie) or they are signed in
-  // with a number that was never confirmed.
   const waiting = await pending();
-  const token = await sessionToken();
-  const me = token ? await getMe(token).catch(() => null) : null;
-  if (!waiting && !me) redirect("/sign-in");
-  if (!waiting && me?.phone_verified) redirect("/me");
-
-  const phone = waiting?.phone ?? "";
-  const shown = me?.phone ?? phone;
-  const kuid = waiting?.kuid || me?.kuid || "";
-  // A pilot stand-in for SMS while Twilio is not yet registered (settings
-  // otp_channel). Remove this branch once codes go by text message again.
-  const emailSentTo = waiting?.email;
+  if (!waiting) redirect("/sign-in");
+  const sentTo = waiting.email || "your email address";
 
   return (
     <div className="auth stack">
       <PageHead
-        eyebrow="Step 2 of 3"
-        title="Enter the code we sent"
-        lede={<>{emailSentTo ? `Sent by email to ${emailSentTo}.` : `Sent by text message to ${shown}.`}</>}
+        eyebrow="Confirm your email"
+        title="Enter the code we emailed"
+        lede={`Sent to ${sentTo}. Check your spam folder if it has not arrived within a few minutes.`}
       />
 
       {error ? (
@@ -66,17 +51,16 @@ export default async function ConfirmPhonePage({
         </Flash>
       ) : sent ? (
         <Flash variant="good" title="Another code is on its way" autoDismissMs={8000}>
-          <p className="mb0">Check your messages — the timer below shows when you can ask again.</p>
+          <p className="mb0">Check your email. The timer below shows when you can ask again.</p>
         </Flash>
       ) : null}
 
-      <form action={confirmPhoneAction} className="doc" noValidate>
+      <form action={confirmEmailAction} className="doc" noValidate>
         <div className="doc__body">
-          <input type="hidden" name="phone" value={phone} />
           <div className="field">
             <label htmlFor="code">6-digit code</label>
             <span className="hint" id="code-hint">
-              It expires in 10 minutes. We will never ask you for it.
+              It expires in 10 minutes. KAFRIADA will never ask you for it.
             </span>
             <input
               id="code"
@@ -90,32 +74,23 @@ export default async function ConfirmPhonePage({
               className="code-input"
             />
           </div>
-          <SubmitButton pending="Checking your code…">Confirm my number</SubmitButton>
+          <SubmitButton pending="Checking your code…">Confirm my email</SubmitButton>
         </div>
       </form>
 
       <ResendCountdown seconds={sent ? Number(wait) || 60 : 0}>
         <form action={resendCodeAction}>
-          <input type="hidden" name="phone" value={phone} />
           <button type="submit" className="btn btn--ghost">Send another code</button>
         </form>
       </ResendCountdown>
 
       <div className="notice">
-        <p className="notice__title">Your ID is already yours</p>
-        <p className={kuid ? "mb-3" : "mb0"}>
-          Confirming your number is how we know the phone is yours, and it is
-          needed before you can be verified. It does not affect your KAFRIADA ID,
-          which was issued the moment you registered.
+        <p className="notice__title">Why we ask</p>
+        <p className="mb0">
+          Your account opens once your email is confirmed. We use it for receipts,
+          verification decisions and to help you back in if you forget your password.
         </p>
-        {kuid ? (
-          <a href={`/card/${encodeURIComponent(kuid)}`}>See my card now</a>
-        ) : null}
       </div>
-
-      <p className="hint muted">
-        Wrong number? <a href="/register">Start again with the right one</a>.
-      </p>
     </div>
   );
 }

@@ -48,6 +48,8 @@ def production(**overrides: object) -> Settings:
         "twilio_account_sid": "AC" + "1" * 30,
         "twilio_auth_token": "t" * 30,
         "twilio_messaging_service_sid": "MG" + "2" * 30,
+        "email_provider": "resend",
+        "resend_api_key": "re_" + "k" * 30,
     }
     values.update(overrides)
     return build(**values)

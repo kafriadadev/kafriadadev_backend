@@ -1,32 +1,33 @@
-import { PageHead } from "@/components/PageHead";
-import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
 
 import { Flash } from "@/components/Flash";
+import { PageHead } from "@/components/PageHead";
+import { SubmitButton } from "@/components/SubmitButton";
 import { listLgas } from "@/lib/api";
+import {
+  GENDERS, LEVELS, NATIONALITIES, NIGERIAN, NIGERIAN_STATES, NOT_APPLICABLE, POSITIONS,
+  SIDES, SPORTS,
+} from "@/lib/profile";
 import { registerAthlete } from "./actions";
 
-export const metadata: Metadata = { title: "Register free" };
+export const metadata: Metadata = { title: "Register as an athlete" };
 
 // Always rendered fresh: which LGAs are open changes as waves roll out, and a
 // cached page telling someone their town is closed when it just opened would be
 // a bad way to lose a registration.
 export const dynamic = "force-dynamic";
 
-const SPORTS = [
-  "Football", "Athletics", "Basketball", "Volleyball", "Handball",
-  "Boxing", "Wrestling", "Table Tennis", "Badminton", "Swimming",
-] as const;
-
-const POSITIONS = [
-  "Goalkeeper", "Defender", "Midfielder", "Striker", "Winger", "Not applicable",
-] as const;
-
 type Search = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined): string =>
   Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
 
-/** Registration (AUT-01). A plain form. No JavaScript required to complete it. */
+/**
+ * Registration (AUT-01). One plain form in five sections; no JavaScript needed.
+ *
+ * Every field the record needs is asked for here, once. Without a script the
+ * position list cannot follow the chosen sport, so it is grouped by sport and the
+ * API refuses a position from the wrong group.
+ */
 export default async function RegisterPage({
   searchParams,
 }: {
@@ -35,6 +36,7 @@ export default async function RegisterPage({
   const params = await searchParams;
   const error = one(params.error);
   const badField = one(params.field);
+  const value = (key: string) => one(params[key]);
 
   let lgas: Awaited<ReturnType<typeof listLgas>> = [];
   let loadFailed = false;
@@ -43,18 +45,38 @@ export default async function RegisterPage({
   } catch {
     loadFailed = true;
   }
-
   const open = lgas.filter((l) => l.is_open);
   const closed = lgas.filter((l) => !l.is_open);
-  const errClass = (field: string) =>
-    badField === field ? "field field--error" : "field";
+
+  /** A labelled field, with its hint and, when it was the problem, the error. */
+  const Field = ({
+    name, label, hint, children,
+  }: { name: string; label: string; hint?: string; children: React.ReactNode }) => (
+    <div className={badField === name ? "field field--error" : "field"}>
+      <label htmlFor={name}>{label}</label>
+      {hint ? <span className="hint" id={`${name}-hint`}>{hint}</span> : null}
+      {children}
+      {badField === name ? <span className="error">{error}</span> : null}
+    </div>
+  );
+
+  const positionGroups = (
+    <>
+      {Object.entries(POSITIONS).map(([sport, list]) => (
+        <optgroup key={sport} label={sport}>
+          {list.map((p) => <option key={`${sport}-${p}`} value={p}>{p}</option>)}
+        </optgroup>
+      ))}
+      <option value={NOT_APPLICABLE}>{NOT_APPLICABLE} (boxing, wrestling, racket sports)</option>
+    </>
+  );
 
   return (
-    <div className="auth stack">
+    <div className="page stack">
       <PageHead
-        eyebrow="Step 1 of 3 · Free"
-        title="Get your KAFRIADA ID"
-        lede="About two minutes. You need a phone number and an email address."
+        eyebrow="Athlete registration"
+        title="Register as an athlete"
+        lede="About five minutes. Have your phone, your email and an emergency contact's number ready. Every field is required unless it says optional."
       />
 
       {/* An error summary AND an error beside the field. The summary is what a
@@ -69,8 +91,7 @@ export default async function RegisterPage({
       {loadFailed ? (
         <Flash variant="bad" title="Cannot reach KAFRIADA">
           <p className="mb0">
-            We could not load the list of Local Government Areas. Please try
-            again in a moment.
+            We could not load the list of Local Government Areas. Please try again in a moment.
           </p>
         </Flash>
       ) : null}
@@ -78,192 +99,201 @@ export default async function RegisterPage({
       <form action={registerAthlete} className="doc" noValidate>
         <div className="doc__body">
           <fieldset className="fieldset">
-          <legend>About you</legend>
-          <div className={errClass("full_name")}>
-            <label htmlFor="full_name">Full name</label>
-            <span className="hint" id="name-hint">
-              As written on your ID document.
-            </span>
-            <input
-              id="full_name"
-              name="full_name"
-              required
-              autoComplete="name"
-              defaultValue={one(params.full_name)}
-              aria-describedby="name-hint"
-            />
-            {badField === "full_name" ? (
-              <span className="error">{error}</span>
-            ) : null}
-          </div>
-
-          <div className={errClass("phone")}>
-            <label htmlFor="phone">Phone number</label>
-            <span className="hint" id="phone-hint">
-              One phone, one KAFRIADA ID.
-            </span>
-            <input
-              id="phone"
-              name="phone"
-              type="tel"
-              inputMode="tel"
-              required
-              placeholder="0803 000 0000"
-              autoComplete="tel"
-              defaultValue={one(params.phone)}
-              aria-describedby="phone-hint"
-            />
-            {badField === "phone" ? <span className="error">{error}</span> : null}
-          </div>
-
-          <div className={errClass("email")}>
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              defaultValue={one(params.email)}
-            />
-            {badField === "email" ? <span className="error">{error}</span> : null}
-          </div>
-
-          <div className={errClass("date_of_birth")}>
-            <label htmlFor="date_of_birth">Date of birth</label>
-            <span className="hint" id="dob-hint">
-              You must be 18 or older during the pilot.
-            </span>
-            {/* A native date input. A custom picker would need JavaScript and
-                would fail on exactly the phones this has to work on. */}
-            <input
-              id="date_of_birth"
-              name="date_of_birth"
-              type="date"
-              required
-              defaultValue={one(params.date_of_birth)}
-              aria-describedby="dob-hint"
-            />
-            {badField === "date_of_birth" ? (
-              <span className="error">{error}</span>
-            ) : null}
-          </div>
-
+            <legend>1. About you</legend>
+            <div className="field-row">
+              <Field name="first_name" label="First name" hint="As written on your ID document.">
+                <input id="first_name" name="first_name" required autoComplete="given-name"
+                  defaultValue={value("first_name")} aria-describedby="first_name-hint" />
+              </Field>
+              <Field name="surname" label="Surname">
+                <input id="surname" name="surname" required autoComplete="family-name"
+                  defaultValue={value("surname")} />
+              </Field>
+            </div>
+            <Field name="middle_name" label="Middle name (optional)">
+              <input id="middle_name" name="middle_name" autoComplete="additional-name"
+                defaultValue={value("middle_name")} />
+            </Field>
+            <div className="field-row">
+              <Field name="gender" label="Sex" hint="The category you compete in.">
+                <select id="gender" name="gender" required defaultValue={value("gender")}
+                  aria-describedby="gender-hint">
+                  <option value="">Choose</option>
+                  {Object.entries(GENDERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </Field>
+              <Field name="date_of_birth" label="Date of birth" hint="18 or older during the pilot.">
+                <input id="date_of_birth" name="date_of_birth" type="date" required
+                  defaultValue={value("date_of_birth")} aria-describedby="date_of_birth-hint" />
+              </Field>
+            </div>
+            <div className="field-row">
+              <Field name="nationality" label="Nationality">
+                <select id="nationality" name="nationality" required
+                  defaultValue={value("nationality") || NIGERIAN}>
+                  {NATIONALITIES.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </Field>
+              <Field name="state_of_origin" label="State of origin">
+                <select id="state_of_origin" name="state_of_origin" required
+                  defaultValue={value("state_of_origin")}>
+                  <option value="">Choose your state</option>
+                  {NIGERIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  <option value={NOT_APPLICABLE}>Not Nigerian</option>
+                </select>
+              </Field>
+            </div>
           </fieldset>
 
           <fieldset className="fieldset">
-          <legend>Your sport</legend>
-          <div className={errClass("lga_id")}>
-            <label htmlFor="lga_id">Local Government Area</label>
-            <span className="hint" id="lga-hint">
-              Where you are registering. This is printed in your ID and never
-              changes, even if you move.
-            </span>
-            <select
-              id="lga_id"
-              name="lga_id"
-              required
-              defaultValue={one(params.lga_id)}
-              aria-describedby="lga-hint"
-            >
-              <option value="">Choose your LGA</option>
-              {open.length > 0 ? (
-                <optgroup label="Open for registration">
-                  {open.map((l) => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-                </optgroup>
-              ) : null}
-              {/* Closed LGAs are listed rather than hidden, so somebody can find
-                  their town and be told when it opens — instead of concluding
-                  the whole thing is broken. */}
-              {closed.length > 0 ? (
-                <optgroup label="Opening soon — not yet accepting registrations">
-                  {closed.map((l) => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-                </optgroup>
-              ) : null}
-            </select>
-            {badField === "lga_id" ? <span className="error">{error}</span> : null}
-          </div>
-
-          <div className="field-row">
-          <div className={errClass("sport")}>
-            <label htmlFor="sport">Sport</label>
-            <select
-              id="sport"
-              name="sport"
-              required
-              defaultValue={one(params.sport) || "Football"}
-            >
-              {SPORTS.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          <div className="field">
-            <label htmlFor="playing_position">Position</label>
-            <span className="hint">Optional.</span>
-            <select
-              id="playing_position"
-              name="playing_position"
-              defaultValue={one(params.playing_position)}
-            >
-              <option value="">Not stated</option>
-              {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-          </div>
+            <legend>2. Contact and address</legend>
+            <div className="field-row">
+              <Field name="phone" label="Phone number" hint="One phone, one account.">
+                <input id="phone" name="phone" type="tel" inputMode="tel" required
+                  placeholder="0803 000 0000" autoComplete="tel"
+                  defaultValue={value("phone")} aria-describedby="phone-hint" />
+              </Field>
+              <Field name="email" label="Email" hint="We send a code here to confirm it.">
+                <input id="email" name="email" type="email" required autoComplete="email"
+                  defaultValue={value("email")} aria-describedby="email-hint" />
+              </Field>
+            </div>
+            <Field name="address_line" label="Home address" hint="House number and street.">
+              <input id="address_line" name="address_line" required autoComplete="street-address"
+                defaultValue={value("address_line")} aria-describedby="address_line-hint" />
+            </Field>
+            <div className="field-row">
+              <Field name="town" label="Town or city">
+                <input id="town" name="town" required autoComplete="address-level2"
+                  defaultValue={value("town")} />
+              </Field>
+              <Field name="lga_id" label="Local Government Area"
+                hint="Where you live and register. It is printed into your ID and never changes.">
+                <select id="lga_id" name="lga_id" required defaultValue={value("lga_id")}
+                  aria-describedby="lga_id-hint">
+                  <option value="">Choose your LGA</option>
+                  {open.length > 0 ? (
+                    <optgroup label="Open for registration">
+                      {open.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </optgroup>
+                  ) : null}
+                  {/* Closed LGAs are listed rather than hidden, so somebody can find
+                      their town and be told when it opens. */}
+                  {closed.length > 0 ? (
+                    <optgroup label="Opening soon, not yet accepting registrations">
+                      {closed.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </optgroup>
+                  ) : null}
+                </select>
+              </Field>
+            </div>
           </fieldset>
 
           <fieldset className="fieldset">
-          <legend>Your account</legend>
-
-          <div className={errClass("password")}>
-            <label htmlFor="password">Choose a password</label>
-            <span className="hint" id="pw-hint">
-              At least 10 characters. A short phrase you will remember is better
-              than a short word with symbols in it.
-            </span>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              minLength={10}
-              autoComplete="new-password"
-              aria-describedby="pw-hint"
-            />
-            {badField === "password" ? (
-              <span className="error">{error}</span>
-            ) : null}
-          </div>
-
+            <legend>3. Your sport</legend>
+            <div className="field-row">
+              <Field name="sport" label="Sport">
+                <select id="sport" name="sport" required defaultValue={value("sport") || "Football"}>
+                  {SPORTS.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </Field>
+              <Field name="level_played" label="Highest level played">
+                <select id="level_played" name="level_played" required
+                  defaultValue={value("level_played")}>
+                  <option value="">Choose</option>
+                  {Object.entries(LEVELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </Field>
+            </div>
+            <div className="field-row">
+              <Field name="playing_position" label="Main position or event"
+                hint="Choose from your sport's group.">
+                <select id="playing_position" name="playing_position" required
+                  defaultValue={value("playing_position")}
+                  aria-describedby="playing_position-hint">
+                  <option value="">Choose</option>
+                  {positionGroups}
+                </select>
+              </Field>
+              <Field name="secondary_position" label="Second position (optional)">
+                <select id="secondary_position" name="secondary_position"
+                  defaultValue={value("secondary_position")}>
+                  <option value="">None</option>
+                  {positionGroups}
+                </select>
+              </Field>
+            </div>
+            <div className="field-row">
+              <Field name="dominant_side" label="Stronger foot or hand">
+                <select id="dominant_side" name="dominant_side" required
+                  defaultValue={value("dominant_side")}>
+                  <option value="">Choose</option>
+                  {Object.entries(SIDES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </Field>
+              <Field name="years_experience" label="Years playing">
+                <input id="years_experience" name="years_experience" type="number" inputMode="numeric"
+                  min={0} max={60} required defaultValue={value("years_experience")} />
+              </Field>
+            </div>
+            <div className="field-row">
+              <Field name="height_cm" label="Height (cm)">
+                <input id="height_cm" name="height_cm" type="number" inputMode="numeric"
+                  min={120} max={230} required placeholder="175" defaultValue={value("height_cm")} />
+              </Field>
+              <Field name="weight_kg" label="Weight (kg)">
+                <input id="weight_kg" name="weight_kg" type="number" inputMode="numeric"
+                  min={35} max={200} required placeholder="70" defaultValue={value("weight_kg")} />
+              </Field>
+            </div>
           </fieldset>
 
-          <div className="consent">
-            <input
-              id="accept_privacy_notice"
-              name="accept_privacy_notice"
-              type="checkbox"
-              value="yes"
-              required
-            />
+          <fieldset className="fieldset">
+            <legend>4. Emergency contact</legend>
+            <Field name="emergency_name" label="Full name">
+              <input id="emergency_name" name="emergency_name" required
+                defaultValue={value("emergency_name")} />
+            </Field>
+            <div className="field-row">
+              <Field name="emergency_relationship" label="Relationship to you"
+                hint="For example parent, brother, guardian.">
+                <input id="emergency_relationship" name="emergency_relationship" required
+                  defaultValue={value("emergency_relationship")}
+                  aria-describedby="emergency_relationship-hint" />
+              </Field>
+              <Field name="emergency_phone" label="Their phone number">
+                <input id="emergency_phone" name="emergency_phone" type="tel" inputMode="tel" required
+                  defaultValue={value("emergency_phone")} />
+              </Field>
+            </div>
+          </fieldset>
+
+          <fieldset className="fieldset">
+            <legend>5. Your account</legend>
+            <Field name="password" label="Choose a password"
+              hint="At least 10 characters. A short phrase you will remember works well.">
+              <input id="password" name="password" type="password" required minLength={10}
+                autoComplete="new-password" aria-describedby="password-hint" />
+            </Field>
+          </fieldset>
+
+          <div className={badField === "accept_privacy_notice" ? "consent field--error" : "consent"}>
+            <input id="accept_privacy_notice" name="accept_privacy_notice" type="checkbox"
+              value="yes" required />
             <label htmlFor="accept_privacy_notice">
-              I am 18 or older and I accept the{" "}
-              <a href="/privacy">privacy notice</a>. I understand that if I later
-              ask to be deleted, my name, photograph and phone number are erased
-              but my KAFRIADA ID and payment records are kept.
+              I am 18 or older, the details above are true, and I accept the{" "}
+              <a href="/privacy">privacy notice</a>. I understand that if I later ask to be
+              deleted, my personal details are erased but my KAFRIADA ID and payment records
+              are kept.
             </label>
           </div>
 
           <div className="mt-5">
-            <SubmitButton pending="Creating your ID…">Create my KAFRIADA ID</SubmitButton>
+            <SubmitButton pending="Creating your account…">Register</SubmitButton>
           </div>
 
           <p className="hint form-foot">
-            Already registered? <a href="/sign-in">Sign in</a> or{" "}
-            <a href="/find">look up your ID</a>
+            Already registered? <a href="/sign-in">Sign in</a>
           </p>
         </div>
       </form>

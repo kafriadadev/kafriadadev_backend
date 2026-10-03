@@ -141,6 +141,8 @@ class TestStarting:
         Verified 2026-09-23; see settings.payment_placeholder_email_domain.
         """
         athlete = athlete_with_files(client)
+        # Registration now requires an email; accounts from before it may have none.
+        sql("UPDATE ops.users SET email = NULL WHERE id = :u", u=athlete.user_id)
         client.post("/v1/payments", json=BODY, headers=athlete.headers)
         email = str(fake.calls[-1]["email"])
 

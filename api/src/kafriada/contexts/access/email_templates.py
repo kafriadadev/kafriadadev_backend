@@ -21,6 +21,11 @@ _COPY = {
             "Enter this code to confirm your phone number and finish registration."
         ),
     },
+    "email_verification": {
+        "eyebrow": "CONFIRM YOUR EMAIL",
+        "heading": "Your confirmation code",
+        "instructions": "Enter this code to confirm your email address and finish registering.",
+    },
     "password_reset": {
         "eyebrow": "PASSWORD RESET",
         "heading": "Reset your password",

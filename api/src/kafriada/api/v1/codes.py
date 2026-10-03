@@ -162,3 +162,55 @@ def reset_password(body: ResetPasswordRequest, request: Request) -> Response:
             detail={"message": exc.message, "field": exc.field},
         ) from None
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/email/code",
+    response_model=CodeSentResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[
+        Public("someone confirming their email has no session yet"),
+        Throttle("send_code"),
+    ],
+    summary="Send another email confirmation code",
+)
+def send_email_code(body: PhoneRequest, request: Request) -> CodeSentResponse:
+    outcome = access.request_email_code(
+        body.phone,
+        request_id=request_id(request),
+        ip_address=client_ip(request),
+    )
+    return CodeSentResponse(
+        resend_in=outcome.resend_in, daily_limit_reached=outcome.daily_limit_reached
+    )
+
+
+@router.post(
+    "/email/confirm",
+    response_model=ConfirmedResponse,
+    dependencies=[
+        Public("the code itself is the credential here"),
+        Throttle("confirm_code"),
+    ],
+    summary="Confirm an email address with its code, and sign in",
+)
+def confirm_email(body: ConfirmPhoneRequest, request: Request) -> ConfirmedResponse:
+    try:
+        confirmed = access.confirm_email(
+            body.phone,
+            body.code,
+            request_id=request_id(request),
+            ip_address=client_ip(request),
+            user_agent=user_agent(request),
+        )
+    except access.CodeRefused as exc:
+        raise _code_refused(exc) from None
+
+    athlete = identity.athlete_for_user(confirmed.user_id)
+    return ConfirmedResponse(
+        kuid=athlete.kuid if athlete else None,
+        token=confirmed.session.token,
+        idle_expires_at=confirmed.session.idle_expires_at,
+        absolute_expires_at=confirmed.session.absolute_expires_at,
+        is_staff=confirmed.session.is_staff,
+    )

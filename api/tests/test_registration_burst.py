@@ -29,7 +29,6 @@ import itertools
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -38,9 +37,9 @@ from kafriada.clock import today_in_nigeria
 from kafriada.contexts.identity import kuid as kuid_mod
 from kafriada.contexts.identity.service import (
     RegistrationError,
-    RegistrationInput,
     register,
 )
+from tests._registration import registration
 
 pytestmark = [
     pytest.mark.db,
@@ -69,16 +68,7 @@ def _register_one(index: int, marker: str) -> tuple[int, str | None, str | None]
     # Nigerian mobile shape, kept inside a range no real subscriber holds so a
     # burst run cannot collide with a genuine registration.
     phone = f"+2349{marker}{index:04d}"
-    data = RegistrationInput(
-        full_name=f"Burst Test {marker} {index:04d}",
-        phone=phone,
-        password="burst-test-password-not-a-real-one",
-        date_of_birth=date(1998, 5, 14),
-        lga_id=ANCHOR_LGA,
-        sport="Football",
-        playing_position="Midfielder",
-        consent_notice_version="1.0",
-    )
+    data = registration(phone, f"Burst Test{marker}{index:04d}", lga_id=ANCHOR_LGA)
     try:
         return index, register(data).kuid, None
     except RegistrationError as exc:
@@ -182,15 +172,7 @@ def test_a_retried_registration_never_mints_a_second_identity() -> None:
     because the same answer would go to a stranger who typed the number.
     """
     marker = _run_id()
-    data = RegistrationInput(
-        full_name=f"Retry Test {marker}",
-        phone=f"+2349{marker}9999",
-        password="retry-test-password-not-a-real-one",
-        date_of_birth=date(1997, 2, 3),
-        lga_id=ANCHOR_LGA,
-        sport="Football",
-        consent_notice_version="1.0",
-    )
+    data = registration(f"+2349{marker}9999", f"Retry Test{marker}", lga_id=ANCHOR_LGA)
 
     register(data)
     with pytest.raises(RegistrationError) as caught:
@@ -220,14 +202,7 @@ def test_a_retried_registration_never_mints_a_second_identity() -> None:
 
 def test_registration_is_refused_in_an_lga_that_is_not_open() -> None:
     """Closing a wave must actually stop registrations, not just hide a button."""
-    data = RegistrationInput(
-        full_name="Too Early",
-        phone="+2349880000001",
-        password="not-a-real-password-either",
-        date_of_birth=date(1995, 1, 1),
-        lga_id="NG-JG-GUM",  # Gumel — wave 4, not live
-        sport="Football",
-    )
+    data = registration("+2349880000001", "Too Early", lga_id="NG-JG-GUM")  # Gumel: wave 4
     with pytest.raises(RegistrationError) as caught:
         register(data)
     assert "not opened" in caught.value.message.lower()

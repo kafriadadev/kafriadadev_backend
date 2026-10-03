@@ -40,12 +40,14 @@ def make_user(
         user_id: UUID = session.execute(
             text(
                 """
-                INSERT INTO ops.users (full_name, phone_e164, password_hash)
-                VALUES (:name, :phone, :hash)
+                INSERT INTO ops.users
+                    (full_name, phone_e164, password_hash, email, email_verified_at)
+                VALUES (:name, :phone, :hash, :email, now())
                 RETURNING id
                 """
             ),
-            {"name": f"{name} {_MARKER}", "phone": phone, "hash": password_hash},
+            {"name": f"{name} {_MARKER}", "phone": phone, "hash": password_hash,
+             "email": f"u{phone.lstrip('+')}@example.test"},
         ).scalar_one()
         for role, kind, scope_id in grants:
             session.execute(

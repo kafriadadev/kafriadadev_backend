@@ -23,6 +23,7 @@ from sqlalchemy import create_engine, text
 
 from kafriada.contexts.identity.service import DUPLICATE_PHONE_MESSAGE
 from kafriada.main import create_app
+from tests._registration import form as registration_form
 
 pytestmark = [
     pytest.mark.db,
@@ -41,15 +42,11 @@ def test_a_duplicate_phone_gets_a_field_error_and_no_identity() -> None:
     stranger_name = f"Someone Else {marker}"
 
     def form(full_name: str, password: str) -> dict[str, object]:
-        return {
-            "full_name": full_name,
-            "phone": phone,
-            "password": password,
-            "date_of_birth": "1996-04-20",
-            "lga_id": "NG-JG-BKD",
-            "sport": "Football",
-            "accept_privacy_notice": True,
-        }
+        # A different email each time, so the phone is the only thing that clashes.
+        return registration_form(
+            phone, full_name, password=password,
+            email=f"{full_name.split()[0].lower()}{marker}@example.test",
+        )
 
     with TestClient(create_app()) as client:
         first = client.post("/v1/register", json=form(owner_name, "owner-password-not-real"))

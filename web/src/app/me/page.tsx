@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { PageHead } from "@/components/PageHead";
+import { Flash } from "@/components/Flash";
 import { ApiError, getMe, type Me } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 import { signOutAction } from "./actions";
@@ -25,7 +26,12 @@ const ROLE_NAMES: Record<string, string> = {
  * Everything is a link or a form, so it works with JavaScript off. The session
  * is checked by the API on every render; a stale cookie lands back on sign-in.
  */
-export default async function MePage() {
+export default async function MePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const welcome = Boolean((await searchParams).welcome);
   const token = await sessionToken();
   if (!token) redirect("/sign-in");
 
@@ -61,15 +67,10 @@ export default async function MePage() {
 
       <div className="split">
         <div className="stack--lg">
-          {!me.phone_verified ? (
-            <div className="notice notice--warn">
-              <p className="notice__title">Confirm your phone number</p>
-              <p className="mb-3">
-                Your ID is already yours. Confirming the number is how we know the
-                phone belongs to you, and it is needed before you can be verified.
-              </p>
-              <a href="/register/confirm" className="btn btn--primary">Enter the code</a>
-            </div>
+          {welcome ? (
+            <Flash variant="good" title="Your email is confirmed" autoDismissMs={6000}>
+              <p className="mb0">Your account is open.</p>
+            </Flash>
           ) : null}
 
           {kuid ? (
@@ -84,15 +85,13 @@ export default async function MePage() {
                   <span className="tile__title">Public profile</span>
                   <span className="tile__text">What a club or scout sees when they scan.</span>
                 </a>
-                {me.phone_verified ? (
-                  <a href="/verify" className="tile">
-                    <span className="tile__title">Get verified</span>
-                    <span className="tile__text">Add your photograph and a verified badge.</span>
-                  </a>
-                ) : null}
+                <a href="/verify" className="tile">
+                  <span className="tile__title">Get verified</span>
+                  <span className="tile__text">Add your photograph and a verified badge.</span>
+                </a>
                 <a href="/details" className="tile">
-                  <span className="tile__title">Edit my details</span>
-                  <span className="tile__text">Gender, dominant side, experience.</span>
+                  <span className="tile__title">My details</span>
+                  <span className="tile__text">Address, height, weight, emergency contact.</span>
                 </a>
                 <a href="/payments" className="tile">
                   <span className="tile__title">My payments</span>
@@ -166,12 +165,6 @@ export default async function MePage() {
                   <dt>Phone</dt>
                   <dd>
                     {me.phone}
-                    <br />
-                    {me.phone_verified ? (
-                      <span className="pill pill--issued">Confirmed</span>
-                    ) : (
-                      <span className="pill pill--pending">Not confirmed</span>
-                    )}
                   </dd>
                 </div>
               </dl>

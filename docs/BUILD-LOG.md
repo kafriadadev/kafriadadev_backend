@@ -30,6 +30,60 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-03 — Full athlete registration and email confirmation (migration 0014)
+**Commit(s):** see the commit that adds this entry.
+
+**Built:** registration now collects the whole athlete record, all required except middle
+name and second position. The record covers:
+- name in parts, sex, date of birth, nationality and state of origin;
+- phone, email, home address, town and LGA;
+- sport, main position or event (grouped by sport and checked against it), stronger side,
+  height, weight, years playing, highest level played;
+- an emergency contact (name, relationship, phone; must differ from the athlete's own).
+
+Every account must confirm its email with a code before it can sign in. Sign-in with the
+right password but an unconfirmed email issues no session, sends a fresh code and goes to
+the confirm screen. An account with no email is asked for one at sign-in. Phone codes
+are off (`REQUIRE_PHONE_CONFIRMATION=false`) until the Twilio sender ID exists.
+
+Other changes:
+- New routes `POST /v1/email/code` and `/v1/email/confirm`, and a new code purpose
+  `email_verification` that always goes by email.
+- `/details` shows what registration fixed (read-only) and edits the rest; every field is
+  required on save.
+- The privacy notice is now v1.1, listing the new data. Consent is recorded as 1.1.
+- `appoint` requires a confirmed email.
+- Fixed on the way: the `kaf_pending` cookie silently dropped the email.
+
+**Why:** the project lead asked for complete records and strict email confirmation. No
+NIN, by their decision.
+
+**Verified:**
+- Migration 0014 applies, reverses and re-applies on the local PostgreSQL;
+  `check_migration_safety.py` is clean.
+- Full suite: 950 passed, 2 failed. The 2 are `test_notifications.py`, which drains only
+  50 messages; the local outbox held 83 pending from other tests. With the backlog
+  cleared, all 6 pass.
+- New `test_full_registration.py` (24): every missing or invalid field is refused by
+  name, the full record is stored, nothing private reaches the public profile, and the
+  details update works and cannot change identity fields.
+- New tests in `test_codes_and_outbox.py`: the email code is sent at registration with
+  no SMS, sign-in waits for the email, and the missing-email path.
+- Live, JavaScript off, against the local DB (API 8011, web 3001): register through the
+  form → the confirm screen shows the masked address → signing in early goes to confirm
+  with no session → the emailed code opens the account → `/details` shows the stored
+  address.
+- `check:render`: 85 checks passed.
+
+**Not done / open:**
+- Migration 0014 is not yet applied to Supabase.
+- There is no erasure routine yet (already a Stage 3 item); it must cover the new fields.
+- Accounts registered before today keep empty fields until the athlete saves `/details`,
+  which then requires all of them.
+- Decided after this entry: the ID stays issued at registration (the "ID only after paid
+  verification" plan is withdrawn), and unverified athletes may join and move between
+  clubs. The badge marks the difference.
+
 ## 2026-10-03 — Interface overhaul: navigation, layouts and components for every screen
 **Commit(s):** see the commit that adds this entry.
 

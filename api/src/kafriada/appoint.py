@@ -21,6 +21,7 @@ from sqlalchemy import text
 from kafriada.contexts.access import phone as phone_mod
 from kafriada.contexts.audit.service import Actor, record
 from kafriada.db.engine import transaction
+from kafriada.settings import get_settings
 
 
 class AppointRefused(Exception):
@@ -40,15 +41,18 @@ def appoint_super_admin(phone: str, reason: str) -> str:
     with transaction() as session:
         user = session.execute(
             text(
-                "SELECT id, full_name, phone_verified_at FROM ops.users "
+                "SELECT id, full_name, phone_verified_at, email_verified_at FROM ops.users "
                 "WHERE phone_e164 = :p AND anonymised_at IS NULL"
             ),
             {"p": e164},
         ).mappings().one_or_none()
         if user is None:
             raise AppointRefused("Nobody has registered with that number. They must register first.")
-        if user["phone_verified_at"] is None:
+        cfg = get_settings()
+        if cfg.require_phone_confirmation and user["phone_verified_at"] is None:
             raise AppointRefused("That number has not been confirmed yet. They must confirm it first.")
+        if cfg.require_email_confirmation and user["email_verified_at"] is None:
+            raise AppointRefused("Their email has not been confirmed yet. They must confirm it first.")
         held = session.execute(
             text(
                 "SELECT 1 FROM ops.user_roles WHERE user_id = :u AND role_code = 'super_admin' "

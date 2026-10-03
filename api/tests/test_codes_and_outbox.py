@@ -21,17 +21,17 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import Iterator
-from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
 
 from kafriada.contexts.access import otp
-from kafriada.contexts.identity.service import RegistrationInput, register
+from kafriada.contexts.identity.service import register
 from kafriada.main import create_app
 from kafriada.outbox import service as outbox
 from kafriada.outbox.providers import Sent, SmsError
 from tests._access_helpers import audit_actions, bearer, make_user, new_phone, sql
+from tests._registration import registration
 
 pytestmark = [
     pytest.mark.db,
@@ -69,19 +69,16 @@ def queued_code(phone: str) -> str:
     return found.group(1)
 
 
+def email_of(phone: str) -> str:
+    """The address tests._registration derives from a phone."""
+    return f"t{phone.lstrip('+')}@example.test"
+
+
 def register_athlete(name: str = "Code Test") -> tuple[str, str]:
     """Register through the service. Returns (phone, kuid)."""
     phone = new_phone()
     result = register(
-        RegistrationInput(
-            full_name=f"{name} Athlete",
-            phone=phone,
-            password=PASSWORD,
-            date_of_birth=date(1995, 3, 3),
-            lga_id="NG-JG-BKD",
-            sport="Football",
-            consent_notice_version="1.0",
-        )
+        registration(phone, f"{name} Athlete", password=PASSWORD)
     )
     return phone, result.kuid
 
@@ -105,37 +102,83 @@ class Recorder:
 # ---------------------------------------------------------------------------
 # Registration and confirmation
 # ---------------------------------------------------------------------------
-def test_registering_queues_one_code_and_leaves_the_phone_unconfirmed(
-    client: TestClient,
-) -> None:
-    phone, kuid = register_athlete()
+def test_registering_emails_one_code_and_sends_no_sms(client: TestClient) -> None:
+    phone, _ = register_athlete()
 
     (user,) = sql(
-        "SELECT id, phone_verified_at FROM ops.users WHERE phone_e164 = :p", p=phone
+        "SELECT id, email_verified_at FROM ops.users WHERE phone_e164 = :p", p=phone
     )
-    assert user["phone_verified_at"] is None, "registration must not confirm the phone"
-    assert kuid, "the ID exists before the code is confirmed — that is the point"
+    assert user["email_verified_at"] is None, "registration must not confirm the email"
 
     codes = sql(
-        "SELECT purpose, consumed_at FROM ops.otp_codes WHERE user_id = :id", id=user["id"]
+        "SELECT purpose, consumed_at, sent_to FROM ops.otp_codes WHERE user_id = :id",
+        id=user["id"],
     )
-    assert codes == [{"purpose": "phone_verification", "consumed_at": None}]
+    assert codes == [
+        {"purpose": "email_verification", "consumed_at": None, "sent_to": email_of(phone)}
+    ]
 
-    queued = sql(
-        "SELECT event_type, payload ->> 'purpose' AS purpose FROM ops.outbox "
-        "WHERE payload ->> 'to' = :p",
-        p=phone,
+    by_email = sql(
+        "SELECT payload ->> 'purpose' AS purpose FROM ops.outbox WHERE payload ->> 'to' = :e",
+        e=email_of(phone),
     )
-    assert queued == [{"event_type": "sms.requested", "purpose": "phone_verification"}]
+    assert by_email == [{"purpose": "email_verification"}]
+    # Phone confirmation is off until an SMS route exists: no text is queued.
+    assert not sql("SELECT id FROM ops.outbox WHERE payload ->> 'to' = :p", p=phone)
+
+
+def test_sign_in_waits_for_the_email_and_sends_a_code(client: TestClient) -> None:
+    phone, _ = register_athlete()
+    refused = client.post("/v1/sessions", json={"phone": phone, "password": PASSWORD})
+    assert refused.status_code == 409, refused.text
+    detail = refused.json()["error"]["message"]
+    assert detail["reason"] == "email_unconfirmed"
+    assert "token" not in refused.text
+
+    code = queued_code(email_of(phone))
+    assert client.post(
+        "/v1/email/confirm", json={"phone": phone, "code": code}
+    ).status_code == 200
+    assert client.post(
+        "/v1/sessions", json={"phone": phone, "password": PASSWORD}
+    ).status_code == 201
+
+
+def test_a_wrong_password_never_learns_about_the_email(client: TestClient) -> None:
+    phone, _ = register_athlete()
+    response = client.post("/v1/sessions", json={"phone": phone, "password": "not it at all"})
+    assert response.status_code == 401
+    assert "email" not in response.text.lower()
+
+
+def test_an_account_with_no_email_is_asked_for_one(client: TestClient) -> None:
+    user_id, phone = make_user("No Email", password=PASSWORD, grants=[("athlete", "global", None)])
+    sql("UPDATE ops.users SET email = NULL, email_verified_at = NULL WHERE id = :id", id=user_id)
+
+    asked = client.post("/v1/sessions", json={"phone": phone, "password": PASSWORD})
+    assert asked.status_code == 409
+    assert asked.json()["error"]["message"]["reason"] == "email_missing"
+
+    address = f"added{phone.lstrip('+')}@example.test"
+    sent = client.post(
+        "/v1/sessions", json={"phone": phone, "password": PASSWORD, "email": address}
+    )
+    assert sent.status_code == 409
+    assert sent.json()["error"]["message"]["reason"] == "email_unconfirmed"
+    assert sql("SELECT email FROM ops.users WHERE id = :id", id=user_id) == [{"email": address}]
+    code = queued_code(address)
+    assert client.post(
+        "/v1/email/confirm", json={"phone": phone, "code": code}
+    ).status_code == 200
 
 
 def test_the_right_code_confirms_signs_in_and_cannot_be_used_twice(
     client: TestClient,
 ) -> None:
     phone, kuid = register_athlete()
-    code = queued_code(phone)
+    code = queued_code(email_of(phone))
 
-    confirmed = client.post("/v1/phone/confirm", json={"phone": phone, "code": code})
+    confirmed = client.post("/v1/email/confirm", json={"phone": phone, "code": code})
     assert confirmed.status_code == 200, confirmed.text
     body = confirmed.json()
     assert body["kuid"] == kuid
@@ -143,42 +186,42 @@ def test_the_right_code_confirms_signs_in_and_cannot_be_used_twice(
     # The token that comes back is a working session.
     me = client.get("/v1/me", headers=bearer(body["token"]))
     assert me.status_code == 200
-    assert me.json()["phone_verified"] is True
+    assert me.json()["email_verified"] is True
 
     (user,) = sql("SELECT id FROM ops.users WHERE phone_e164 = :p", p=phone)
-    assert "phone.verified" in audit_actions(user["id"])
+    assert "email.verified" in audit_actions(user["id"])
 
     # Spent. A second use is refused, however quickly it follows.
-    again = client.post("/v1/phone/confirm", json={"phone": phone, "code": code})
+    again = client.post("/v1/email/confirm", json={"phone": phone, "code": code})
     assert again.status_code == 422
 
 
 def test_wrong_codes_are_counted_and_the_fifth_kills_the_code(client: TestClient) -> None:
     phone, _ = register_athlete()
-    right = queued_code(phone)
+    right = queued_code(email_of(phone))
 
     for attempt in range(1, 5):
-        response = client.post("/v1/phone/confirm", json={"phone": phone, "code": "000000"})
+        response = client.post("/v1/email/confirm", json={"phone": phone, "code": "000000"})
         assert response.status_code == 422
         message = response.json()["error"]["message"]["message"]
         assert f"{5 - attempt} tr" in message, message
 
     # The fifth wrong answer ends the code, and the real one no longer works.
-    last = client.post("/v1/phone/confirm", json={"phone": phone, "code": "000000"})
+    last = client.post("/v1/email/confirm", json={"phone": phone, "code": "000000"})
     assert last.status_code == 422
     assert client.post(
-        "/v1/phone/confirm", json={"phone": phone, "code": right}
+        "/v1/email/confirm", json={"phone": phone, "code": right}
     ).status_code == 422
 
     (user,) = sql("SELECT id FROM ops.users WHERE phone_e164 = :p", p=phone)
     assert sql(
-        "SELECT phone_verified_at FROM ops.users WHERE id = :id", id=user["id"]
-    ) == [{"phone_verified_at": None}]
+        "SELECT email_verified_at FROM ops.users WHERE id = :id", id=user["id"]
+    ) == [{"email_verified_at": None}]
 
 
 def test_an_expired_code_is_refused(client: TestClient) -> None:
     phone, _ = register_athlete()
-    code = queued_code(phone)
+    code = queued_code(email_of(phone))
     sql(
         """
         UPDATE ops.otp_codes SET expires_at = now() - interval '1 second'
@@ -187,20 +230,20 @@ def test_an_expired_code_is_refused(client: TestClient) -> None:
         """,
         p=phone,
     )
-    response = client.post("/v1/phone/confirm", json={"phone": phone, "code": code})
+    response = client.post("/v1/email/confirm", json={"phone": phone, "code": code})
     assert response.status_code == 422
     assert "expired" in response.json()["error"]["message"]["message"]
 
 
 def test_a_confirmation_code_is_not_a_password_reset_code(client: TestClient) -> None:
     phone, _ = register_athlete()
-    code = queued_code(phone)
+    code = queued_code(email_of(phone))
 
     response = client.post(
         "/v1/password-reset/confirm",
         json={"phone": phone, "code": code, "new_password": "another long passphrase"},
     )
-    assert response.status_code == 422, "a phone code must not reset a password"
+    assert response.status_code == 422, "an email code must not reset a password"
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +254,7 @@ def test_resending_is_capped_per_minute_and_per_day(client: TestClient) -> None:
     (user,) = sql("SELECT id FROM ops.users WHERE phone_e164 = :p", p=phone)
 
     # Straight after registration, another code is refused politely.
-    soon = client.post("/v1/phone/code", json={"phone": phone})
+    soon = client.post("/v1/email/code", json={"phone": phone})
     assert soon.status_code == 202
     assert soon.json()["resend_in"] > 0
     assert len(sql("SELECT id FROM ops.otp_codes WHERE user_id = :id", id=user["id"])) == 1
@@ -223,7 +266,7 @@ def test_resending_is_capped_per_minute_and_per_day(client: TestClient) -> None:
         "WHERE user_id = :id",
         id=user["id"],
     )
-    again = client.post("/v1/phone/code", json={"phone": phone})
+    again = client.post("/v1/email/code", json={"phone": phone})
     assert again.status_code == 202
     live = sql(
         "SELECT id FROM ops.otp_codes WHERE user_id = :id "
@@ -239,13 +282,13 @@ def test_resending_is_capped_per_minute_and_per_day(client: TestClient) -> None:
         id=user["id"],
     )
     for _ in range(3):
-        client.post("/v1/phone/code", json={"phone": phone})
+        client.post("/v1/email/code", json={"phone": phone})
         sql(
             "UPDATE ops.otp_codes SET created_at = now() - interval '5 minutes' "
             "WHERE user_id = :id",
             id=user["id"],
         )
-    capped = client.post("/v1/phone/code", json={"phone": phone})
+    capped = client.post("/v1/email/code", json={"phone": phone})
     assert capped.json()["daily_limit_reached"] is True
     assert len(sql("SELECT id FROM ops.otp_codes WHERE user_id = :id", id=user["id"])) == 5
 

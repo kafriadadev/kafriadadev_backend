@@ -32,6 +32,7 @@ export default async function SignInPage({
   const error = one(params.error);
   const ended = one(params.ended);
   const reset = one(params.reset);
+  const needEmail = one(params.need_email) === "1";
 
   // Already signed in: go straight to the account page.
   const token = await sessionToken();
@@ -91,6 +92,17 @@ export default async function SignInPage({
               autoComplete="current-password"
             />
           </div>
+
+          {needEmail ? (
+            <div className="field field--error">
+              <label htmlFor="email">Email</label>
+              <span className="hint" id="email-hint">
+                Your account has no email yet. We will send a code to confirm it.
+              </span>
+              <input id="email" name="email" type="email" required autoComplete="email"
+                aria-describedby="email-hint" />
+            </div>
+          ) : null}
 
           <SubmitButton pending="Signing you in…">Sign in</SubmitButton>
 

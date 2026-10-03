@@ -72,11 +72,12 @@ def test_a_local_number_works_the_same_as_the_full_one() -> None:
     [("unknown", "registered"), ("unconfirmed", "confirmed"), ("no reason", "why"), ("bad number", "phone|digit|number")],
 )
 def test_it_refuses_what_it_should_and_grants_nothing(kind: str, match: str) -> None:
-    user_id, phone = make_user("Refused")  # registered, number never confirmed
+    user_id, phone = make_user("Refused")  # registered
     if kind == "unknown":
         with pytest.raises(AppointRefused, match=match):
             appoint_super_admin("+2348090000000", "x")
     elif kind == "unconfirmed":
+        sql("UPDATE ops.users SET email_verified_at = NULL WHERE id = :u", u=user_id)
         with pytest.raises(AppointRefused, match=match):
             appoint_super_admin(phone, "founding administrator")
     elif kind == "no reason":

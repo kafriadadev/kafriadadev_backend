@@ -14,12 +14,13 @@ state's), so one coordinator can never read another area's register.
 from __future__ import annotations
 
 import io
+from dataclasses import asdict
 from datetime import date
 from typing import Literal
 
 import segno
 from fastapi import APIRouter, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictInt
 
 from kafriada.api.client import client_ip, request_id
 from kafriada.api.security import Public, Requires, current_principal
@@ -45,16 +46,30 @@ class RegistrationRequest(BaseModel):
     they hold for every caller rather than only for this route.
     """
 
-    full_name: str = Field(min_length=3, max_length=120)
+    first_name: str = Field(min_length=1, max_length=60)
+    middle_name: str | None = Field(default=None, max_length=60)
+    surname: str = Field(min_length=1, max_length=60)
+    email: str = Field(min_length=3, max_length=254)
     phone: str = Field(min_length=7, max_length=20)
     password: str = Field(min_length=10, max_length=1024)
     date_of_birth: date
+    gender: str = Field(max_length=20)
+    nationality: str = Field(max_length=40)
+    state_of_origin: str = Field(max_length=40)
+    address_line: str = Field(max_length=200)
+    town: str = Field(max_length=80)
     lga_id: str = Field(min_length=3, max_length=32)
     sport: str = Field(min_length=2, max_length=40)
-    playing_position: str | None = Field(default=None, max_length=40)
-    # Whether this is required is a business rule (settings.otp_channel), not a
-    # shape rule, so it is enforced in the service, not here.
-    email: str | None = Field(default=None, max_length=254)
+    playing_position: str = Field(max_length=40)
+    secondary_position: str | None = Field(default=None, max_length=40)
+    dominant_side: str = Field(max_length=10)
+    height_cm: StrictInt
+    weight_kg: StrictInt
+    years_experience: StrictInt
+    level_played: str = Field(max_length=20)
+    emergency_name: str = Field(max_length=120)
+    emergency_relationship: str = Field(max_length=40)
+    emergency_phone: str = Field(min_length=7, max_length=20)
     accept_privacy_notice: bool
 
 
@@ -138,14 +153,7 @@ def register_athlete(body: RegistrationRequest, request: Request) -> Registratio
     try:
         result = identity.register(
             identity.RegistrationInput(
-                full_name=body.full_name,
-                phone=body.phone,
-                password=body.password,
-                date_of_birth=body.date_of_birth,
-                lga_id=body.lga_id,
-                sport=body.sport,
-                playing_position=body.playing_position,
-                email=body.email,
+                **body.model_dump(exclude={"accept_privacy_notice"}),
                 consent_notice_version=PRIVACY_NOTICE_VERSION,
             ),
             request_id=request_id(request),
@@ -177,28 +185,48 @@ def register_athlete(body: RegistrationRequest, request: Request) -> Registratio
 # LGA-scoped register a coordinator sees. Just what registration never asked.
 # ---------------------------------------------------------------------------
 class AthleteDetailsResponse(BaseModel):
-    kuid: str
-    sport: str
-    playing_position: str | None
+    kuid: str | None
+    full_name: str
     gender: str | None
+    date_of_birth: date
+    nationality: str | None
+    state_of_origin: str | None
+    sport: str
+    lga_name: str
+    email: str | None
+    playing_position: str | None
+    secondary_position: str | None
     dominant_side: str | None
     secondary_sport: str | None
     years_experience: int | None
+    height_cm: int | None
+    weight_kg: int | None
+    level_played: str | None
+    address_line: str | None
+    town: str | None
+    emergency_name: str | None
+    emergency_relationship: str | None
+    emergency_phone: str | None
 
 
 class UpdateAthleteDetailsRequest(BaseModel):
-    gender: str | None = None
-    dominant_side: str | None = None
+    playing_position: str = Field(max_length=40)
+    secondary_position: str | None = Field(default=None, max_length=40)
+    dominant_side: str = Field(max_length=10)
     secondary_sport: str | None = Field(default=None, max_length=40)
-    years_experience: int | None = Field(default=None, ge=0, le=100)
+    years_experience: StrictInt
+    height_cm: StrictInt
+    weight_kg: StrictInt
+    level_played: str = Field(max_length=20)
+    address_line: str = Field(max_length=200)
+    town: str = Field(max_length=80)
+    emergency_name: str = Field(max_length=120)
+    emergency_relationship: str = Field(max_length=40)
+    emergency_phone: str = Field(min_length=7, max_length=20)
 
 
 def _details_response(details: identity.AthleteDetails) -> AthleteDetailsResponse:
-    return AthleteDetailsResponse(
-        kuid=details.kuid, sport=details.sport, playing_position=details.playing_position,
-        gender=details.gender, dominant_side=details.dominant_side,
-        secondary_sport=details.secondary_sport, years_experience=details.years_experience,
-    )
+    return AthleteDetailsResponse(**asdict(details))
 
 
 @router.get(
@@ -221,18 +249,14 @@ def my_athlete_details(request: Request) -> AthleteDetailsResponse:
     "/athletes/me",
     response_model=AthleteDetailsResponse,
     dependencies=[Requires("athlete.update_self")],
-    summary="Fill in what registration didn't ask for (ATH-02)",
+    summary="Update the details an athlete keeps current (ATH-02)",
 )
 def update_my_athlete_details(
     body: UpdateAthleteDetailsRequest, request: Request
 ) -> AthleteDetailsResponse:
     try:
         updated = identity.update_athlete_details(
-            current_principal(request).user_id,
-            gender=body.gender,
-            dominant_side=body.dominant_side,
-            secondary_sport=body.secondary_sport,
-            years_experience=body.years_experience,
+            current_principal(request).user_id, identity.DetailsUpdate(**body.model_dump())
         )
     except identity.NoAthleteRecord:
         raise HTTPException(
@@ -448,7 +472,7 @@ def list_lgas() -> list[LgaOption]:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-PRIVACY_NOTICE_VERSION = "1.0"
+PRIVACY_NOTICE_VERSION = "1.1"
 
 
 def _profile_url(kuid: str, *, signed: bool = False) -> str:

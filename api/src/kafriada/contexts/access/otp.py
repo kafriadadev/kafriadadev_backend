@@ -36,6 +36,7 @@ log = structlog.get_logger(__name__)
 
 PHONE_VERIFICATION = "phone_verification"
 PASSWORD_RESET = "password_reset"  # noqa: S105 — a purpose name, not a secret
+EMAIL_VERIFICATION = "email_verification"
 
 # What the person reads on a locked screen at a registration desk. It says what
 # to do with the code and, deliberately, that nobody will ever ask for it.
@@ -48,11 +49,16 @@ BODIES = {
         "{code} is your KAFRIADA password reset code. It expires in {minutes} "
         "minutes. If you did not ask for it, ignore this message."
     ),
+    EMAIL_VERIFICATION: (
+        "{code} is your KAFRIADA code. It confirms your email address and expires "
+        "in {minutes} minutes. KAFRIADA will never ask you for this code."
+    ),
 }
 
 EMAIL_SUBJECTS = {
     PHONE_VERIFICATION: "Your KAFRIADA code",
     PASSWORD_RESET: "Your KAFRIADA password reset code",
+    EMAIL_VERIFICATION: "Confirm your email for KAFRIADA",
 }
 
 
@@ -121,7 +127,7 @@ def send_code(
             "purpose": purpose,
             "code_hash": hash_otp(code, pepper=cfg.secret_key.get_secret_value()),
             "minutes": cfg.otp_minutes_valid,
-            "sent_to": phone_e164,
+            "sent_to": email if purpose == EMAIL_VERIFICATION else phone_e164,
         },
     )
     body = BODIES[purpose].format(code=code, minutes=cfg.otp_minutes_valid)
@@ -129,7 +135,17 @@ def send_code(
     # with no email on file still gets its code the ordinary way — there is
     # nowhere else to send it. The rule itself lives in outbox.service, so this
     # path and every other notification cannot drift apart.
-    if outbox.prefers_email(email):
+    if purpose == EMAIL_VERIFICATION:
+        # Confirming an email can only be done by sending to it.
+        if email is None:
+            raise ValueError("an email confirmation code needs an email address")
+        html = otp_email_html(code=code, minutes=cfg.otp_minutes_valid, purpose=purpose)
+        outbox.queue_email(
+            session, to_email=email, subject=EMAIL_SUBJECTS[purpose], body=body,
+            html=html, purpose=purpose,
+        )
+        log.info("otp_queued", purpose=purpose, channel="email")
+    elif outbox.prefers_email(email):
         assert email is not None  # prefers_email() only returns true with one
         html = otp_email_html(code=code, minutes=cfg.otp_minutes_valid, purpose=purpose)
         outbox.queue_email(
