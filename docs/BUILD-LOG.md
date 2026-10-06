@@ -74,11 +74,13 @@ and PDF are the new design.
 - Paystack refuses `@example.test` addresses; the e2e athletes now use `@example.com`.
 
 **Not done / open:**
-- **Payment gate, stage 2, waits on a person**: Paystack's hosted checkout is behind a
-  Cloudflare bot check, so the test-card payment must be made in a real browser. Stage 1
-  left checkout `l17bmw8e52ilwnw`, reference `KAF-20ffde11-bd07-4de7-b5ef-4b916c7a961b`
-  (athlete 08030428968). Then `PHONE=08030428968 REFERENCE=KAF-20ffde11-…
-  node web/scripts/e2e-verify.mjs`.
+- ~~Payment gate, stage 2~~ **passed 2026-10-06** after the test card was paid in a real
+  browser (Paystack's checkout is behind a Cloudflare bot check): the return screen read
+  "checking" from our own record, `kafriada.jobs --only reconcile` settled it
+  (`reconciliation_settled_missed_webhook`), then /pay showed Payment confirmed, /verify
+  VER-04 under review with ₦2,500 on the timeline, and /payments listed it as Paid.
+  (The reconciler's 17 errors are earlier failed starts that Paystack never saw: existing
+  behaviour, worth a look separately.)
 - The cash route names the LGA but no coordinator's name or phone (the API has none); the
   printed and downloaded cards carry no photo even when verified (`CardSubject` has none);
   ATH-04 does not show who paid on someone's behalf (not in the payments API).

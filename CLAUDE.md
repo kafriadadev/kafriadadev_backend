@@ -566,7 +566,7 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   Full no-JS registration: `CODE_CMD="api/.venv/Scripts/python.exe scripts/outbox_code.py"
   node web/scripts/e2e-register.mjs` (writes a throwaway athlete; dispatcher stopped).
   **Open decision:** App Router pages carry ~100 KB of runtime JS, over the plan's 50 KB.
-- **Frontend redesign, Phase 4 — built 2026-10-06; payment gate half-run.** ATH-01–05 and
+- **Frontend redesign, Phase 4 — done and verified 2026-10-06** (Paystack gate passed). ATH-01–05 and
   VER-01–05 on `AthleteShell` (tab bar). Backend card PNG/PDF redrawn in the new design
   (`contexts/identity/card.py`, fonts and logo in `api/src/kafriada/assets/`). Paystack's
   checkout has a Cloudflare bot check: `web/scripts/e2e-verify.mjs` stops at the hand-off;
