@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { IconArrowRight, IconCash, IconCreditCard, IconMapPin, IconQrcode, IconSearch, IconShirtSport, IconUser } from "@/components/icons";
 import { CentreCircle } from "@/components/pitch/PitchLines";
 import { Button } from "@/components/ui/Button";
+import { WithKuids } from "@/components/ui/Kuid";
 import { PlayerCard } from "@/components/ui/PlayerCard";
 import { Scoreboard } from "@/components/ui/Scoreboard";
 import { listLgas, type Lga } from "@/lib/api";
@@ -93,7 +94,7 @@ export default async function Home() {
                     <span className="text-muted">{i + 1}.</span> {step.title}
                   </span>
                 </p>
-                <p className="mt-3 text-muted">{step.text}</p>
+                <p className="mt-3 text-muted"><WithKuids text={step.text} /></p>
               </li>
             ))}
           </ol>

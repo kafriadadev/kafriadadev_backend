@@ -77,7 +77,7 @@ function PositionLine({ data }: { data: PlayerCardData }) {
   const unit = positionUnit(data.position);
   return (
     <p className="flex flex-wrap items-center gap-x-2 text-plate-muted">
-      {unit ? <IconPosition position={unit} size={28} stroke={1.75} className="text-plate-ink" /> : null}
+      {unit ? <IconPosition position={unit} size={28} stroke={1.75} className="text-plate-ink" aria-hidden="true" /> : null}
       {data.position ? <span className="font-bold text-plate-ink">{data.position}</span> : null}
       <span>
         {data.lgaName}, {data.stateName}

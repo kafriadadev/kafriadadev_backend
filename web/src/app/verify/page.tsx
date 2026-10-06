@@ -1,46 +1,43 @@
-import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import {
-  ApiError,
-  getMe,
-  getVerification,
-  type FileStatus,
-  type Me,
-  type Verification,
-} from "@/lib/api";
+  IconArrowRight, IconCamera, IconCash, IconCheck, IconCreditCard, IconIdBadge2, IconShieldCheck, IconUser, IconVarScreen,
+} from "@/components/icons";
+import { AthleteShell } from "@/components/ui/AthleteShell";
+import { Button } from "@/components/ui/Button";
+import { Notice } from "@/components/ui/Notice";
+import { PageHead } from "@/components/ui/Page";
+import { Pill, type Tone } from "@/components/ui/Pill";
+import { Silhouette } from "@/components/ui/PlayerCard";
+import { Stepper } from "@/components/ui/Stepper";
+import { SubmitButton } from "@/components/ui/SubmitButton";
+import { ApiError, getMe, getVerification, type FileStatus, type Me, type Verification } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import { formatNaira } from "@/lib/money";
 import { sessionToken } from "@/lib/session";
 import { resubmitAction, uploadAction } from "./actions";
 
-export const metadata: Metadata = { title: "Get verified" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("verify"))("title") };
+}
 export const dynamic = "force-dynamic";
 
 type Search = Record<string, string | string[] | undefined>;
-const one = (v: string | string[] | undefined): string =>
-  Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
-
+type T = Awaited<ReturnType<typeof getTranslations<"verify">>>;
+const one = (v: string | string[] | undefined): string => (Array.isArray(v) ? (v[0] ?? "") : (v ?? ""));
 const when = (iso: string | null): string =>
-  iso
-    ? new Date(iso).toLocaleString("en-GB", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "Africa/Lagos",
-      })
-    : "";
+  iso ? new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Lagos" }) : "";
 
 /**
- * Verification, whichever step the athlete is on (VER-01, 02, 04 and 05).
- *
- * One address that reads the API's own record of where they stand and shows the
- * matching screen. It never decides anything itself: the state is the API's, and it
- * moves only when a payment settles or a reviewer decides. Every action here is a
- * plain form, so it works with JavaScript off.
+ * Verification, whichever step the athlete is on (VER-01, 02, 04, 05). It
+ * reads the API's record and shows the matching screen; it never decides. The
+ * state moves only when a payment settles or a reviewer decides. Every action
+ * is a plain form; uploads are a multipart POST.
  */
 export default async function VerifyPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const t = await getTranslations("verify");
   const params = await searchParams;
   const token = await sessionToken();
   if (!token) redirect("/sign-in");
@@ -53,13 +50,10 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
     if (error instanceof ApiError && error.status === 401) redirect("/sign-in?ended=1");
     if (error instanceof ApiError && error.status === 404) {
       return (
-        <div>
-          <h1>Get verified</h1>
-          <div role="status">
-            <p>Only athletes can be verified</p>
-            <p>This account has no athlete record.</p>
-          </div>
-        </div>
+        <AthleteShell current="verify" kuid={null}>
+          <PageHead title={t("title")} />
+          <Notice signal="flag" title={t("notAthlete")}><p>{t("notAthleteText")}</p></Notice>
+        </AthleteShell>
       );
     }
     throw error;
@@ -67,220 +61,229 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
 
   const error = one(params.error);
   const saved = one(params.saved);
+  const step = v.state === "under_review" || v.state === "approved" ? 2 : v.ready_to_pay ? 1 : 0;
+  const steps = t.raw("steps") as string[];
 
   return (
-    <div>
-      <div>
-        <a href="/me">My account</a>
-        <p>Verification</p>
+    <AthleteShell current="verify" kuid={me.kuid}>
+      <div className="mb-6">
+        <Stepper steps={steps} current={step} label={t("eyebrow")} progressText={`${t("eyebrow")} · ${steps[step]}`} />
       </div>
 
       {error ? (
-        <div role="alert" tabIndex={-1}>
-          <p>That did not work</p>
-          <p>{error}</p>
-        </div>
+        <Notice signal="red" title={t("error")} className="mb-6"><p>{error}</p></Notice>
       ) : saved ? (
-        <div role="status">
-          <p>Received</p>
-          <p>Your file is saved. You can add the other one now.</p>
-        </div>
+        <Notice signal="done" title={t("saved")} className="mb-6"><p>{t("savedText")}</p></Notice>
       ) : null}
 
       {v.state === "under_review" ? (
-        <UnderReview v={v} me={me} />
+        <UnderReview t={t} v={v} me={me} />
       ) : v.state === "approved" ? (
-        <Approved me={me} />
+        <Approved t={t} me={me} />
       ) : v.state === "escalated" ? (
-        <Escalated v={v} />
+        <Escalated t={t} v={v} />
       ) : v.state === "rejected" ? (
-        <Rejected v={v} />
+        <Rejected t={t} v={v} />
       ) : (
-        <Start v={v} withdrawn={v.state === "revoked"} />
+        <Start t={t} v={v} me={me} withdrawn={v.state === "revoked"} />
       )}
-
-    </div>
+    </AthleteShell>
   );
 }
 
-function fileLabel(status: FileStatus): string {
-  switch (status) {
-    case "ready": return "Added";
-    case "uploaded":
-    case "pending": return "Received — getting it ready";
-    case "unreadable": return "We could not read that file — please send another";
-    default: return "Not added yet";
-  }
+const FILE_TONE: Record<string, Tone> = { ready: "good", uploaded: "check", pending: "check", unreadable: "bad" };
+
+function FileStatusPill({ t, status }: { t: T; status: FileStatus }) {
+  const key = status && ["ready", "uploaded", "pending", "unreadable"].includes(status) ? status : "none";
+  return (
+    <Pill tone={FILE_TONE[key] ?? "neutral"} icon={key === "ready" ? <IconCheck size={16} aria-hidden="true" /> : undefined}>
+      {t(`file.${key}`)}
+    </Pill>
+  );
 }
 
-/** The two file boxes. Shared by the first submission and by a resubmission. */
-function UploadForm({ v }: { v: Verification }) {
-  return (
-    <form action={uploadAction} encType="multipart/form-data">
-      <div>
-        <div>
-          <label htmlFor="photo">Your photo</label>
-          <span>Face clearly visible, no cap, no sunglasses.</span>
-          <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="user" />
-          <span>{fileLabel(v.photo)}</span>
-        </div>
-
-        <div>
-          <label htmlFor="document">Your ID document</label>
-          <span>NIN slip, voter&rsquo;s card, driver&rsquo;s licence or passport.</span>
-          <input id="document" name="document" type="file" accept="image/jpeg,image/png,image/webp" />
-          <span>{fileLabel(v.document)}</span>
-        </div>
-
-        <SubmitButton pending="Uploading your files…" detail="Please keep this page open. This can take a few seconds.">Save my files</SubmitButton>
-        <p>
-          Maximum 10MB per image. Your document is used only to check your identity and age, and is
-          deleted 30 days after a decision. Your photo stays on your profile.
-        </p>
+/** The two files: a native file input each, so it works on every phone. */
+function UploadForm({ t, v }: { t: T; v: Verification }) {
+  const box = (name: "photo" | "document", label: string, hint: string, icon: React.ReactNode, status: FileStatus, capture?: "user") => (
+    <div className={cn("rounded-card border-2 border-dashed p-4", status === "ready" ? "border-pitch" : "border-line-strong")}>
+      <div className="flex items-start justify-between gap-3">
+        <label htmlFor={name} className="flex items-center gap-2 font-bold">{icon}{label}</label>
+        <FileStatusPill t={t} status={status} />
       </div>
+      <p className="mt-1 text-xs text-muted">{hint}</p>
+      <input
+        id={name}
+        name={name}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture={capture}
+        className="mt-3 block w-full text-xs file:mr-3 file:min-h-12 file:cursor-pointer file:rounded-pill file:border-0 file:bg-surface-2 file:px-4 file:font-bold file:text-text"
+      />
+    </div>
+  );
+  return (
+    <form id="upload" action={uploadAction} encType="multipart/form-data" className="scroll-mt-24 space-y-4">
+      {box("photo", t("photo"), t("photoHint"), <IconCamera size={20} aria-hidden="true" />, v.photo, "user")}
+      {box("document", t("document"), t("documentHint"), <IconIdBadge2 size={20} aria-hidden="true" />, v.document)}
+      <SubmitButton variant="secondary" pendingLabel={t("uploading")}>{t("upload")}</SubmitButton>
+      <p className="text-xs text-muted">{t("uploadNote")}</p>
     </form>
   );
 }
 
-function Start({ v, withdrawn }: { v: Verification; withdrawn: boolean }) {
+function Start({ t, v, me, withdrawn }: { t: T; v: Verification; me: Me; withdrawn: boolean }) {
+  const price = formatNaira(v.price_kobo);
   const processing = [v.photo, v.document].some((s) => s === "uploaded" || s === "pending");
+  const gets = t.raw("gets") as string[];
   return (
     <>
-      <h1>Get verified</h1>
-      {withdrawn ? (
-        <div role="status">
-          <p>Your earlier verification was withdrawn</p>
-          <p>You can start again below.</p>
-        </div>
-      ) : null}
+      <PageHead eyebrow={t("eyebrow")} title={t("title")} />
+      {withdrawn ? <Notice signal="whistle" title={t("withdrawn")} className="mb-6"><p>{t("withdrawnText")}</p></Notice> : null}
 
-      <section aria-label="What you get">
-        <div>
-          <p>Add your photo and verified badge</p>
-          <ul>
-            <li>Your photo on your public profile</li>
-            <li>A verified badge scouts can trust</li>
-            <li>Checked by your LGA coordinator</li>
-          </ul>
-          <dl>
-            <div>
-              <dt>One payment. No renewal.</dt>
-              <dd><span>{formatNaira(v.price_kobo)}</span></dd>
+      {/* VER-01: what it gets you, the price once, then the two routes as equals. */}
+      <section aria-labelledby="pitch" className="rounded-card bg-surface p-5">
+        <h2 id="pitch" className="text-xl uppercase">{t("pitch")}</h2>
+        <div className="mt-4 flex items-center justify-center gap-4" aria-hidden="true">
+          <figure className="text-center text-xs text-muted">
+            <div className="grid h-24 w-20 place-items-end overflow-hidden rounded-input bg-surface-2"><Silhouette className="h-20 w-16 text-muted" /></div>
+            <figcaption className="mt-1 font-bold">{t("now")}</figcaption>
+          </figure>
+          <IconArrowRight className="text-muted" />
+          <figure className="text-center text-xs">
+            <div className="relative grid h-24 w-20 place-items-center rounded-input bg-pitch text-on-pitch">
+              <IconUser size={40} />
+              <IconShieldCheck size={22} className="absolute -right-2 -top-2 rounded-full bg-bg text-pitch-ink" />
             </div>
-          </dl>
+            <figcaption className="mt-1 font-bold">{t("after")}</figcaption>
+          </figure>
         </div>
+        <ul className="mt-4 space-y-2">
+          {gets.map((g) => (
+            <li key={g} className="flex items-start gap-2"><IconCheck size={20} className="mt-0.5 shrink-0 text-link" aria-hidden="true" />{g}</li>
+          ))}
+        </ul>
+        <p className="mt-5">
+          <span className="block whitespace-nowrap font-display text-4xl font-extrabold italic scoreboard-digits">{price}</span>
+          <span className="text-muted">{t("price")}</span>
+        </p>
       </section>
 
-      <h2>Step 1 of 2 — your photo and document</h2>
-      <UploadForm v={v} />
+      <h2 className="mt-8 text-lg uppercase">{t("routesTitle")}</h2>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="flex flex-col rounded-card border-2 border-line-strong p-4">
+          <p className="flex items-center gap-2 font-bold"><IconCreditCard aria-hidden="true" />{t("card")}</p>
+          <p className="mt-1 flex-1 text-muted">{t("cardText")}</p>
+          <Button href="#upload" size="lg" block className="mt-4">{t("card")}</Button>
+        </div>
+        <div className="flex flex-col rounded-card border-2 border-line-strong p-4">
+          <p className="flex items-center gap-2 font-bold"><IconCash aria-hidden="true" />{t("cash")}</p>
+          <p className="mt-1 flex-1 text-muted">{t("cashText", { price, lga: me.lga_name ?? t("cashNoLga") })}</p>
+        </div>
+      </div>
 
+      {/* VER-02 */}
+      <h2 className="mt-10 text-lg uppercase">{t("uploadTitle")}</h2>
+      <div className="mt-3">
+        <UploadForm t={t} v={v} />
+      </div>
       {processing ? (
-        <p>
-          We are getting your files ready. <a href="/verify">Check again</a>
-        </p>
+        <p className="mt-4 text-muted">{t("processing")} <a href="/verify">{t("checkAgain")}</a></p>
       ) : null}
-
-      {v.ready_to_pay ? (
-        <a href="/pay">Continue to payment</a>
-      ) : (
-        <p>Add both files to continue to payment.</p>
-      )}
+      <div className="mt-6">
+        {v.ready_to_pay ? (
+          <Button href="/pay" size="lg" block iconAfter={<IconArrowRight size={20} aria-hidden="true" />}>{t("continue")}</Button>
+        ) : (
+          <p className="rounded-card bg-surface p-4 text-center text-muted">{t("needBoth")}</p>
+        )}
+      </div>
     </>
   );
 }
 
-function UnderReview({ v, me }: { v: Verification; me: Me }) {
+/** VER-04: the match timeline. Waiting is the correct action. */
+function UnderReview({ t, v, me }: { t: T; v: Verification; me: Me }) {
+  const paid = v.paid_amount_kobo !== null ? formatNaira(v.paid_amount_kobo) : formatNaira(v.price_kobo);
+  const items: { label: string; state: "done" | "now" | "todo" }[] = [
+    { label: t("received"), state: "done" },
+    { label: v.paid_at ? t("paidAt", { amount: paid, when: when(v.paid_at) }) : t("paid", { amount: paid }), state: "done" },
+    { label: v.attempt > 1 ? `${t("checking")} · ${t("attempt", { n: v.attempt })}` : t("checking"), state: "now" },
+    { label: t("live"), state: "todo" },
+  ];
   return (
     <>
-      <h1>Under review</h1>
-      <div role="status">
-        <p>Your LGA coordinator is checking your documents</p>
-        <p>Usually decided within 24 hours.</p>
-      </div>
-
-      <section aria-label="Progress">
-        <div>
-          <p>Progress</p>
-          <ol>
-            <li data-done="true">Documents received</li>
-            <li data-done="true">
-              {v.paid_amount_kobo !== null ? `${formatNaira(v.paid_amount_kobo)} paid` : "Paid"}
-              {v.paid_at ? ` — ${when(v.paid_at)}` : ""}
+      <PageHead eyebrow={t("eyebrow")} title={t("reviewTitle")} />
+      <Notice signal="var" title={t("reviewLead")}><p>{t("reviewWhen")}</p></Notice>
+      <section aria-labelledby="timeline" className="mt-8">
+        <h2 id="timeline" className="text-lg uppercase">{t("timeline")}</h2>
+        <ol className="mt-4 space-y-0 border-l-2 border-line-strong pl-6">
+          {items.map((it) => (
+            <li key={it.label} aria-current={it.state === "now" ? "step" : undefined} className="relative pb-6 last:pb-0">
+              <span
+                className={cn(
+                  "absolute left-[-2.3rem] top-0 grid size-7 place-items-center rounded-full border-2",
+                  it.state === "done" ? "border-pitch bg-pitch text-on-pitch" : it.state === "now" ? "border-check bg-check-bg text-check" : "border-line-strong bg-bg",
+                )}
+                aria-hidden="true"
+              >
+                {it.state === "done" ? <IconCheck size={16} stroke={3} /> : it.state === "now" ? <IconVarScreen size={16} /> : null}
+              </span>
+              <span className={cn(it.state === "todo" ? "text-muted" : "font-bold")}>{it.label}</span>
             </li>
-            <li data-now="true">Being checked{v.attempt > 1 ? ` (attempt ${v.attempt} of 3)` : ""}</li>
-            <li data-todo="true">Photo goes live</li>
-          </ol>
-          <p>
-            We will send an SMS to {me.phone} when a decision is made. You do not need to keep
-            this page open.
-          </p>
-        </div>
+          ))}
+        </ol>
       </section>
+      <p className="mt-8 text-muted">{t("reviewNotify", { phone: me.phone })}</p>
     </>
   );
 }
 
-function Approved({ me }: { me: Me }) {
+function Approved({ t, me }: { t: T; me: Me }) {
   return (
     <>
-      <h1>You are verified</h1>
-      <div role="status">
-        <p>Your photo and badge are live</p>
-        <p>Anyone who scans your card now sees your photograph.</p>
-        {me.kuid ? (
-          <a href={`/a/${encodeURIComponent(me.kuid)}`}>
-            See my public profile
-          </a>
-        ) : null}
-      </div>
+      <PageHead eyebrow={t("eyebrow")} title={t("approvedTitle")} />
+      <Notice signal="done" title={t("approvedLead")}
+        action={me.kuid ? <Button href={`/a/${encodeURIComponent(me.kuid)}`} iconAfter={<IconArrowRight size={20} aria-hidden="true" />}>{t("seeProfile")}</Button> : undefined}>
+        <p>{t("approvedText")}</p>
+      </Notice>
     </>
   );
 }
 
-function Escalated({ v }: { v: Verification }) {
+function Escalated({ t, v }: { t: T; v: Verification }) {
   return (
     <>
-      <h1>Please see your coordinator</h1>
-      <div role="status">
-        <p>We could not approve this after three tries</p>
-        <p>
-          Your LGA coordinator will help you in person. You do not need to pay again.
-        </p>
+      <PageHead eyebrow={t("eyebrow")} title={t("escalatedTitle")} />
+      <Notice signal="flag" title={t("escalatedLead")}>
+        <p>{t("escalatedText")}</p>
         {v.reason ? (
           <>
-            <p>The reviewer wrote:</p>
-            <blockquote>{v.reason}</blockquote>
+            <p className="font-bold">{t("reviewerWrote")}</p>
+            <blockquote className="border-l-4 border-line-strong pl-3 italic">{v.reason}</blockquote>
           </>
         ) : null}
-      </div>
+      </Notice>
     </>
   );
 }
 
-function Rejected({ v }: { v: Verification }) {
+/** VER-05: a correctable problem. "You do not pay again" in bold, and the attempts left. */
+function Rejected({ t, v }: { t: T; v: Verification }) {
   const ready = v.photo === "ready" && v.document === "ready";
   return (
     <>
-      <h1>Not approved</h1>
-      <div role="status">
-        <p>Reason from the reviewer</p>
-        <blockquote>{v.reason}</blockquote>
+      <PageHead eyebrow={t("eyebrow")} title={t("rejectedTitle")} />
+      <Notice signal="yellow" title={t("reason")}>
+        <blockquote className="border-l-4 border-boot pl-3 text-md">{v.reason}</blockquote>
         <p>
-          <strong>You do not pay again.</strong> Your {formatNaira(v.paid_amount_kobo ?? v.price_kobo)}{" "}
-          still covers this. You have {v.attempts_left} more attempt{v.attempts_left === 1 ? "" : "s"}.
+          <strong>{t("noSecondFee")}</strong> {t("covered", { amount: formatNaira(v.paid_amount_kobo ?? v.price_kobo) })}{" "}
+          {t("attemptsLeft", { count: v.attempts_left })}
         </p>
-      </div>
-
-      <h2>Replace your files</h2>
-      <UploadForm v={v} />
-
-      <form action={resubmitAction}>
-        <SubmitButton disabled={!ready} pending="Sending for review…">
-          Resubmit for review
-        </SubmitButton>
-        {!ready ? (
-          <p>Both files must be added and ready before you can send it again.</p>
-        ) : null}
+      </Notice>
+      <h2 className="mt-8 text-lg uppercase">{t("replace")}</h2>
+      <div className="mt-3"><UploadForm t={t} v={v} /></div>
+      <form action={resubmitAction} className="mt-6 space-y-2">
+        <SubmitButton disabled={!ready} pendingLabel={t("resubmitting")}>{t("resubmit")}</SubmitButton>
+        {!ready ? <p className="text-xs text-muted">{t("resubmitNeed")}</p> : null}
       </form>
     </>
   );

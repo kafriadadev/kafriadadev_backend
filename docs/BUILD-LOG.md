@@ -30,6 +30,62 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-06 — Frontend redesign, Phase 4: athlete and verification screens
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **AthleteShell**: the plan's athlete tabs (Home · My card · Clubs · Verify · Me), a
+  bottom bar on phones and a rail on wide screens, on every athlete screen.
+- **ATH-01 home**: the player card, a status strip for every verification state
+  (not verified, started, under review, verified, not approved, escalated, withdrawn),
+  pending invitations on the Clubs row, staff work areas, sign out.
+- **ATH-02 details**: the fixed record (ID, name, sex, date of birth, nationality, sport,
+  LGA) shown locked with why; position on the pitch picker; error summary.
+- **ATH-04 payments**: a DataTable, and the wireframe's regulatory line that KAFRIADA NET is
+  not a bank (the old page lacked it). **ATH-05 clubs**: invitations first, the move
+  warning, empty bench / kit rail states.
+- **VER-01 to 05 on /verify**: before/after, price once, **card and cash routes side by
+  side as equals**, the two uploads (native file inputs), a match-timeline for under
+  review, "You do not pay again" in bold with attempts left, escalation. **VER-03 /pay**:
+  scoreboard amount, Paystack hand-off, return states (confirmed, checking, needs a check,
+  not completed) with a plain Check again link.
+- **Backend card renderer redrawn** (`contexts/identity/card.py`): the new card at ID-1
+  proportions: green panel with chalk lines and the photo space, kit-red stripe, logo,
+  name in Fira Sans Condensed (fitted to one to three lines beside the QR), position and
+  place, the issuing line, the ID in a black strip. New fonts and a raster logo vendored
+  into `assets/`; the old Atkinson / Instrument Serif / JetBrains fonts are removed.
+  `tests/test_card_render.py` (new).
+- `WithKuids`: IDs inside running text never break across lines.
+- **Gates:** `check-render.mjs` and `check-a11y.mjs` audit all athlete screens when
+  `SIGNIN_PHONE`/`SIGNIN_PASSWORD` are set. `scripts/e2e-verify.mjs` drives verification
+  and payment in two stages around the Paystack checkout.
+
+**Verified:** typecheck and build clean. `check:render` signed in: **100 checks pass**,
+including /me, /verify, /pay, /payments, /clubs, /details in light and dark with JavaScript
+off. `check:a11y` signed in: no violations. API: `test_cards.py` + `test_card_render.py`
+13 passed against Supabase (1 skipped: fontTools not in the venv; glyphs were checked in
+Phase 1). `e2e-verify.mjs` stage 1 passes: sign in, VER-01 both routes, VER-02 both files
+saved, media worker readies them, VER-03 ₦2,500, hand-off to Paystack. The downloaded PNG
+and PDF are the new design.
+- **Found:** the split-ID check excused breaks after a dash, which is where browsers break
+  an ID; it now counts them, and caught three real splits (landing example, two style-guide
+  samples), fixed. The athlete tab bar's phone spacer rendered above the content. A stale
+  `next start` survived a stop and served an old build until killed.
+- Paystack refuses `@example.test` addresses; the e2e athletes now use `@example.com`.
+
+**Not done / open:**
+- **Payment gate, stage 2, waits on a person**: Paystack's hosted checkout is behind a
+  Cloudflare bot check, so the test-card payment must be made in a real browser. Stage 1
+  left checkout `l17bmw8e52ilwnw`, reference `KAF-20ffde11-bd07-4de7-b5ef-4b916c7a961b`
+  (athlete 08030428968). Then `PHONE=08030428968 REFERENCE=KAF-20ffde11-…
+  node web/scripts/e2e-verify.mjs`.
+- The cash route names the LGA but no coordinator's name or phone (the API has none); the
+  printed and downloaded cards carry no photo even when verified (`CardSubject` has none);
+  ATH-04 does not show who paid on someone's behalf (not in the payments API).
+- Budget decision from Phase 3 still open.
+
+---
+
 ## 2026-10-06 — Phone numbers grouped as you type
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

@@ -1,52 +1,52 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { Flash } from "@/components/Flash";
-import { PageHead } from "@/components/PageHead";
-import { ApiError, getMyAthleteDetails } from "@/lib/api";
-import { GENDERS, LEVELS, NOT_APPLICABLE, POSITIONS, SIDES, SPORTS } from "@/lib/profile";
+import { IconLock } from "@/components/icons";
+import { AthleteShell } from "@/components/ui/AthleteShell";
+import { ErrorSummary, Field, Fieldset, Input, PhoneInput, Select } from "@/components/ui/Field";
+import { Notice } from "@/components/ui/Notice";
+import { PageHead } from "@/components/ui/Page";
+import { PositionPicker } from "@/components/ui/PositionPicker";
+import { KuidStrip } from "@/components/ui/Scoreboard";
+import { SubmitButton } from "@/components/ui/SubmitButton";
+import { ApiError, getMyAthleteDetails, type AthleteDetails } from "@/lib/api";
+import { GENDERS, LEVELS, NOT_APPLICABLE, PILOT_SPORT, POSITIONS, SIDES } from "@/lib/profile";
 import { sessionToken } from "@/lib/session";
 import { updateDetailsAction } from "./actions";
 
-export const metadata: Metadata = { title: "My details" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("details"))("title") };
+}
 export const dynamic = "force-dynamic";
 
 type Search = Record<string, string | string[] | undefined>;
-const one = (v: string | string[] | undefined): string =>
-  Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
-
-const dob = (iso: string): string =>
-  new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", {
-    day: "numeric", month: "long", year: "numeric",
-  });
+const one = (v: string | string[] | undefined): string => (Array.isArray(v) ? (v[0] ?? "") : (v ?? ""));
+const dob = (iso: string): string => new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
 /**
- * My details (ATH-02).
- *
- * The record in two parts. What registration fixed (name, sex, date of birth,
- * nationality, sport, LGA) is shown and not editable; changing it goes through a
- * coordinator, because it is what eligibility is judged on. What changes with
- * time (address, height, weight, positions, emergency contact) is edited here,
- * and all of it is required.
+ * My details (ATH-02). What registration fixed (name, sex, date of birth,
+ * nationality, sport, LGA, the ID itself) is shown locked and explained,
+ * because eligibility is judged on it; a coordinator changes it. What changes
+ * with time is edited here.
  */
 export default async function DetailsPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const t = await getTranslations("details");
   const params = await searchParams;
   const token = await sessionToken();
   if (!token) redirect("/sign-in");
 
-  let details;
+  let d: AthleteDetails;
   try {
-    details = await getMyAthleteDetails(token);
+    d = await getMyAthleteDetails(token);
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) redirect("/sign-in?ended=1");
     if (error instanceof ApiError && error.status === 404) {
       return (
-        <div>
-          <h1>My details</h1>
-          <Flash variant="warn" title="No athlete record">
-            <p>This account is not registered as an athlete.</p>
-          </Flash>
-        </div>
+        <AthleteShell current="me" kuid={null}>
+          <PageHead title={t("title")} />
+          <Notice signal="flag" title={t("noAthlete")}><p>{t("noAthleteText")}</p></Notice>
+        </AthleteShell>
       );
     }
     throw error;
@@ -54,177 +54,124 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
 
   const error = one(params.error);
   const badField = one(params.field);
-  const saved = one(params.saved);
-  const incomplete = !details.address_line || !details.height_cm || !details.emergency_name;
-  const positions = [...(POSITIONS[details.sport] ?? []), NOT_APPLICABLE];
-
-  const Field = ({
-    name, label, hint, children,
-  }: { name: string; label: string; hint?: string; children: React.ReactNode }) => (
-    <div>
-      <label htmlFor={name}>{label}</label>
-      {hint ? <span>{hint}</span> : null}
-      {children}
-      {badField === name ? <span>{error}</span> : null}
-    </div>
-  );
+  const err = (name: string) => (badField === name ? error : null);
+  const incomplete = !d.address_line || !d.height_cm || !d.emergency_name;
+  const football = d.sport === PILOT_SPORT;
+  const positions = [...(POSITIONS[d.sport] ?? []), ...(football ? [] : [NOT_APPLICABLE])];
+  const positionLabels = (await getTranslations()).raw("footballPositions") as Record<string, string>;
+  const fixed: [string, string][] = [
+    [t("name"), d.full_name],
+    [t("sex"), d.gender ? GENDERS[d.gender] ?? d.gender : "—"],
+    [t("dob"), dob(d.date_of_birth)],
+    [t("nationality"), d.nationality ?? "—"],
+    [t("sport"), d.sport],
+    [t("lga"), d.lga_name],
+    ...(d.email ? ([[t("email"), d.email]] as [string, string][]) : []),
+  ];
 
   return (
-    <div>
-      <PageHead
-        back={{ href: "/me", label: "My account" }}
-        eyebrow="Account"
-        title="My details"
-        lede="Keep these up to date. Coordinators and clubs rely on them."
-      />
+    <AthleteShell current="me" kuid={d.kuid}>
+      <PageHead eyebrow={t("eyebrow")} title={t("title")} lede={t("lede")} />
 
-      {saved ? (
-        <Flash variant="good" title="Saved" autoDismissMs={4000}>
-          <p>Your details are updated.</p>
-        </Flash>
-      ) : incomplete ? (
-        <Flash variant="warn" title="Your record is incomplete">
-          <p>
-            You registered before these details were asked for. Please fill in every field
-            below and save.
-          </p>
-        </Flash>
-      ) : null}
+      <div className="mb-8 space-y-4 empty:hidden">
+        {one(params.saved) ? <Notice signal="done" title={t("saved")}><p>{t("savedText")}</p></Notice> : null}
+        {error ? <ErrorSummary title={t("error")} errors={[{ field: badField || "address_line", message: error }]} /> : null}
+        {!error && !one(params.saved) && incomplete ? <Notice signal="yellow" title={t("incomplete")}><p>{t("incompleteText")}</p></Notice> : null}
+      </div>
 
-      {error ? (
-        <Flash variant="bad" title="That did not work">
-          <p>{error}</p>
-        </Flash>
-      ) : null}
-
-      <section aria-label="Set at registration">
-        <div>
-          <p>Set at registration</p>
-          <dl>
-            <div><dt>Name</dt><dd>{details.full_name}</dd></div>
-            <div>
-              <dt>Sex</dt>
-              <dd>{details.gender ? (GENDERS[details.gender] ?? details.gender) : "Not recorded"}</dd>
+      <section aria-labelledby="fixed" className="mb-10 rounded-card bg-surface p-5">
+        <h2 id="fixed" className="flex items-center gap-2 text-lg uppercase"><IconLock size={20} aria-hidden="true" />{t("fixed")}</h2>
+        {d.kuid ? <KuidStrip kuid={d.kuid} className="mt-4" /> : null}
+        <p className="mt-3 text-xs text-muted">{t("fixedText")}</p>
+        <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+          {fixed.map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-xs font-bold uppercase tracking-[0.1em] text-muted">{label}</dt>
+              <dd className="font-bold">{value}</dd>
             </div>
-            <div><dt>Date of birth</dt><dd>{dob(details.date_of_birth)}</dd></div>
-            <div>
-              <dt>Nationality</dt>
-              <dd>
-                {details.nationality ?? "Not recorded"}
-                {details.state_of_origin && details.state_of_origin !== NOT_APPLICABLE
-                  ? ` · ${details.state_of_origin} State`
-                  : ""}
-              </dd>
-            </div>
-            <div><dt>Sport</dt><dd>{details.sport}</dd></div>
-            <div><dt>LGA</dt><dd>{details.lga_name}</dd></div>
-            {details.email ? (
-              <div><dt>Email</dt><dd>{details.email}</dd></div>
-            ) : null}
-          </dl>
-          <p>
-            To correct any of these, speak to your LGA coordinator.
-          </p>
-        </div>
+          ))}
+        </dl>
       </section>
 
-      <form action={updateDetailsAction} noValidate>
-        <div>
-          <fieldset>
-            <legend>Sport profile</legend>
-            <div>
-              <Field name="playing_position" label={`Main position or event (${details.sport})`}>
-                <select id="playing_position" name="playing_position" required
-                  defaultValue={details.playing_position ?? ""}>
-                  <option value="">Choose</option>
+      <form action={updateDetailsAction} noValidate className="space-y-12">
+        {/* Football only in the pilot; an older record's other sport is kept as it is. */}
+        <input type="hidden" name="secondary_sport" value={d.secondary_sport ?? ""} />
+
+        <Fieldset legend={t("game")}>
+          {football ? (
+            <PositionPicker legend={t("position")} value={d.playing_position} error={err("playing_position")} labels={positionLabels} />
+          ) : (
+            <Field name="playing_position" label={t("positionOther", { sport: d.sport })} error={err("playing_position")}>
+              {(a) => (
+                <Select {...a} required defaultValue={d.playing_position ?? ""}>
+                  <option value="">{t("choose")}</option>
                   {positions.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </Field>
-              <Field name="secondary_position" label="Second position (optional)">
-                <select id="secondary_position" name="secondary_position"
-                  defaultValue={details.secondary_position ?? ""}>
-                  <option value="">None</option>
+                </Select>
+              )}
+            </Field>
+          )}
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field name="secondary_position" label={t("secondPosition")} optional optionalLabel={(await getTranslations("ui"))("optional")} error={err("secondary_position")}>
+              {(a) => (
+                <Select {...a} defaultValue={d.secondary_position ?? ""}>
+                  <option value="">{t("none")}</option>
                   {positions.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </Field>
-            </div>
-            <div>
-              <Field name="dominant_side" label="Stronger foot or hand">
-                <select id="dominant_side" name="dominant_side" required
-                  defaultValue={details.dominant_side ?? ""}>
-                  <option value="">Choose</option>
-                  {Object.entries(SIDES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </Field>
-              <Field name="level_played" label="Highest level played">
-                <select id="level_played" name="level_played" required
-                  defaultValue={details.level_played ?? ""}>
-                  <option value="">Choose</option>
-                  {Object.entries(LEVELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </Field>
-            </div>
-            <div>
-              <Field name="height_cm" label="Height (cm)">
-                <input id="height_cm" name="height_cm" type="number" inputMode="numeric"
-                  min={120} max={230} required defaultValue={details.height_cm ?? ""} />
-              </Field>
-              <Field name="weight_kg" label="Weight (kg)">
-                <input id="weight_kg" name="weight_kg" type="number" inputMode="numeric"
-                  min={35} max={200} required defaultValue={details.weight_kg ?? ""} />
-              </Field>
-            </div>
-            <div>
-              <Field name="years_experience" label="Years playing">
-                <input id="years_experience" name="years_experience" type="number"
-                  inputMode="numeric" min={0} max={60} required
-                  defaultValue={details.years_experience ?? ""} />
-              </Field>
-              <Field name="secondary_sport" label="Another sport you play (optional)">
-                <select id="secondary_sport" name="secondary_sport"
-                  defaultValue={details.secondary_sport ?? ""}>
-                  <option value="">None</option>
-                  {SPORTS.filter((s) => s !== details.sport).map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend>Address</legend>
-            <Field name="address_line" label="Home address" hint="House number and street.">
-              <input id="address_line" name="address_line" required autoComplete="street-address"
-                defaultValue={details.address_line ?? ""} />
+                </Select>
+              )}
             </Field>
-            <Field name="town" label="Town or city">
-              <input id="town" name="town" required autoComplete="address-level2"
-                defaultValue={details.town ?? ""} />
+            <Field name="dominant_side" label={t("side")} error={err("dominant_side")}>
+              {(a) => (
+                <Select {...a} required defaultValue={d.dominant_side ?? ""}>
+                  <option value="">{t("choose")}</option>
+                  {Object.entries(SIDES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                </Select>
+              )}
             </Field>
-          </fieldset>
-
-          <fieldset>
-            <legend>Emergency contact</legend>
-            <Field name="emergency_name" label="Full name">
-              <input id="emergency_name" name="emergency_name" required
-                defaultValue={details.emergency_name ?? ""} />
+            <Field name="level_played" label={t("level")} error={err("level_played")}>
+              {(a) => (
+                <Select {...a} required defaultValue={d.level_played ?? ""}>
+                  <option value="">{t("choose")}</option>
+                  {Object.entries(LEVELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                </Select>
+              )}
             </Field>
-            <div>
-              <Field name="emergency_relationship" label="Relationship to you">
-                <input id="emergency_relationship" name="emergency_relationship" required
-                  defaultValue={details.emergency_relationship ?? ""} />
-              </Field>
-              <Field name="emergency_phone" label="Their phone number">
-                <input id="emergency_phone" name="emergency_phone" type="tel" inputMode="tel"
-                  required defaultValue={details.emergency_phone ?? ""} />
-              </Field>
-            </div>
-          </fieldset>
+            <Field name="years_experience" label={t("years")} error={err("years_experience")}>
+              {(a) => <Input {...a} type="number" inputMode="numeric" min={0} max={60} required defaultValue={d.years_experience ?? ""} />}
+            </Field>
+            <Field name="height_cm" label={t("height")} error={err("height_cm")}>
+              {(a) => <Input {...a} type="number" inputMode="numeric" min={120} max={230} required defaultValue={d.height_cm ?? ""} />}
+            </Field>
+            <Field name="weight_kg" label={t("weight")} error={err("weight_kg")}>
+              {(a) => <Input {...a} type="number" inputMode="numeric" min={35} max={200} required defaultValue={d.weight_kg ?? ""} />}
+            </Field>
+          </div>
+        </Fieldset>
 
-          <button type="submit">Save my details</button>
-        </div>
+        <Fieldset legend={t("address")}>
+          <Field name="address_line" label={t("addressLine")} hint={t("addressHint")} error={err("address_line")}>
+            {(a) => <Input {...a} required autoComplete="street-address" defaultValue={d.address_line ?? ""} />}
+          </Field>
+          <Field name="town" label={t("town")} error={err("town")}>
+            {(a) => <Input {...a} required autoComplete="address-level2" defaultValue={d.town ?? ""} />}
+          </Field>
+        </Fieldset>
+
+        <Fieldset legend={t("emergency")}>
+          <Field name="emergency_name" label={t("emergencyName")} error={err("emergency_name")}>
+            {(a) => <Input {...a} required defaultValue={d.emergency_name ?? ""} />}
+          </Field>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field name="emergency_relationship" label={t("emergencyRelationship")} error={err("emergency_relationship")}>
+              {(a) => <Input {...a} required defaultValue={d.emergency_relationship ?? ""} />}
+            </Field>
+            <Field name="emergency_phone" label={t("emergencyPhone")} error={err("emergency_phone")}>
+              {(a) => <PhoneInput {...a} required defaultValue={d.emergency_phone ?? ""} />}
+            </Field>
+          </div>
+        </Fieldset>
+
+        <SubmitButton pendingLabel={t("pending")}>{t("submit")}</SubmitButton>
       </form>
-    </div>
+    </AthleteShell>
   );
 }

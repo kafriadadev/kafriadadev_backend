@@ -13,6 +13,7 @@ import {
   IconVarScreen, IconWhistle, IconWifiOff, IconYellowCard,
 } from "@/components/icons";
 import { CentreCircle, HalfwayLine, PenaltyArc, Pitch } from "@/components/pitch/PitchLines";
+import { KuidStrip } from "@/components/ui/Scoreboard";
 
 export const metadata: Metadata = { title: "Style guide", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -168,7 +169,7 @@ export default async function StyleGuide() {
         <dl className="mt-6 grid gap-4 md:grid-cols-3">
           <Font name="Display · Fira Sans Condensed 800" cls="font-display font-extrabold italic text-2xl uppercase" sample="Aisha Musa" hausa={HAUSA} />
           <Font name="Body · Andika 400 / 700" cls="font-body text-md" sample="Registration is free and takes two minutes." hausa={HAUSA} />
-          <Font name="IDs and codes · Geist Mono" cls="font-mono text-lg scoreboard-digits" sample="KA-NG-JG-BKD-2026-000123" hausa="0 O · 1 l I · 5 S · 8 B" />
+          <Font name="IDs and codes · Geist Mono" cls="font-mono text-lg scoreboard-digits" sample="0 O · 1 I · 5 S · 8 B" hausa="KA-NG · 2026 · 000123" />
         </dl>
         <ul className="mt-6 space-y-2">
           {TYPE.map((s) => (
@@ -279,7 +280,7 @@ export default async function StyleGuide() {
       <Section id="scoreboard" title="Scoreboard">
         <div className="rounded-card bg-scoreboard p-5 text-scoreboard-text">
           <p className="text-xs uppercase tracking-widest opacity-80">KAFRIADA NET ID</p>
-          <p className="mt-1 text-xl scoreboard-digits sm:text-2xl">KA-NG-JG-BKD-2026-000123</p>
+          <KuidStrip kuid="KA-NG-JG-BKD-2026-000123" className="mt-1 px-0 py-0" />
           <p className="mt-4 flex items-baseline gap-3">
             <span className="font-display text-4xl font-extrabold text-scoreboard-accent scoreboard-digits">1,248</span>
             <span className="text-xs uppercase tracking-widest">registered so far</span>

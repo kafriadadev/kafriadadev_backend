@@ -1,87 +1,77 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { EmptyState } from "@/components/EmptyState";
-import { PageHead } from "@/components/PageHead";
-import { ApiError, type Payment, getMe, listPayments } from "@/lib/api";
+import { IconInfoCircle } from "@/components/icons";
+import { UnpluggedScoreboard } from "@/components/illustrations";
+import { AthleteShell } from "@/components/ui/AthleteShell";
+import { Button } from "@/components/ui/Button";
+import { DataTable } from "@/components/ui/DataTable";
+import { PageHead } from "@/components/ui/Page";
+import { EmptyState } from "@/components/ui/PageState";
+import { Pill, type Tone } from "@/components/ui/Pill";
+import { ApiError, getMe, listPayments, type Me, type Payment } from "@/lib/api";
 import { formatNaira } from "@/lib/money";
 import { sessionToken } from "@/lib/session";
 
-export const metadata: Metadata = { title: "My payments" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("payments"))("title") };
+}
 export const dynamic = "force-dynamic";
 
-const PURPOSE_LABEL: Record<string, string> = {
-  stage2_athlete: "Stage-2 verification",
-  stage2_org: "Club verification",
-};
-
-const STATE_LABEL: Record<Payment["state"], string> = {
-  confirmed: "Confirmed",
-  checking: "Checking",
-  review: "Needs a check",
-  failed: "Not completed",
-};
-
+const TONE: Record<Payment["state"], Tone> = { confirmed: "good", checking: "check", review: "warn", failed: "neutral" };
 const stamp = (iso: string): string =>
-  new Date(iso).toLocaleString("en-GB", {
-    day: "numeric", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit", timeZone: "Africa/Lagos",
-  });
+  new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Lagos" });
 
 /**
- * My payments (ATH-04).
- *
- * Every payment the athlete has ever started, newest first. A frozen payment
- * reads as "needs a check", same as it does on /pay — this screen never shows
- * the internal status, only what it means for the person reading it.
+ * My payments (ATH-04): every payment the athlete has started, newest first.
+ * Read only: there is no action here, and that is the design. The statement
+ * at the foot is regulatory: KAFRIADA NET is a record book, not a bank.
  */
 export default async function PaymentsPage() {
+  const t = await getTranslations("payments");
   const token = await sessionToken();
   if (!token) redirect("/sign-in");
-
+  let me: Me;
   try {
-    await getMe(token);
+    me = await getMe(token);
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) redirect("/sign-in?ended=1");
     throw error;
   }
-
   const payments = await listPayments(token);
+  const purpose = t.raw("purpose") as Record<string, string>;
 
   return (
-    <div>
-      <PageHead
-        back={{ href: "/me", label: "My account" }}
-        eyebrow="Account"
-        title="My payments"
-        app
+    <AthleteShell current="home" kuid={me.kuid}>
+      <PageHead back={{ href: "/me", label: (await getTranslations("athleteNav"))("home") }} eyebrow={t("eyebrow")} title={t("title")} />
+      <DataTable
+        caption={t("caption")}
+        columns={[
+          { key: "payment", label: t("colPayment") },
+          { key: "date", label: t("colDate") },
+          { key: "status", label: t("colStatus") },
+          { key: "amount", label: t("colAmount"), align: "end" },
+          { key: "ref", label: t("colRef"), mono: true },
+        ]}
+        rows={payments.map((p) => ({
+          id: p.reference,
+          payment: <strong>{purpose[p.purpose] ?? p.purpose}</strong>,
+          date: stamp(p.created_at),
+          status: <Pill tone={TONE[p.state]}>{t(`state.${p.state}`)}</Pill>,
+          amount: <strong className="scoreboard-digits">{formatNaira(p.amount_kobo)}</strong>,
+          ref: <span className="text-xs">{p.reference}</span>,
+        }))}
+        empty={
+          <EmptyState art={<UnpluggedScoreboard />} title={t("empty")} action={<Button href="/verify" variant="secondary">{t("emptyAction")}</Button>}>
+            {t("emptyText")}
+          </EmptyState>
+        }
       />
-
-      {payments.length === 0 ? (
-        <EmptyState title="Nothing here yet">
-          <p>You have not started a payment.</p>
-          <a href="/pay">Get verified for ₦2,500</a>
-        </EmptyState>
-      ) : (
-        <div>
-          <table>
-            <thead>
-              <tr><th>Payment</th><th>Date</th><th>Reference</th><th>Status</th><th>Amount</th></tr>
-            </thead>
-            <tbody>
-              {payments.map((p) => (
-                <tr key={p.reference}>
-                  <td data-label=""><strong>{PURPOSE_LABEL[p.purpose] ?? p.purpose}</strong></td>
-                  <td data-label="Date"><span>{stamp(p.created_at)}</span></td>
-                  <td data-label="Reference"><span>{p.reference}</span></td>
-                  <td data-label="Status"><span>{STATE_LABEL[p.state]}</span></td>
-                  <td data-label="Amount"><strong>{formatNaira(p.amount_kobo)}</strong></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+      <p className="mt-6 flex gap-2 rounded-card bg-surface p-4 text-xs text-muted">
+        <IconInfoCircle size={20} className="shrink-0" aria-hidden="true" />
+        {t("notABank")}
+      </p>
+    </AthleteShell>
   );
 }

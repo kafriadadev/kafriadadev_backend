@@ -23,12 +23,22 @@ const VIEWS = [
   { width: 1280, scheme: "light" }, { width: 1280, scheme: "dark" },
 ];
 
+// With SIGNIN_PHONE and SIGNIN_PASSWORD, the athlete screens are audited too.
+const SIGNED_IN = process.env.SIGNIN_PHONE && process.env.SIGNIN_PASSWORD
+  ? ["/me", "/verify", "/pay", "/payments", "/clubs", "/details"] : [];
+
 const browser = await chromium.launch({ channel: "msedge" });
 let failures = 0;
 for (const v of VIEWS) {
   const ctx = await browser.newContext({ viewport: { width: v.width, height: 800 }, colorScheme: v.scheme, reducedMotion: "reduce" });
   const page = await ctx.newPage();
-  for (const path of PAGES) {
+  if (SIGNED_IN.length) {
+    await page.goto(BASE + "/sign-in", { waitUntil: "networkidle" });
+    await page.locator("#phone").pressSequentially(process.env.SIGNIN_PHONE);
+    await page.fill("#password", process.env.SIGNIN_PASSWORD);
+    await Promise.all([page.waitForURL(/\/me/, { timeout: 60_000 }), page.click("form button[type=submit]")]);
+  }
+  for (const path of [...PAGES, ...SIGNED_IN]) {
     const res = await page.goto(BASE + path, { waitUntil: "load", timeout: 90_000 });
     await page.addScriptTag({ path: AXE });
     const result = await page.evaluate(async () =>

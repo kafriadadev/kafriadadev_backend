@@ -2,7 +2,7 @@
 //
 //   node scripts/e2e-register.mjs
 //
-// WRITES a real athlete (a throwaway phone and an @example.test email) to the
+// WRITES a real athlete (a throwaway phone and an @example.com email) to the
 // database the API is using, so run it against a dev database only. The
 // emailed code is read from ops.outbox by CODE_CMD, a command that prints it
 // (it receives the email address as its last argument). Run the outbox
@@ -17,7 +17,8 @@ if (!CODE_CMD.length) throw new Error("Set CODE_CMD, e.g. CODE_CMD='python scrip
 
 const n = String(Math.floor(Math.random() * 1e7)).padStart(7, "0");
 const phone = `0803${n}`;
-const email = `e2e.${n}@example.test`;
+// example.com, not .test: Paystack refuses a .test address, and a verification run pays with this account.
+const email = `e2e.${n}@example.com`;
 
 const browser = await chromium.launch({ channel: "msedge" });
 // JS=1 runs the same flow with JavaScript on: the phone is then grouped as it

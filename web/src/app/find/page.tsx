@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { IconQrcode, IconSearch } from "@/components/icons";
 import { Field, Input } from "@/components/ui/Field";
+import { WithKuids } from "@/components/ui/Kuid";
 import { Notice } from "@/components/ui/Notice";
 import { Page, PageHead } from "@/components/ui/Page";
 import { SubmitButton } from "@/components/ui/SubmitButton";
@@ -37,7 +38,7 @@ export default async function FindPage({ searchParams }: { searchParams: Promise
     <Page>
       <PageHead eyebrow={t("eyebrow")} title={t("title")} lede={t("lede")} />
       <form action={find} className="space-y-5">
-        <Field name="kuid" label={t("label")} hint={t("hint")} error={empty ? t("empty") : null}>
+        <Field name="kuid" label={t("label")} hint={<WithKuids text={t("hint")} />} error={empty ? t("empty") : null}>
           {(a) => (
             <Input
               {...a}

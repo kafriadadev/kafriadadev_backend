@@ -155,7 +155,9 @@ function audit() {
       range.setEnd(node, i + 1);
       const r = range.getClientRects()[0];
       if (!r) continue;
-      if (lastTop !== null && r.top > lastTop + 2 && text[i - 1] !== "-") {
+      // A break after a dash counts too: "KA-NG-JG-BKD- / 2026-001569" is copied
+      // down as two things.
+      if (lastTop !== null && r.top > lastTop + 2) {
         splits.push(`"${text.slice(at, i)} / ${text.slice(i, at + 24)}"`);
       }
       lastTop = r.top;
@@ -395,9 +397,9 @@ try {
       check(`${scheme}: session cookie is httpOnly and SameSite=Lax`, !!cookie && cookie.httpOnly && cookie.sameSite === "Lax");
       await report(page, "me", 200, `${scheme}-${width}`);
 
-      // VER-03 and VER-01/02, the start views. Looked at, never submitted: submitting
-      // creates a payment or a file.
-      for (const [name, path] of [["pay", "/pay"], ["verify", "/verify"]]) {
+      // The athlete screens (ATH-02/04/05, VER-01 to 05, VER-03). Looked at, never
+      // submitted: submitting creates a payment, a file or an edit.
+      for (const [name, path] of [["pay", "/pay"], ["verify", "/verify"], ["payments", "/payments"], ["clubs", "/clubs"], ["details", "/details"]]) {
         await page.goto(BASE + path, { waitUntil: "load", timeout: 90_000 });
         await report(page, name, 200, `${scheme}-${width}`);
       }

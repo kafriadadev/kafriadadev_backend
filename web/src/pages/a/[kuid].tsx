@@ -5,6 +5,7 @@ import { createTranslator } from "next-intl";
 import { IconArrowRight, IconInfoCircle, IconSearch, IconShieldCheck, IconShirtSport, IconUser } from "@/components/icons";
 import { EmptyNet } from "@/components/illustrations";
 import { Button } from "@/components/ui/Button";
+import { WithKuids } from "@/components/ui/Kuid";
 import { Footer, TopBar } from "@/components/ui/Navigation";
 import { PageState } from "@/components/ui/PageState";
 import { PlayerCard } from "@/components/ui/PlayerCard";
@@ -90,7 +91,7 @@ export default function ProfilePage({ profile, origin }: Props) {
             action={<Button href="/find" size="lg" block icon={<IconSearch size={20} aria-hidden="true" />}>{t("profile.notFoundAction")}</Button>}
             secondary={<a href="/">{t("profile.home")}</a>}
           >
-            {t("profile.notFoundText")}
+            <WithKuids text={t("profile.notFoundText")} />
           </PageState>
         </main>
         {footer}
