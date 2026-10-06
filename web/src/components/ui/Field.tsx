@@ -1,5 +1,7 @@
 import { IconRedCard } from "@/components/icons";
 import { cn } from "@/lib/cn";
+import { formatNigerianPhone } from "@/lib/phone";
+import { PhoneDigits } from "./PhoneDigits";
 
 /*
  * Form fields. Every one is a native control, so it works with JavaScript off.
@@ -76,10 +78,11 @@ export function Textarea({ className, ...rest }: React.TextareaHTMLAttributes<HT
 }
 
 /**
- * A Nigerian phone number. +234 is shown, not typed; the API accepts the
- * local form (0803…) and the international one.
+ * A Nigerian phone number. +234 is shown, not typed; the API accepts the local
+ * form (0803…) and the international one. With JavaScript the number is
+ * grouped as it is typed; a value sent back by the server is grouped here.
  */
-export function PhoneInput({ className, ...rest }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "type">) {
+export function PhoneInput({ className, defaultValue, ...rest }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "type">) {
   return (
     <div className="flex">
       <span
@@ -88,10 +91,11 @@ export function PhoneInput({ className, ...rest }: Omit<React.InputHTMLAttribute
       >
         +234
       </span>
-      <input
-        type="tel"
+      <PhoneDigits
         inputMode="tel"
         autoComplete="tel-national"
+        maxLength={18}
+        defaultValue={typeof defaultValue === "string" ? formatNigerianPhone(defaultValue) : defaultValue}
         className={controlClass(cn("min-w-0 rounded-l-none font-mono tracking-wide", className))}
         {...rest}
       />

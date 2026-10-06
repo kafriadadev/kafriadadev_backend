@@ -235,6 +235,25 @@ try {
     await ctx.close();
   }
 
+  // -- Phone number grouping as you type (JavaScript ON) ----------------------
+  {
+    const ctx = await browser.newContext({ viewport: PHONE, isMobile: true });
+    const page = await ctx.newPage();
+    console.log("\n=== PHONE FORMATTING, JavaScript ON ===");
+    await page.goto(BASE + "/sign-in", { waitUntil: "networkidle", timeout: 90_000 });
+    const phone = page.locator("#phone");
+    await phone.pressSequentially("08031234567", { delay: 20 });
+    const typed = await phone.inputValue();
+    check(`typing 08031234567 shows "0803 123 4567" (${typed})`, typed === "0803 123 4567");
+    // A digit typed in the middle lands where the caret was, not at the end.
+    await phone.evaluate((el) => el.setSelectionRange(6, 6)); // after "0803 1"
+    await page.keyboard.type("9");
+    const edited = await phone.inputValue();
+    const caret = await phone.evaluate((el) => el.selectionStart);
+    check(`a digit inserted mid-number keeps the caret (${edited}, caret ${caret})`, edited === "0803 192 34567" && caret === 7);
+    await ctx.close();
+  }
+
   // -- Navigation with JavaScript OFF -----------------------------------------
   // On a phone the links live in a <details> sheet: the browser opens it, no
   // script involved.

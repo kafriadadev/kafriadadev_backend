@@ -30,6 +30,25 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-06 — Phone numbers grouped as you type
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:** `lib/phone.ts` (`formatNigerianPhone`: 0803 123 4567, 803 123 4567,
++234 803 123 4567; digits past a full number are kept, never dropped) and
+`PhoneDigits`, a small client input inside `PhoneInput` that groups the number on every
+keystroke and keeps the caret after the same digit. Uncontrolled, so the form posts what
+is on screen. A value sent back by the server is grouped on render. Without JavaScript the
+field is a plain tel input, as before.
+
+**Verified:** 13 formatter cases pass. `check:render` (80 checks) adds a live check:
+typing 08031234567 key by key shows "0803 123 4567", and a digit inserted mid-number keeps
+the caret. `e2e-register.mjs` now has `JS=1`: the full registration passes with JavaScript
+on (the grouped number is accepted by the API, KA-NG-JG-BKD-2026-001564) and off (001565).
+Its waits now follow the address, since a JavaScript-on server action navigates without a
+full page load.
+
+---
+
 ## 2026-10-06 — Frontend redesign, Phase 3: public and sign-up screens
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

@@ -1,4 +1,4 @@
-// A complete registration with JavaScript OFF: AUT-01 -> AUT-02 -> AUT-03.
+// A complete registration, JavaScript OFF by default: AUT-01 -> AUT-02 -> AUT-03.
 //
 //   node scripts/e2e-register.mjs
 //
@@ -20,7 +20,10 @@ const phone = `0803${n}`;
 const email = `e2e.${n}@example.test`;
 
 const browser = await chromium.launch({ channel: "msedge" });
-const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, isMobile: true, javaScriptEnabled: false });
+// JS=1 runs the same flow with JavaScript on: the phone is then grouped as it
+// is typed and posted as "0803 123 4567", which the API must accept.
+const JS = process.env.JS === "1";
+const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, isMobile: true, javaScriptEnabled: JS });
 const page = await ctx.newPage();
 let failed = 0;
 const check = (label, ok) => {
@@ -33,7 +36,8 @@ const fill = { first_name: "Endtoend", surname: "Nojs", date_of_birth: "1999-05-
   email, emergency_name: "Test Guardian", emergency_relationship: "Brother", emergency_phone: "08030000001",
   years_experience: "4", height_cm: "178", weight_kg: "70", password: "a long test phrase 42" };
 for (const [id, value] of Object.entries(fill)) await page.fill(`#${id}`, value);
-await page.fill("#phone", phone);
+await page.locator("#phone").pressSequentially(phone, { delay: 10 });
+if (JS) check(`the phone is grouped as typed (${await page.inputValue("#phone")})`, /^0803 \d{3} \d{4}$/.test(await page.inputValue("#phone")));
 await page.selectOption("#gender", "male");
 await page.selectOption("#state_of_origin", "Jigawa");
 const lga = await page.locator("#lga_id optgroup").first().locator("option").first().getAttribute("value");
@@ -42,13 +46,15 @@ await page.selectOption("#level_played", { index: 1 });
 await page.selectOption("#dominant_side", "right");
 await page.locator("label[for='playing_position-3']").click(); // Central midfielder, tapped on the pitch
 await page.locator("label[for='accept_privacy_notice']").click();
-await Promise.all([page.waitForLoadState("load"), page.click("form button[type=submit]")]);
-check(`AUT-01 submits with JavaScript off and lands on AUT-02 (${new URL(page.url()).pathname})`, page.url().includes("/register/confirm"));
+// With JavaScript on, a server action navigates without a full load: wait for the address.
+await Promise.all([page.waitForURL(/\/register(\/confirm|\?)/, { timeout: 90_000 }), page.click("form button[type=submit]")]);
+check(`AUT-01 submits with JavaScript ${JS ? "on" : "off"} and lands on AUT-02 (${new URL(page.url()).pathname})`, page.url().includes("/register/confirm"));
 
 const code = execFileSync(CODE_CMD[0], [...CODE_CMD.slice(1), email], { encoding: "utf8" }).trim();
 check(`the emailed code was queued (${code ? "found" : "missing"})`, /^\d{6}$/.test(code));
 await page.fill("#code", code);
-await Promise.all([page.waitForLoadState("load"), page.locator("form").first().locator("button[type=submit]").click()]);
+await Promise.all([page.waitForURL(/\/register\/(done|confirm\?)/, { timeout: 90_000 }), page.locator("form").first().locator("button[type=submit]").click()]);
+await page.waitForLoadState("networkidle");
 check(`AUT-02 confirms and lands on AUT-03 (${new URL(page.url()).pathname})`, page.url().includes("/register/done"));
 
 if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/aut-03.png`, fullPage: true });
