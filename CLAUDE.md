@@ -546,7 +546,15 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
 - **Frontend redesign, Phase 0 — done 2026-10-06** (`e4d2025`, branch `redesign`). Every
   style, class name and font removed; pages render bare HTML through the same server
   actions; football only (`PILOT_SPORT`); web copy says KAFRIADA NET. `web/KEPT.md` lists
-  what carried over. Next: Phase 1 (tokens, fonts, icons, i18n, `/styleguide`, logo SVG).
+  what carried over.
+- **Frontend redesign, Phase 1 — done 2026-10-06** (`48244da`). Tokens in
+  `web/src/styles/tokens.css` (the only place a colour, size or duration is written;
+  Tailwind v4 reads them, default palette off). Fonts: Fira Sans Condensed 800 italic,
+  Andika, Geist Mono — the plan's Barlow/Atkinson lack the Hausa letters ɓ ɗ ƙ ƴ.
+  Logo SVGs in `web/public/brand/` (regenerate: `scripts/design/`). Icons only through
+  `components/icons`. Strings in `web/messages/en.json` (next-intl). `/styleguide` runs
+  with `STYLEGUIDE=1`. **Waiting on the user's style-guide approval before Phase 2.**
+  Cross-document view transitions are off: they stalled no-JS form round trips in Edge.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
