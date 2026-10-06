@@ -1,4 +1,11 @@
-# KAFRIADA CORE — working notes for Claude
+# KAFRIADA NET — working notes for Claude
+
+**The product name is KAFRIADA NET** (tagline "Sport Network Platform"), decided
+2026-10-06. Use it on the site, the card and all new copy. "KAFRIADA" / "KAFRIADA
+CORE" in older code and docs are the old names. Language: English at launch,
+everything in an i18n strings file so more languages (Hausa first) drop in later.
+Frontend redesign: `docs/design/KAFRIADA-NET-Frontend-Design-Plan.pdf` ("Grassroots
+Matchday"); logo: `docs/design/logo-kafriada-net.png` (raster, needs an SVG).
 
 Permanent sports ID for athletes (Jigawa State pilot, Birnin Kudu first). Register
 free → permanent KUID + signed QR card → anyone can scan and verify. Paid Stage-2
