@@ -1,4 +1,8 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+// Strings live in messages/<locale>.json; src/i18n/request.ts picks the locale.
+const withNextIntl = createNextIntlPlugin();
 
 const config: NextConfig = {
   reactStrictMode: true,
@@ -45,4 +49,4 @@ const config: NextConfig = {
   },
 };
 
-export default config;
+export default withNextIntl(config);

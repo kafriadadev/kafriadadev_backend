@@ -1,30 +1,34 @@
 import type { Metadata, Viewport } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { body, display, mono } from "./fonts";
+import "./globals.css";
 
-export const metadata: Metadata = {
-  title: {
-    default: "KAFRIADA NET — your permanent football ID",
-    template: "%s · KAFRIADA NET",
-  },
-  description:
-    "Register free and receive a permanent KAFRIADA NET ID with a QR profile any club or scout can check. Jigawa State pilot.",
-  robots: { index: true, follow: true },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+  return {
+    title: { default: t("title"), template: t("titleTemplate") },
+    description: t("description"),
+    robots: { index: true, follow: true },
+    icons: { icon: "/brand/kafriada-net-mark.svg" },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  // maximumScale is deliberately not set. Preventing zoom on a page where
-  // people read a 24-character identifier off a small screen would be a
-  // cruelty, and it fails WCAG.
+  // maximumScale is deliberately not set: people read a 24-character ID off a
+  // small screen, and blocking zoom fails WCAG.
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale();
+  const t = await getTranslations("nav");
   return (
-    <html lang="en-NG">
+    <html lang={locale === "en" ? "en-NG" : locale} className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body>
-        <a href="#main">Skip to content</a>
+        <a href="#main">{t("skip")}</a>
         <SiteHeader />
         <main id="main">{children}</main>
         <SiteFooter />

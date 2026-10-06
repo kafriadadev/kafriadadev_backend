@@ -1,17 +1,25 @@
+import { getTranslations } from "next-intl/server";
+import { Logo } from "./brand/Logo";
+
 /**
  * The header on every page. Reads no cookie, so the public profile and the
- * landing page can still be cached.
+ * landing page can still be cached. Bare until the Phase 2 TopBar.
  */
-export function SiteHeader() {
+export async function SiteHeader() {
+  const t = await getTranslations();
   return (
     <header>
-      <p><a href="/">KAFRIADA NET</a></p>
-      <nav aria-label="Main">
+      <p>
+        <a href="/" aria-label={t("brand.home")}>
+          <Logo className="h-8 w-auto text-text" />
+        </a>
+      </p>
+      <nav aria-label={t("nav.main")}>
         <ul>
-          <li><a href="/find">Look up an ID</a></li>
-          <li><a href="/clubs/register">Register a club</a></li>
-          <li><a href="/me">My account</a></li>
-          <li><a href="/register">Register free</a></li>
+          <li><a href="/find">{t("nav.findId")}</a></li>
+          <li><a href="/clubs/register">{t("nav.registerClub")}</a></li>
+          <li><a href="/me">{t("nav.myAccount")}</a></li>
+          <li><a href="/register">{t("nav.registerFree")}</a></li>
         </ul>
       </nav>
     </header>

@@ -46,6 +46,8 @@ const PAGES = [
   ["privacy", "/privacy"],
   ["profile", `/a/${KUID}${SIG ? `?s=${SIG}` : ""}`],
   ["card", `/card/${KUID}`],
+  // Served only when the web tier runs with STYLEGUIDE=1 (or in development).
+  ...(process.env.STYLEGUIDE ? [["styleguide", "/styleguide"]] : []),
 ];
 
 // 360 x 780 is the most common viewport among cheap Android handsets.

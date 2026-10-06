@@ -1,0 +1,147 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+/*
+ * Tailwind reads the tokens; it holds no values of its own. The default
+ * palette is switched off so no stray hex colour can reach a page.
+ */
+@theme inline {
+  --color-*: initial;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-link: var(--link);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-pitch: var(--pitch);
+  --color-pitch-ink: var(--pitch-ink);
+  --color-pitch-deep: var(--pitch-deep);
+  --color-on-pitch: var(--on-pitch);
+  --color-kit-red: var(--kit-red);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-warn-bg: var(--warn-bg);
+  --color-on-warn: var(--on-warn);
+  --color-check: var(--check);
+  --color-check-bg: var(--check-bg);
+  --color-chalk: var(--chalk);
+  --color-boot: var(--boot);
+  --color-scoreboard: var(--scoreboard);
+  --color-scoreboard-text: var(--scoreboard-text);
+  --color-scoreboard-accent: var(--scoreboard-accent);
+  --color-plate-bg: var(--plate-bg);
+  --color-plate-ink: var(--plate-ink);
+  --color-plate-muted: var(--plate-muted);
+  --color-plate-accent: var(--plate-accent);
+  --color-plate-strip: var(--plate-strip);
+  --color-plate-strip-text: var(--plate-strip-text);
+
+}
+
+/* -- Base ----------------------------------------------------------------- */
+@layer base {
+  html {
+    color-scheme: light dark;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    line-height: 1.05;
+    text-wrap: balance;
+  }
+  h1, h2, h3 { font-style: italic; }
+  h1 { font-size: var(--text-3xl); text-transform: uppercase; }
+  h2 { font-size: var(--text-xl); }
+  h3 { font-size: var(--text-lg); }
+  a { color: var(--link); text-underline-offset: 0.18em; }
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+  code, kbd, samp { font-family: var(--font-mono); }
+}
+
+/* -- Pitch textures (zero bytes of image) --------------------------------- */
+@utility touchline {
+  border-inline-start: 2px solid var(--chalk-line);
+}
+@utility turf-stripes {
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0 48px,
+    color-mix(in srgb, var(--chalk) 5%, transparent) 48px 96px
+  );
+}
+@utility scoreboard-digits {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+  letter-spacing: 0.04em;
+}
+
+/*
+ * Cross-document view transitions (@view-transition { navigation: auto }) are
+ * held back: in Edge they left <html> intercepting clicks after a no-JS form
+ * POST and redirect, which stalled the password-reset round trip. They return
+ * in the Phase 8 motion pass, tested against the no-JS flows.
+ */
+
+/* -- Motion (layer 0: CSS only, never required) --------------------------- */
+@keyframes kaf-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes kaf-shake {
+  0%, 100% { transform: none; }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+@keyframes kaf-draw {
+  from { stroke-dashoffset: 3000; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes kaf-bounce {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-40%); }
+}
+@keyframes kaf-flick {
+  from { opacity: 0; transform: rotate(-14deg) translateY(-8px) scale(.9); }
+  to { opacity: 1; transform: rotate(-4deg); }
+}
+
+@utility motion-rise {
+  animation: kaf-rise var(--dur-move) var(--ease-kick) both;
+}
+@utility motion-shake {
+  animation: kaf-shake var(--dur-move) var(--ease-kick) 1;
+}
+@utility motion-draw {
+  stroke-dasharray: 3000;
+  animation: kaf-draw 1.2s var(--ease-glide) both;
+}
+@utility motion-bounce {
+  animation: kaf-bounce 0.9s var(--ease-kick) infinite;
+}
+@utility motion-flick {
+  animation: kaf-flick var(--dur-move) var(--ease-bounce) both;
+}
+
+/* Reduced motion: every movement becomes a plain fade, nothing loops. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

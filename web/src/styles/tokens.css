@@ -1,0 +1,149 @@
+/*
+ * KAFRIADA NET design tokens: "Grassroots Matchday".
+ * docs/design/KAFRIADA-NET-Frontend-Design-Plan.pdf, "Design system".
+ *
+ * The only place a colour, size or duration is written down. Everything else
+ * uses these variables, directly or through the Tailwind theme in globals.css.
+ * Every text/background pair is measured (WCAG 2.2 relative luminance) and the
+ * ratio is written beside it. 4.5:1 is the floor for text, 3:1 for borders and
+ * icons. Nothing ships on eyeballing.
+ */
+
+:root {
+  /* -- Brand: sampled from the logo ------------------------------------- */
+  --pitch: #0EAD2C;        /* logo green. A FILL: 2.99:1 on white, never text on light.
+                              Boot text on it 6.48:1. */
+  --pitch-ink: #087A1F;    /* green text and links on light: 5.51 white, 5.15 turf-50 */
+  --pitch-deep: #06661A;   /* pressed states, headers: 7.18 white; chalk on it 7.18 */
+  --kit-red: #EB0002;      /* logo red. Accents, live dots: 4.63 white. Not small text. */
+  --card-red: #C70003;     /* error text, red-card state: 6.12 white, 5.40 on --red-50.
+                              Chalk on it 6.12 (destructive buttons). */
+  --yellow-card: #FFC21A;  /* warning fills. Boot text only: 11.95 */
+  --boot: #0A0F0B;         /* text, scoreboard panels: 19.34 white, 18.08 turf-50 */
+  --chalk: #FFFFFF;
+  --turf-50: #F6F8F3;      /* soft section background */
+  --turf-100: #ECF1E8;     /* raised surface on light */
+  --green-50: #E8F5EA;     /* VAR / done tint: pitch-ink on it 4.90 */
+  --red-50: #FDEDED;       /* red-card tint */
+  --night: #07110A;        /* floodlit background: pitch on it 6.43 */
+  --night-1: #0F2114;      /* floodlit surface */
+  --night-2: #16301D;      /* floodlit raised surface */
+
+  /* -- Roles, light (default: phones are read in sunlight) --------------- */
+  --bg: var(--chalk);
+  --surface: var(--turf-50);
+  --surface-2: var(--turf-100);
+  --text: var(--boot);
+  --text-muted: #4B5A4F;   /* 7.31 white, 6.83 turf-50, 6.37 turf-100 */
+  --link: var(--pitch-ink);
+  --line: #D5DDD1;         /* dividers only, decorative */
+  --line-strong: #6B7A6E;  /* input borders: 4.53 on white (UI floor 3:1) */
+  --focus: var(--pitch-deep);
+  --on-pitch: var(--boot);
+  --danger: var(--card-red);
+  --danger-bg: var(--red-50);
+  --warn-bg: var(--yellow-card);
+  --on-warn: var(--boot);
+  --check: var(--pitch-ink);   /* VAR "being checked" */
+  --check-bg: var(--green-50);
+  --chalk-line: var(--pitch);  /* pitch-line drawings on light */
+  --scoreboard: var(--boot);
+  --scoreboard-text: var(--chalk);    /* 19.34 */
+  --scoreboard-accent: var(--yellow-card); /* 11.95 on boot */
+
+  /* -- The printed card: never inverts, so a photo of it always matches -- */
+  --plate-bg: var(--chalk);
+  --plate-ink: var(--boot);
+  --plate-muted: #4B5A4F;
+  --plate-accent: var(--pitch);
+  --plate-strip: var(--boot);
+  --plate-strip-text: var(--chalk);
+
+  /* -- Space and sizes ------------------------------------------------- */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-6: 24px; --space-8: 32px; --space-12: 48px; --space-16: 64px;
+  --target: 48px;         /* smallest touch target */
+  --target-primary: 56px; /* primary buttons on mobile */
+  --measure: 640px;       /* athlete and public flows */
+  --measure-wide: 1280px; /* admin */
+
+  /* -- Motion ------------------------------------------------------------ */
+  --dur-tap: 120ms;
+  --dur-quick: 200ms;
+  --dur-move: 320ms;
+  --dur-show: 560ms;
+}
+
+/*
+ * Tokens that share a name with a Tailwind theme namespace (font, text,
+ * radius, shadow, ease, container) live in @theme, so Tailwind builds its
+ * utilities from them and still emits each one as a plain variable.
+ */
+@theme static {
+  /* -- Type -------------------------------------------------------------- */
+  --font-display: var(--font-display-face), "Arial Narrow", sans-serif;
+  --font-body: var(--font-body-face), system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, monospace;
+  /* Mobile first; the large steps grow toward desktop. Body never below 16. */
+  --text-xs: 0.875rem;                               /* 14 */
+  --text-base: 1rem;                                 /* 16 */
+  --text-md: 1.125rem;                               /* 18 */
+  --text-lg: clamp(1.25rem, 1.15rem + 0.5vw, 1.375rem); /* 20 → 22 */
+  --text-xl: clamp(1.5rem, 1.3rem + 1vw, 1.75rem);   /* 24 → 28 */
+  --text-2xl: clamp(1.875rem, 1.5rem + 1.6vw, 2.25rem); /* 30 → 36 */
+  --text-3xl: clamp(2.25rem, 1.6rem + 3vw, 3rem);    /* 36 → 48 */
+  --text-4xl: clamp(2.75rem, 1.8rem + 4.5vw, 4rem);  /* 44 → 64 */
+  /* -- Shape and depth -------------------------------------------------- */
+  --radius-card: 12px;    /* a card in the hand */
+  --radius-pill: 999px;   /* a ball */
+  --radius-input: 4px;
+  --shadow-lift: 0 1px 2px rgb(10 15 11 / 0.08), 0 4px 12px rgb(10 15 11 / 0.08);
+  --shadow-float: 0 8px 28px rgb(10 15 11 / 0.18);
+  --ease-kick: cubic-bezier(.2, .8, .2, 1);      /* fast out, soft landing; default */
+  --ease-bounce: cubic-bezier(.34, 1.56, .64, 1); /* a ball settling; badges, success */
+  --ease-glide: cubic-bezier(.65, 0, .35, 1);     /* page and layout changes */
+  --container-measure: 640px;   /* athlete and public flows */
+  --container-wide: 1280px;     /* admin */
+}
+
+/* -- Floodlights: dark mode ----------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: var(--night);
+    --surface: var(--night-1);
+    --surface-2: var(--night-2);
+    --text: #F2F6F1;        /* 17.58 night, 15.41 night-1, 13.04 night-2 */
+    --text-muted: #A7B8AA;  /* 9.22 night, 6.84 night-2 */
+    --link: #3FD15C;        /* 9.59 night, 7.11 night-2 */
+    --line: #22392A;
+    --line-strong: #7E9483; /* 5.90 night */
+    --focus: #3FD15C;
+    --danger: #FF7A72;      /* 7.57 night, 6.99 on danger-bg */
+    --danger-bg: #2B1010;   /* text on it 16.24 */
+    --check: #3FD15C;       /* 7.70 on check-bg */
+    --check-bg: #0E2A16;
+    --chalk-line: var(--chalk);
+    --scoreboard: #000000;  /* chalk 21.0 */
+    --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.5), 0 4px 12px rgb(0 0 0 / 0.4);
+    --shadow-float: 0 8px 28px rgb(0 0 0 / 0.6);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: var(--night);
+  --surface: var(--night-1);
+  --surface-2: var(--night-2);
+  --text: #F2F6F1;
+  --text-muted: #A7B8AA;
+  --link: #3FD15C;
+  --line: #22392A;
+  --line-strong: #7E9483;
+  --focus: #3FD15C;
+  --danger: #FF7A72;
+  --danger-bg: #2B1010;
+  --check: #3FD15C;
+  --check-bg: #0E2A16;
+  --chalk-line: var(--chalk);
+  --scoreboard: #000000;
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.5), 0 4px 12px rgb(0 0 0 / 0.4);
+  --shadow-float: 0 8px 28px rgb(0 0 0 / 0.6);
+}

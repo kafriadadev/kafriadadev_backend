@@ -1,14 +1,17 @@
-/** The footer on every page. */
-export function SiteFooter() {
+import { getTranslations } from "next-intl/server";
+
+/** The footer on every page. Bare until the Phase 2 redesign. */
+export async function SiteFooter() {
+  const t = await getTranslations();
   return (
     <footer>
-      <p>KAFRIADA NET · Sport Network Platform</p>
-      <nav aria-label="Footer">
+      <p>{t("brand.name")} · {t("brand.tagline")}</p>
+      <nav aria-label={t("nav.footer")}>
         <ul>
-          <li><a href="/find">Look up an ID</a></li>
-          <li><a href="/register">Register as an athlete</a></li>
-          <li><a href="/clubs/register">Register a club</a></li>
-          <li><a href="/privacy">Privacy notice</a></li>
+          <li><a href="/find">{t("nav.findId")}</a></li>
+          <li><a href="/register">{t("nav.registerAthlete")}</a></li>
+          <li><a href="/clubs/register">{t("nav.registerClub")}</a></li>
+          <li><a href="/privacy">{t("nav.privacy")}</a></li>
         </ul>
       </nav>
     </footer>

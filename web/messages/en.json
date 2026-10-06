@@ -1,0 +1,43 @@
+{
+  "brand": {
+    "name": "KAFRIADA NET",
+    "tagline": "Sport Network Platform",
+    "home": "KAFRIADA NET home"
+  },
+  "meta": {
+    "title": "KAFRIADA NET — your permanent football ID",
+    "titleTemplate": "%s · KAFRIADA NET",
+    "description": "Register free and receive a permanent KAFRIADA NET ID with a QR profile any club or scout can check. Jigawa State pilot."
+  },
+  "nav": {
+    "skip": "Skip to content",
+    "main": "Main",
+    "footer": "Footer",
+    "findId": "Look up an ID",
+    "registerClub": "Register a club",
+    "myAccount": "My account",
+    "registerFree": "Register free",
+    "registerAthlete": "Register as an athlete",
+    "privacy": "Privacy notice"
+  },
+  "referee": {
+    "whistle": "Information",
+    "yellow": "Something to fix",
+    "red": "Blocked",
+    "var": "Being checked",
+    "flag": "Not allowed here",
+    "done": "Done"
+  },
+  "position": {
+    "GK": "Goalkeeper",
+    "DF": "Defender",
+    "MF": "Midfielder",
+    "FW": "Forward"
+  },
+  "styleguide": {
+    "title": "Style guide",
+    "lede": "Every token and building block of KAFRIADA NET, in one place. Review it in light and dark before screens are built.",
+    "sampleHeadline": "Your permanent football ID. Free.",
+    "sampleBody": "Register once and receive an ID that is yours for life. Any club or scout can check it in seconds."
+  }
+}

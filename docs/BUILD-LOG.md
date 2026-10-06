@@ -30,6 +30,52 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-06 — Frontend redesign, Phase 1: the design system
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **Tokens** (`web/src/styles/tokens.css`): the logo palette, light roles and "floodlights"
+  dark roles, the printed-card `--plate-*` set, type scale, space, radius, shadow, touch
+  targets and motion. Every text pair's contrast is measured and written beside it.
+  Tailwind v4 reads the tokens; its default palette is switched off, so no stray colour
+  can reach a page.
+- **Fonts, changed from the plan.** A glyph-by-glyph check found that Barlow Condensed,
+  Atkinson Hyperlegible Next and Geist Mono all lack the Hausa letters Ɓ ɓ Ɗ ɗ Ƙ ƙ Ƴ ƴ.
+  Display is now **Fira Sans Condensed 800 italic**, body **Andika** (SIL, made for
+  literacy in African languages). Both have every letter. **Geist Mono** stays for IDs
+  and codes, which are A–Z and 0–9 only. 44 KB preloaded; the ID font loads only where
+  used; Latin Extended loads only when a Hausa letter appears.
+- **The logo as SVG**: traced from the PNG (`scripts/design/`), in full, horizontal, mark
+  and wordmark, each in colour, on-dark, white and black (`web/public/brand/`), plus
+  an inline `Logo` component whose dark parts follow the theme.
+- **Icons**: Tabler through one module (`components/icons`), plus whistle, yellow and
+  red card, VAR screen and position shirts drawn on its grid.
+- **Pitch-line kit** (`components/pitch`): full pitch, centre circle, halfway line,
+  penalty arc, touchline and mowing stripes, chalked in with CSS.
+- **Translation**: next-intl, server side, `messages/en.json`. Header, footer and page
+  metadata read from it; screens move over as they are rebuilt.
+- **`/styleguide`**: every token, the type with the Hausa test line, icons, the referee
+  scale, pitch lines, scoreboard and motion. Served in development, or with `STYLEGUIDE=1`.
+
+**Verified:** typecheck and build clean. `STYLEGUIDE=1 check:render`: 71 checks, all pass,
+including `/styleguide` at 320–1280px in light and dark, and every no-JS round trip.
+Logo, pitch lines and the phone dark view checked by screenshot.
+- **Found:** cross-document view transitions left `<html>` intercepting clicks after a
+  no-JS form POST and redirect in Edge, which stalled the password-reset round trip.
+  They are held back until the Phase 8 motion pass.
+- **Found:** a stroke that does not scale breaks `pathLength`-based line drawing in Edge;
+  the draw animation uses a fixed screen-pixel dash.
+- Black text on the logo green measures 6.48:1, not the plan's 7.0:1 (still passes).
+
+**Not done / open:**
+- **Gate: the style guide needs your approval before Phase 2.** Run the web tier with
+  `STYLEGUIDE=1` and open `/styleguide`.
+- The trace bakes the logo's soft red-to-black shadow in as black; a designer's source
+  file would replace it.
+- The Hausa letters render in the browser; not yet tried on a real Android phone.
+
+---
+
 ## 2026-10-06 — Frontend redesign, Phase 0: clear the ground
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 
