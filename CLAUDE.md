@@ -526,9 +526,8 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
 - **Interface overhaul — done and verified 2026-10-03.** Same identity, new structure:
   site header (no-JS `<details>` menu on phones; reads no cookie, so cached pages stay
   cached), footer, `PageHead`, tabs (`SubNav`, `CoordinatorNav`), an admin sidebar
-  (`AdminShell`), stat tiles, tables that restack under 720px, `/me` as a hub. No inline
-  `style={{}}` remains — use the utilities in `globals.css`. Wrap a page in
-  `.page` (680px) or `.page page--wide` (1180px); sign-in screens use `.auth`.
+  (`AdminShell`), stat tiles, tables that restack under 720px, `/me` as a hub.
+  *Superseded 2026-10-06: the redesign removed this stylesheet (see below).*
 - **Full registration and email confirmation — done 2026-10-03** (migration 0014). Every
   athlete field required (see `contexts/identity/profile.py`, mirrored in
   `web/src/lib/profile.ts`); sign-in refuses (409, no session) until the email is confirmed
@@ -543,6 +542,11 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `web/src/components/ClubFields.tsx`. Athletes lost `club.create`; staff register at
   `/clubs/new` (admins `POST /v1/clubs`, coordinators `POST /v1/lgas/{lga}/clubs`). Tests:
   `tests/_club_helpers.py` (`sign_up_club`, `registers_clubs`).
+
+- **Frontend redesign, Phase 0 — done 2026-10-06** (`e4d2025`, branch `redesign`). Every
+  style, class name and font removed; pages render bare HTML through the same server
+  actions; football only (`PILOT_SPORT`); web copy says KAFRIADA NET. `web/KEPT.md` lists
+  what carried over. Next: Phase 1 (tokens, fonts, icons, i18n, `/styleguide`, logo SVG).
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
