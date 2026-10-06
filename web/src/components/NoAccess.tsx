@@ -9,10 +9,10 @@ export function NoAccess({
   message?: string;
 }) {
   return (
-    <div className="page stack">
+    <div>
       <h1>{title}</h1>
       <Flash variant="bad" title="You do not have access to this">
-        <p className="mb0">{message}</p>
+        <p>{message}</p>
       </Flash>
       <p><a href="/me">Back to my account</a></p>
     </div>

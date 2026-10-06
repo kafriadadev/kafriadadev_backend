@@ -1,4 +1,4 @@
-import { SPORTS } from "@/lib/profile";
+import { PILOT_SPORT } from "@/lib/profile";
 import {
   AGE_GROUPS, CATEGORIES, CLUB_LEVELS, CLUB_TYPES, OFFICIAL_ROLES,
 } from "@/lib/clubProfile";
@@ -28,11 +28,11 @@ export function ClubFields({
   const Field = ({
     name, label, hint, children,
   }: { name: string; label: string; hint?: string; children: React.ReactNode }) => (
-    <div className={badField === name ? "field field--error" : "field"}>
+    <div>
       <label htmlFor={name}>{label}</label>
-      {hint ? <span className="hint">{hint}</span> : null}
+      {hint ? <span>{hint}</span> : null}
       {children}
-      {badField === name ? <span className="error">{error}</span> : null}
+      {badField === name ? <span>{error}</span> : null}
     </div>
   );
   const v = values.get;
@@ -40,12 +40,12 @@ export function ClubFields({
 
   return (
     <>
-      <fieldset className="fieldset">
+      <fieldset>
         <legend>The club</legend>
         <Field name="name" label="Registered name" hint="As the club is known officially.">
           <input id="name" name="name" required defaultValue={v("name")} />
         </Field>
-        <div className="field-row">
+        <div>
           <Field name="short_name" label="Short name" hint="For example JFC.">
             <input id="short_name" name="short_name" required maxLength={20} defaultValue={v("short_name")} />
           </Field>
@@ -54,7 +54,7 @@ export function ClubFields({
               min={1900} required placeholder="2015" defaultValue={v("year_founded")} />
           </Field>
         </div>
-        <div className="field-row">
+        <div>
           <Field name="type" label="Kind of club">
             <select id="type" name="type" required defaultValue={v("type")}>
               <option value="">Choose</option>
@@ -62,19 +62,15 @@ export function ClubFields({
             </select>
           </Field>
           {fixed ? (
-            <div className="field">
+            <div>
               <label>Sport</label>
-              <p className="mb0 bold">{fixed.sport}</p>
+              <p>{fixed.sport}</p>
             </div>
           ) : (
-            <Field name="sport" label="Sport">
-              <select id="sport" name="sport" required defaultValue={v("sport") || "Football"}>
-                {SPORTS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </Field>
+            <input type="hidden" name="sport" value={PILOT_SPORT} />
           )}
         </div>
-        <div className="field-row">
+        <div>
           <Field name="category" label="Category">
             <select id="category" name="category" required defaultValue={v("category")}>
               <option value="">Choose</option>
@@ -88,23 +84,23 @@ export function ClubFields({
             </select>
           </Field>
         </div>
-        <div className={badField === "age_groups" ? "field field--error" : "field"}>
-          <span className="bold small">Age groups</span>
-          <span className="hint">Tick every age group the club fields a team in.</span>
-          <div className="cluster mt-2">
+        <div>
+          <span>Age groups</span>
+          <span>Tick every age group the club fields a team in.</span>
+          <div>
             {Object.entries(AGE_GROUPS).map(([k, l]) => (
-              <label key={k} className="cluster" htmlFor={`age_${k}`}>
+              <label key={k} htmlFor={`age_${k}`}>
                 <input id={`age_${k}`} type="checkbox" name="age_groups" value={k}
                   defaultChecked={chosenGroups.includes(k)} />
                 {l}
               </label>
             ))}
           </div>
-          {badField === "age_groups" ? <span className="error">{error}</span> : null}
+          {badField === "age_groups" ? <span>{error}</span> : null}
         </div>
       </fieldset>
 
-      <fieldset className="fieldset">
+      <fieldset>
         <legend>Home ground</legend>
         <Field name="ground_name" label="Ground or training venue">
           <input id="ground_name" name="ground_name" required defaultValue={v("ground_name")} />
@@ -112,14 +108,14 @@ export function ClubFields({
         <Field name="ground_address" label="Address">
           <input id="ground_address" name="ground_address" required defaultValue={v("ground_address")} />
         </Field>
-        <div className="field-row">
+        <div>
           <Field name="town" label="Town">
             <input id="town" name="town" required defaultValue={v("town")} />
           </Field>
           {fixed ? (
-            <div className="field">
+            <div>
               <label>Local government area</label>
-              <p className="mb0 bold">{fixed.lga_name}</p>
+              <p>{fixed.lga_name}</p>
             </div>
           ) : (
             <Field name="lga_id" label="Local government area">
@@ -132,9 +128,9 @@ export function ClubFields({
         </div>
       </fieldset>
 
-      <fieldset className="fieldset">
+      <fieldset>
         <legend>Official contact</legend>
-        <div className="field-row">
+        <div>
           <Field name="contact_phone" label="Club phone">
             <input id="contact_phone" name="contact_phone" type="tel" inputMode="tel" required
               placeholder="0803 000 0000" defaultValue={v("contact_phone")} />
@@ -143,7 +139,7 @@ export function ClubFields({
             <input id="club_email" name="club_email" type="email" required defaultValue={v("club_email")} />
           </Field>
         </div>
-        <div className="field-row">
+        <div>
           <Field name="cac_number" label="CAC or registration number (optional)">
             <input id="cac_number" name="cac_number" defaultValue={v("cac_number")} />
           </Field>
@@ -152,7 +148,7 @@ export function ClubFields({
               defaultValue={v("affiliation")} />
           </Field>
         </div>
-        <div className="field-row">
+        <div>
           <Field name="colours" label="Club colours (optional)">
             <input id="colours" name="colours" placeholder="Green and white" defaultValue={v("colours")} />
           </Field>
@@ -162,13 +158,13 @@ export function ClubFields({
         </div>
       </fieldset>
 
-      <fieldset className="fieldset">
+      <fieldset>
         <legend>Second official</legend>
-        <p className="hint mb-3">Someone else at the club we can reach.</p>
+        <p>Someone else at the club we can reach.</p>
         <Field name="official2_name" label="Full name">
           <input id="official2_name" name="official2_name" required defaultValue={v("official2_name")} />
         </Field>
-        <div className="field-row">
+        <div>
           <Field name="official2_role" label="Role">
             <select id="official2_role" name="official2_role" required defaultValue={v("official2_role")}>
               <option value="">Choose</option>

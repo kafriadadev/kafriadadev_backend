@@ -30,12 +30,6 @@ const STATE_LABEL: Record<ClubRosterRow["state"], string> = {
   unverified: "Unverified",
   invited: "Invited",
 };
-const STATE_PILL: Record<ClubRosterRow["state"], string> = {
-  verified: "pill pill--issued",
-  unverified: "pill pill--pending",
-  invited: "pill pill--pending",
-};
-
 /**
  * A club's dashboard (CLB-02): numbers, roster, invitations, details.
  *
@@ -62,10 +56,10 @@ export default async function ClubPage({
       if (error.status === 401) redirect("/sign-in?ended=1");
       if (error.status === 403 || error.status === 404) {
         return (
-          <div className="page stack">
+          <div>
             <h1>Club</h1>
             <Flash variant="bad" title="You do not have access to this">
-              <p className="mb0">
+              <p>
                 You can only open a club you administer. <a href="/me">Back to your account</a>
               </p>
             </Flash>
@@ -82,7 +76,7 @@ export default async function ClubPage({
   const invited = club.roster.filter((r) => r.state === "invited");
 
   return (
-    <div className="page page--wide stack">
+    <div>
       <PageHead
         back={{ href: "/clubs", label: "My clubs" }}
         eyebrow={<>Club &middot; {club.sport} &middot; {club.lga_name}</>}
@@ -91,9 +85,9 @@ export default async function ClubPage({
         actions={
           club.status === "approved" ? (
             <>
-              <a href={`${base}/invite`} className="btn btn--primary">Add a player</a>
+              <a href={`${base}/invite`}>Add a player</a>
               {club.verified ? null : (
-                <a href={`${base}/verify`} className="btn btn--ghost">Verify club</a>
+                <a href={`${base}/verify`}>Verify club</a>
               )}
             </>
           ) : undefined
@@ -102,44 +96,44 @@ export default async function ClubPage({
 
       {one(query.registered) ? (
         <Flash variant="good" title="Club registered">
-          <p className="mb0">You are now this club&rsquo;s administrator.</p>
+          <p>You are now this club&rsquo;s administrator.</p>
         </Flash>
       ) : null}
 
       {one(query.invited) ? (
         <Flash variant="good" title="Invitation sent">
-          <p className="mb0">The player appears on your roster once they accept.</p>
+          <p>The player appears on your roster once they accept.</p>
         </Flash>
       ) : null}
       {one(query.saved) ? (
         <Flash variant="good" title="Details saved">
-          <p className="mb0">The club&rsquo;s details are updated.</p>
+          <p>The club&rsquo;s details are updated.</p>
         </Flash>
       ) : null}
       {one(query.removed) ? (
         <Flash variant="good" title="Done">
-          <p className="mb0">The roster has been updated.</p>
+          <p>The roster has been updated.</p>
         </Flash>
       ) : null}
       {one(query.error) ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{one(query.error)}</p>
+          <p>{one(query.error)}</p>
         </Flash>
       ) : null}
 
       {club.status === "pending_review" ? (
         <Flash variant="warn" title="Waiting for approval">
-          <p className="mb0">
+          <p>
             An administrator reviews every new club. Once it is approved you can build a roster.
           </p>
         </Flash>
       ) : club.status === "suspended" ? (
         <Flash variant="bad" title="This club is suspended">
-          <p className="mb0">Contact your local government area coordinator.</p>
+          <p>Contact your local government area coordinator.</p>
         </Flash>
       ) : null}
 
-      <div className="stats">
+      <div>
         <Stat
           label="Club status"
           value={club.verified ? "Verified" : "Not verified"}
@@ -161,7 +155,7 @@ export default async function ClubPage({
           <RosterList rows={players} clubId={club.club_id} tab="roster" action="Remove" />
         ) : (
           <EmptyState title="No players yet">
-            <p className="small">A player joins by accepting an invitation from this club.</p>
+            <p>A player joins by accepting an invitation from this club.</p>
           </EmptyState>
         )
       ) : null}
@@ -175,8 +169,8 @@ export default async function ClubPage({
       ) : null}
 
       {tab === "details" ? (
-        <section className="doc" aria-label="Club details">
-          <div className="doc__body">
+        <section aria-label="Club details">
+          <div>
             {(() => {
               const p = (club.profile ?? {}) as Record<string, unknown>;
               const t = (v: unknown): string | null =>
@@ -212,18 +206,18 @@ export default async function ClubPage({
               return (
                 <>
                   {missing ? (
-                    <div className="notice notice--warn mb-4">
-                      <p className="notice__title">The club&rsquo;s record is incomplete</p>
-                      <p className="mb0">Fill in the missing details so reviewers have the full picture.</p>
+                    <div>
+                      <p>The club&rsquo;s record is incomplete</p>
+                      <p>Fill in the missing details so reviewers have the full picture.</p>
                     </div>
                   ) : null}
-                  <div className="grid grid-2">
+                  <div>
                     {[rows.slice(0, 9), rows.slice(9)].map((half, i) => (
-                      <dl className="facts m0" key={i}>
+                      <dl key={i}>
                         {half.map(([k, v]) => (
-                          <div className="fact" key={k}>
+                          <div key={k}>
                             <dt>{k}</dt>
-                            <dd className="break">{v ?? <span className="unset">Not given</span>}</dd>
+                            <dd>{v ?? <span>Not given</span>}</dd>
                           </div>
                         ))}
                       </dl>
@@ -232,8 +226,8 @@ export default async function ClubPage({
                 </>
               );
             })()}
-            <p className="mt-4 mb0">
-              <a href={`${base}/edit`} className="btn btn--ghost">Edit details</a>
+            <p>
+              <a href={`${base}/edit`}>Edit details</a>
             </p>
           </div>
         </section>
@@ -254,10 +248,10 @@ function RosterList({
   action: string;
 }) {
   return (
-    <div className="table-wrap">
-      <table className="table">
+    <div>
+      <table>
         <thead>
-          <tr><th>Player</th><th>KAFRIADA ID</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr>
+          <tr><th>Player</th><th>KAFRIADA NET ID</th><th>Status</th><th><span>Actions</span></th></tr>
         </thead>
         <tbody>
           {rows.map((r) => (
@@ -265,17 +259,17 @@ function RosterList({
               <td data-label="">
                 <span>
                   <strong>{r.full_name}</strong>
-                  {r.position ? <><br /><span className="hint">{r.position}</span></> : null}
+                  {r.position ? <><br /><span>{r.position}</span></> : null}
                 </span>
               </td>
-              <td data-label="ID"><span className="kuid">{r.kuid}</span></td>
-              <td data-label="Status"><span className={STATE_PILL[r.state]}>{STATE_LABEL[r.state]}</span></td>
+              <td data-label="ID"><span>{r.kuid}</span></td>
+              <td data-label="Status"><span>{STATE_LABEL[r.state]}</span></td>
               <td data-label="">
                 <form action={removeAction}>
                   <input type="hidden" name="club" value={clubId} />
                   <input type="hidden" name="roster" value={r.roster_id} />
                   <input type="hidden" name="tab" value={tab} />
-                  <SubmitButton className="btn btn--ghost btn--sm" pending="Updating the roster…">
+                  <SubmitButton pending="Updating the roster…">
                     {action}
                   </SubmitButton>
                 </form>

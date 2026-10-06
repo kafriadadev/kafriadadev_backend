@@ -1,9 +1,9 @@
-/** Nothing to show yet — said plainly, with the next step if there is one. */
+/** Nothing to show yet, with the next step if there is one. */
 export function EmptyState({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
-    <div className="empty">
-      <p className="empty__title">{title}</p>
+    <section>
+      <p><strong>{title}</strong></p>
       {children}
-    </div>
+    </section>
   );
 }

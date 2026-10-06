@@ -89,8 +89,8 @@ export default async function ReversalPage({ searchParams }: { searchParams: Pro
 
       {done ? (
         <Flash variant="good" title="Recorded">
-          <p className="mb0">
-            The refund for <span className="kuid">{done}</span> is recorded in
+          <p>
+            The refund for <span>{done}</span> is recorded in
             the ledger. It cannot be recorded again against the same payment.
           </p>
         </Flash>
@@ -98,64 +98,63 @@ export default async function ReversalPage({ searchParams }: { searchParams: Pro
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : null}
 
-      <form method="GET" className="panel toolbar toolbar--2" role="search" noValidate>
-        <div className="field">
+      <form method="GET" role="search" noValidate>
+        <div>
           <label htmlFor="reference">Payment reference</label>
-          <span className="hint">From the Paystack dashboard. Starts with KAF-.</span>
+          <span>From the Paystack dashboard. Starts with KAF-.</span>
           <input
             id="reference"
             name="reference"
             required
             placeholder="KAF-…"
             defaultValue={reference}
-            className="input-mono"
           />
         </div>
-        <button type="submit" className="btn btn--primary btn--block">Find</button>
+        <button type="submit">Find</button>
       </form>
 
       {lookupError ? (
         <Flash variant="warn" title="Not found">
-          <p className="mb0">{lookupError}</p>
+          <p>{lookupError}</p>
         </Flash>
       ) : null}
 
       {found ? (
-        <section className="doc narrow" aria-label="What was found">
-          <div className="doc__body">
-            <dl className="facts">
-              <div className="fact"><dt>Reference</dt><dd><span className="kuid">{found.reference}</span></dd></div>
-              <div className="fact"><dt>Paid by</dt><dd>{found.payer_name}</dd></div>
+        <section aria-label="What was found">
+          <div>
+            <dl>
+              <div><dt>Reference</dt><dd><span>{found.reference}</span></dd></div>
+              <div><dt>Paid by</dt><dd>{found.payer_name}</dd></div>
               {found.athlete_kuid ? (
-                <div className="fact">
+                <div>
                   <dt>For</dt>
-                  <dd>{found.athlete_name} &middot; <span className="kuid">{found.athlete_kuid}</span></dd>
+                  <dd>{found.athlete_name} &middot; <span>{found.athlete_kuid}</span></dd>
                 </div>
               ) : null}
-              <div className="fact"><dt>Purpose</dt><dd>{found.purpose}</dd></div>
-              <div className="fact">
+              <div><dt>Purpose</dt><dd>{found.purpose}</dd></div>
+              <div>
                 <dt>Status</dt>
                 <dd>{STATUS_LABEL[found.status] ?? found.status}</dd>
               </div>
-              <div className="fact">
+              <div>
                 <dt>Amount settled</dt>
                 <dd>{found.gross_kobo !== null ? formatNaira(found.gross_kobo) : "—"}</dd>
               </div>
               {found.already_reversed ? (
-                <div className="fact"><dt>Refund</dt><dd>Already recorded</dd></div>
+                <div><dt>Refund</dt><dd>Already recorded</dd></div>
               ) : null}
             </dl>
 
             {found.reversible ? (
-              <form action={reverseAction} className="mt-5">
+              <form action={reverseAction}>
                 <input type="hidden" name="reference" value={found.reference} />
-                <div className="field">
+                <div>
                   <label htmlFor="amount_naira">Amount refunded</label>
-                  <span className="hint">
+                  <span>
                     In naira, exactly as it left the account
                     {found.gross_kobo !== null ? ` — up to ${formatNaira(found.gross_kobo)}` : ""}.
                   </span>
@@ -169,14 +168,14 @@ export default async function ReversalPage({ searchParams }: { searchParams: Pro
                     required
                   />
                 </div>
-                <div className="field">
+                <div>
                   <label htmlFor="reason">Reason</label>
-                  <span className="hint">Kept permanently with the ledger line.</span>
+                  <span>Kept permanently with the ledger line.</span>
                   <textarea id="reason" name="reason" maxLength={1000} required />
                 </div>
-                <div className="field">
+                <div>
                   <label htmlFor="current_password">Your password</label>
-                  <span className="hint">Confirms this is really you.</span>
+                  <span>Confirms this is really you.</span>
                   <input
                     id="current_password"
                     name="current_password"
@@ -185,12 +184,12 @@ export default async function ReversalPage({ searchParams }: { searchParams: Pro
                     required
                   />
                 </div>
-                <button type="submit" className="btn btn--primary btn--block">
+                <button type="submit">
                   Record this refund
                 </button>
               </form>
             ) : (
-              <p className="hint mt-4 mb0">
+              <p>
                 Nothing to record — only a settled payment with no refund on it
                 already can have one recorded.
               </p>

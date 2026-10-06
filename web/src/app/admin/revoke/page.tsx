@@ -67,7 +67,7 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
       found = await findVerificationByKuid(token, kuid);
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 404) {
-        lookupError = "No verification request is on file for that KAFRIADA ID.";
+        lookupError = "No verification request is on file for that KAFRIADA NET ID.";
       } else if (caught instanceof ApiError) {
         lookupError = caught.message;
       } else {
@@ -81,14 +81,14 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
       <PageHead
         eyebrow="Administrator"
         title="Withdraw a verification"
-        lede={<>Finds an athlete&rsquo;s verification by their KAFRIADA ID, so it can be withdrawn with a reason. The badge and photo come down immediately; the KAFRIADA ID itself is never affected.</>}
+        lede={<>Finds an athlete&rsquo;s verification by their KAFRIADA NET ID, so it can be withdrawn with a reason. The badge and photo come down immediately; the KAFRIADA NET ID itself is never affected.</>}
         app
       />
 
       {done ? (
         <Flash variant="good" title="Withdrawn">
-          <p className="mb0">
-            The badge for <span className="kuid">{done}</span> has been withdrawn.
+          <p>
+            The badge for <span>{done}</span> has been withdrawn.
             The athlete has been told by SMS, and the reason is kept permanently.
           </p>
         </Flash>
@@ -96,55 +96,54 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : null}
 
-      <form method="GET" className="panel toolbar toolbar--2" role="search" noValidate>
-        <div className="field">
-          <label htmlFor="kuid">KAFRIADA ID</label>
+      <form method="GET" role="search" noValidate>
+        <div>
+          <label htmlFor="kuid">KAFRIADA NET ID</label>
           <input
             id="kuid"
             name="kuid"
             required
             placeholder="KA-NG-JG-BKD-2026-000001"
             defaultValue={kuid}
-            className="input-mono"
           />
         </div>
-        <button type="submit" className="btn btn--primary btn--block">Find</button>
+        <button type="submit">Find</button>
       </form>
 
       {lookupError ? (
         <Flash variant="warn" title="Not found">
-          <p className="mb0">{lookupError}</p>
+          <p>{lookupError}</p>
         </Flash>
       ) : null}
 
       {found ? (
-        <section className="doc narrow" aria-label="What was found">
-          <div className="doc__body">
-            <dl className="facts">
-              <div className="fact"><dt>Name</dt><dd>{found.full_name}</dd></div>
-              <div className="fact"><dt>KAFRIADA ID</dt><dd><span className="kuid">{found.kuid}</span></dd></div>
-              <div className="fact">
+        <section aria-label="What was found">
+          <div>
+            <dl>
+              <div><dt>Name</dt><dd>{found.full_name}</dd></div>
+              <div><dt>KAFRIADA NET ID</dt><dd><span>{found.kuid}</span></dd></div>
+              <div>
                 <dt>Status</dt>
                 <dd>{STATUS_LABEL[found.status] ?? found.status}</dd>
               </div>
             </dl>
 
             {found.revocable ? (
-              <form action={revokeAction} className="mt-5">
+              <form action={revokeAction}>
                 <input type="hidden" name="request_id" value={found.request_id} />
                 <input type="hidden" name="kuid" value={found.kuid} />
-                <div className="field">
+                <div>
                   <label htmlFor="reason">Reason</label>
-                  <span className="hint">Kept permanently. This is not shown to the athlete verbatim, unlike a rejection.</span>
+                  <span>Kept permanently. This is not shown to the athlete verbatim, unlike a rejection.</span>
                   <textarea id="reason" name="reason" maxLength={1000} required />
                 </div>
-                <div className="field">
+                <div>
                   <label htmlFor="current_password">Your password</label>
-                  <span className="hint">Confirms this is really you, same as any other admin action.</span>
+                  <span>Confirms this is really you, same as any other admin action.</span>
                   <input
                     id="current_password"
                     name="current_password"
@@ -153,12 +152,12 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
                     required
                   />
                 </div>
-                <button type="submit" className="btn btn--primary btn--block">
+                <button type="submit">
                   Withdraw this verification
                 </button>
               </form>
             ) : (
-              <p className="hint mt-4 mb0">
+              <p>
                 Nothing to withdraw — only an approved verification can be.
               </p>
             )}

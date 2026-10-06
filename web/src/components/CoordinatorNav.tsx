@@ -1,6 +1,6 @@
 import { SubNav } from "./SubNav";
 
-/** Tabs across the coordinator's screens, carrying the LGA being worked on. */
+/** The coordinator's sections, carrying the LGA being worked on. */
 export function CoordinatorNav({ current, lga }: { current: string; lga: string }) {
   const q = `?lga=${encodeURIComponent(lga)}`;
   const links = [
@@ -11,12 +11,10 @@ export function CoordinatorNav({ current, lga }: { current: string; lga: string 
     { href: "/assist-pay", label: "Pay for an athlete" },
   ];
   return (
-    <div className="no-print">
-      <SubNav
-        links={links.map((l) => ({ href: l.href + q, label: l.label }))}
-        current={current + q}
-        label="Coordinator"
-      />
-    </div>
+    <SubNav
+      links={links.map((l) => ({ href: l.href + q, label: l.label }))}
+      current={current + q}
+      label="Coordinator"
+    />
   );
 }

@@ -55,12 +55,12 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     <AdminShell current="/admin/users">
       <PageHead eyebrow="Administrator" title="Users and roles" app />
 
-      <form method="get" className="panel toolbar" role="search">
-        <div className="field">
-          <label htmlFor="q">Name, phone or KAFRIADA ID</label>
+      <form method="get" role="search">
+        <div>
+          <label htmlFor="q">Name, phone or KAFRIADA NET ID</label>
           <input id="q" name="q" defaultValue={q} />
         </div>
-        <div className="field">
+        <div>
           <label htmlFor="role">Role</label>
           <select id="role" name="role" defaultValue={role}>
             <option value="">All roles</option>
@@ -69,25 +69,25 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
             ))}
           </select>
         </div>
-        <button type="submit" className="btn btn--primary btn--block">Search</button>
+        <button type="submit">Search</button>
       </form>
 
       {result.users.length === 0 ? (
         <EmptyState title="No one matches">
-          <p className="small">Try part of a name, the last digits of a phone number, or a full ID.</p>
+          <p>Try part of a name, the last digits of a phone number, or a full ID.</p>
         </EmptyState>
       ) : (
-        <div className="table-wrap">
-          <table className="table">
+        <div>
+          <table>
             <thead>
-              <tr><th>Name</th><th>Phone</th><th>KAFRIADA ID</th><th>Roles</th><th>Last seen</th></tr>
+              <tr><th>Name</th><th>Phone</th><th>KAFRIADA NET ID</th><th>Roles</th><th>Last seen</th></tr>
             </thead>
             <tbody>
               {result.users.map((u) => (
                 <tr key={u.user_id}>
                   <td data-label=""><a href={`/admin/users/${u.user_id}`}><strong>{u.full_name}</strong></a></td>
                   <td data-label="Phone"><span>{u.phone_masked}</span></td>
-                  <td data-label="ID">{u.kuid ? <span className="kuid">{u.kuid}</span> : <span className="muted">None</span>}</td>
+                  <td data-label="ID">{u.kuid ? <span>{u.kuid}</span> : <span>None</span>}</td>
                   <td data-label="Roles">
                     <span>
                       {u.roles.length
@@ -95,7 +95,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                         : "No roles"}
                     </span>
                   </td>
-                  <td data-label="Last seen"><span className="nowrap">{seen(u.last_seen)}</span></td>
+                  <td data-label="Last seen"><span>{seen(u.last_seen)}</span></td>
                 </tr>
               ))}
             </tbody>

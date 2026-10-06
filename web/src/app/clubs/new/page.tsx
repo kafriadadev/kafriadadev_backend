@@ -51,7 +51,7 @@ export default async function NewClubPage({ searchParams }: { searchParams: Prom
   }
 
   return (
-    <div className="page stack">
+    <div>
       <PageHead
         back={{ href: "/me", label: "My account" }}
         eyebrow={isAdmin ? "Administrator" : "Coordinator"}
@@ -68,15 +68,15 @@ export default async function NewClubPage({ searchParams }: { searchParams: Prom
           variant={duplicate ? "warn" : "bad"}
           title={duplicate ? "This name is already used" : "We could not register the club"}
         >
-          <p className="mb0">
+          <p>
             {error}
             {duplicate ? " If yours is a different club, tick the box below and submit again." : ""}
           </p>
         </Flash>
       ) : null}
 
-      <form action={registerClubAction} className="doc" noValidate>
-        <div className="doc__body">
+      <form action={registerClubAction} noValidate>
+        <div>
           <ClubFields
             values={{ get, all }}
             badField={badField}
@@ -84,8 +84,8 @@ export default async function NewClubPage({ searchParams }: { searchParams: Prom
             lgas={isAdmin ? open : open.filter((l) => l.id === coordinator?.scope_id)}
           />
           {duplicate ? (
-            <div className="field">
-              <label htmlFor="confirm_duplicate" className="cluster">
+            <div>
+              <label htmlFor="confirm_duplicate">
                 <input id="confirm_duplicate" name="confirm_duplicate" type="checkbox" />
                 This is a different club with the same name
               </label>

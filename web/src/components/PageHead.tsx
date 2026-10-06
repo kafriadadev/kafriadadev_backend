@@ -5,27 +5,22 @@ export function PageHead({
   lede,
   actions,
   back,
-  app = false,
 }: {
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   lede?: React.ReactNode;
   actions?: React.ReactNode;
   back?: { href: string; label: string };
-  /** A working screen (dashboard, list): a smaller title. */
+  /** Accepted for compatibility; unused until the redesign. */
   app?: boolean;
 }) {
   return (
-    <header className={app ? "page-head page-head--app" : "page-head"}>
-      {back ? <a href={back.href} className="back">{back.label}</a> : null}
-      <div className="row-between">
-        <div>
-          {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
-          <h1>{title}</h1>
-          {lede ? <p className="lede">{lede}</p> : null}
-        </div>
-        {actions ? <div className="cluster">{actions}</div> : null}
-      </div>
+    <header>
+      {back ? <p><a href={back.href}>{back.label}</a></p> : null}
+      {eyebrow ? <p>{eyebrow}</p> : null}
+      <h1>{title}</h1>
+      {lede ? <p>{lede}</p> : null}
+      {actions ? <div>{actions}</div> : null}
     </header>
   );
 }

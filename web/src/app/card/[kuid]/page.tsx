@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { PageHead } from "@/components/PageHead";
 import { getProfile, type PublicProfile } from "@/lib/api";
 
-export const metadata: Metadata = { title: "Your KAFRIADA card" };
+export const metadata: Metadata = { title: "Your KAFRIADA NET card" };
 export const dynamic = "force-dynamic";
 
 /**
@@ -37,49 +37,45 @@ export default async function CardPage({
   const firstName = profile.full_name.split(" ")[0];
 
   return (
-    <div className="page page--wide">
-      <div className="no-print">
+    <div>
+      <div>
         <PageHead
           eyebrow="Step 3 of 3 · Done"
           title={`${firstName}, this is your ID.`}
           lede="It is permanent and it is yours. Print it, download it, or simply write the number down. All three work."
         />
-        <p className="cluster mb-4">
-          <span className="hint">Status</span>
+        <p>
+          <span>Status</span>
           <VerificationBadge verified={profile.is_verified} />
         </p>
       </div>
 
-      <div className="split">
-      <div className="stack">
+      <div>
+      <div>
 
       {/* -- The card itself. This is what gets printed. ------------------- */}
-      <article className="doc" aria-label="Your KAFRIADA card">
-        <div className="doc__body">
-          <div className="row-between">
-            <div className="minw0">
-              <p className="eyebrow mb-2">
+      <article aria-label="Your KAFRIADA NET card">
+        <div>
+          <div>
+            <div>
+              <p>
                 Federation of Nigerian Sports
               </p>
-              <h2 className="doc__title">
+              <h2>
                 {profile.full_name}
               </h2>
-              <p className="doc__sub">
+              <p>
                 {profile.sport}
                 {profile.playing_position ? ` · ${profile.playing_position}` : ""}
               </p>
-              <p className="doc__sub">
+              <p>
                 {profile.lga_name}, {profile.state_name}
               </p>
             </div>
 
-            <div className="seal" aria-hidden="true">
-              <strong>KAF</strong>
-              {profile.registered_year}
-            </div>
           </div>
 
-          <div className="doc__section cluster cluster--lg">
+          <div>
             {/* Server-rendered, cached a day, and proxied — the browser never
                 touches the domain tier to get it. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -88,13 +84,12 @@ export default async function CardPage({
               alt={`QR code linking to the public profile for ${profile.kuid}`}
               width={132}
               height={132}
-              className="qr"
             />
-            <div className="grow">
-              <p className="eyebrow mb-2">
+            <div>
+              <p>
                 Scan to verify
               </p>
-              <p className="hint mb0">
+              <p>
                 Anyone can scan this with a phone camera to see your public
                 profile. It does not show your phone number or your date of
                 birth.
@@ -103,39 +98,34 @@ export default async function CardPage({
           </div>
         </div>
 
-        <div className="doc__perf" />
-        <div className="mrz">
-          <small>KAFRIADA unique identifier</small>
-          {profile.kuid}
-        </div>
       </article>
 
       {/* -- Actions ------------------------------------------------------- */}
-      <div className="no-print cluster">
+      <div>
         {/* A plain link to the print stylesheet route would need JavaScript to
             trigger window.print(). Instead the page IS the print layout, so the
             browser's own print command produces the card — which works
             everywhere, including where scripts do not run. */}
-        <a href={`/a/${encodeURIComponent(profile.kuid)}`} className="btn btn--primary">
+        <a href={`/a/${encodeURIComponent(profile.kuid)}`}>
           View my public profile
         </a>
         {/* The full card — name, QR and KUID in one image — not just the code
             on its own. Plain downloads, so a PDF exists even on a browser
             with no "print to PDF" of its own (Opera Mini among them). */}
-        <a href={`/card/${encodeURIComponent(profile.kuid)}/card.png`} className="btn btn--ghost" download>
+        <a href={`/card/${encodeURIComponent(profile.kuid)}/card.png`} download>
           Download card (PNG)
         </a>
-        <a href={`/card/${encodeURIComponent(profile.kuid)}/card.pdf`} className="btn btn--ghost" download>
+        <a href={`/card/${encodeURIComponent(profile.kuid)}/card.pdf`} download>
           Download card (PDF)
         </a>
       </div>
 
       </div>
 
-      <aside className="stack no-print">
-      <div className="notice">
-        <p className="notice__title">To print</p>
-        <p className="mb0">
+      <aside>
+      <div>
+        <p>To print</p>
+        <p>
           Use your browser&rsquo;s Print command on this page. Everything except
           the card is left off the paper automatically.
         </p>
@@ -143,25 +133,25 @@ export default async function CardPage({
 
       {/* -- The upsell. Deliberately AFTER the free thing is delivered. --- */}
       {profile.is_verified ? null : (
-      <div className="notice notice--warn">
-        <p className="notice__title">Get verified</p>
+      <div>
+        <p>Get verified</p>
         <p>
           <strong>Your profile shows as unverified.</strong> For ₦2,500 your LGA
           coordinator checks your ID document, and your profile then shows the
           verified badge and your photograph.
         </p>
-        <p className="hint mb0">
+        <p>
           No bank card? Take ₦2,500 in cash to your LGA coordinator and they can
           do it for you.
         </p>
-        <a href="/verify" className="btn btn--primary mt-3">Get verified</a>
+        <a href="/verify">Get verified</a>
       </div>
       )}
 
-      <div className="notice">
-        <p className="notice__title">Keep this number</p>
-        <p className="mb0">
-          Your ID is <span className="kuid">{profile.kuid}</span>. It records
+      <div>
+        <p>Keep this number</p>
+        <p>
+          Your ID is <span>{profile.kuid}</span>. It records
           where you first registered, not where you live — it stays the same even
           if you move or change clubs.
         </p>

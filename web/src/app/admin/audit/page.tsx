@@ -66,50 +66,50 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
     <AdminShell current="/admin/audit">
       <PageHead eyebrow="Administrator" title="Audit log" app />
 
-      <form method="get" className="panel toolbar toolbar--4" role="search">
-        <div className="field">
+      <form method="get" role="search">
+        <div>
           <label htmlFor="actor">Who</label>
           <input id="actor" name="actor" defaultValue={filters.actor} />
         </div>
-        <div className="field">
+        <div>
           <label htmlFor="action">Action</label>
           <input id="action" name="action" defaultValue={filters.action} placeholder="verification.approved" />
         </div>
-        <div className="field">
+        <div>
           <label htmlFor="since">From</label>
           <input id="since" name="since" type="date" defaultValue={filters.since} />
         </div>
-        <div className="field">
+        <div>
           <label htmlFor="until">To</label>
           <input id="until" name="until" type="date" defaultValue={filters.until} />
         </div>
-        <button type="submit" className="btn btn--primary btn--block">Filter</button>
+        <button type="submit">Filter</button>
       </form>
 
       {problem ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{problem}</p>
+          <p>{problem}</p>
         </Flash>
       ) : null}
 
       {log && log.entries.length === 0 ? <EmptyState title="No entries match" /> : null}
 
       {log && log.entries.length > 0 ? (
-        <div className="table-wrap">
-          <table className="table">
+        <div>
+          <table>
             <thead>
               <tr><th>When</th><th>Action</th><th>Who</th><th>Subject</th></tr>
             </thead>
             <tbody>
               {log.entries.map((e) => (
                 <tr key={e.entry_id}>
-                  <td data-label="When"><span className="nowrap">{when(e.occurred_at)}</span></td>
-                  <td data-label="Action"><span className="mono break">{e.action}</span></td>
+                  <td data-label="When"><span>{when(e.occurred_at)}</span></td>
+                  <td data-label="Action"><span>{e.action}</span></td>
                   <td data-label="Who">
                     <span>{e.actor}{e.actor_role ? ` (${e.actor_role})` : ""}</span>
                   </td>
                   <td data-label="Subject">
-                    <span className="small break">
+                    <span>
                       {e.subject_type} {e.subject_id}
                       {e.reference ? ` · ref ${e.reference}` : ""}
                     </span>
@@ -129,7 +129,7 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
         />
       ) : null}
 
-      <p className="hint">
+      <p>
         Audit records cannot be edited or deleted by anyone, including administrators.
       </p>
     </AdminShell>

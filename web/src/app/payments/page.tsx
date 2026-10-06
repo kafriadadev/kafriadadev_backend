@@ -22,13 +22,6 @@ const STATE_LABEL: Record<Payment["state"], string> = {
   failed: "Not completed",
 };
 
-const STATE_PILL: Record<Payment["state"], string> = {
-  confirmed: "pill pill--issued",
-  checking: "pill pill--pending",
-  review: "pill pill--pending",
-  failed: "pill pill--bad",
-};
-
 const stamp = (iso: string): string =>
   new Date(iso).toLocaleString("en-GB", {
     day: "numeric", month: "short", year: "numeric",
@@ -56,7 +49,7 @@ export default async function PaymentsPage() {
   const payments = await listPayments(token);
 
   return (
-    <div className="page page--wide stack">
+    <div>
       <PageHead
         back={{ href: "/me", label: "My account" }}
         eyebrow="Account"
@@ -66,23 +59,23 @@ export default async function PaymentsPage() {
 
       {payments.length === 0 ? (
         <EmptyState title="Nothing here yet">
-          <p className="small">You have not started a payment.</p>
-          <a href="/pay" className="btn btn--primary">Get verified for ₦2,500</a>
+          <p>You have not started a payment.</p>
+          <a href="/pay">Get verified for ₦2,500</a>
         </EmptyState>
       ) : (
-        <div className="table-wrap">
-          <table className="table">
+        <div>
+          <table>
             <thead>
-              <tr><th>Payment</th><th>Date</th><th>Reference</th><th>Status</th><th className="num">Amount</th></tr>
+              <tr><th>Payment</th><th>Date</th><th>Reference</th><th>Status</th><th>Amount</th></tr>
             </thead>
             <tbody>
               {payments.map((p) => (
                 <tr key={p.reference}>
                   <td data-label=""><strong>{PURPOSE_LABEL[p.purpose] ?? p.purpose}</strong></td>
-                  <td data-label="Date"><span className="nowrap">{stamp(p.created_at)}</span></td>
-                  <td data-label="Reference"><span className="kuid small">{p.reference}</span></td>
-                  <td data-label="Status"><span className={STATE_PILL[p.state]}>{STATE_LABEL[p.state]}</span></td>
-                  <td data-label="Amount" className="num"><strong>{formatNaira(p.amount_kobo)}</strong></td>
+                  <td data-label="Date"><span>{stamp(p.created_at)}</span></td>
+                  <td data-label="Reference"><span>{p.reference}</span></td>
+                  <td data-label="Status"><span>{STATE_LABEL[p.state]}</span></td>
+                  <td data-label="Amount"><strong>{formatNaira(p.amount_kobo)}</strong></td>
                 </tr>
               ))}
             </tbody>

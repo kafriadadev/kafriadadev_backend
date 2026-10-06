@@ -36,7 +36,7 @@ export type PublicProfile = {
   age: number;
   is_verified: boolean;
   photo_url: string | null;
-  /** The link carried a signature we issued: this QR came from KAFRIADA. */
+  /** The link carried a signature we issued: this QR came from KAFRIADA NET. */
   issued_by_kafriada: boolean;
   /** An approved badge that was later taken back. */
   verification_withdrawn: boolean;
@@ -221,7 +221,7 @@ async function call<T>(
     // Unreachable or too slow. Say so plainly — never show a stack trace or a
     // hostname to someone standing at a registration desk.
     throw new ApiError(
-      "We could not reach KAFRIADA just now. Please try again in a moment.",
+      "We could not reach KAFRIADA NET just now. Please try again in a moment.",
     );
   } finally {
     clearTimeout(timer);
@@ -510,7 +510,7 @@ export type PlayerMatch = {
   state: "found" | "on_roster" | "invited";
 };
 
-/** CLB-03: an exact match on a KAFRIADA ID or phone number, or a 404. */
+/** CLB-03: an exact match on a KAFRIADA NET ID or phone number, or a 404. */
 export function findPlayer(token: string, clubId: string, q: string): Promise<PlayerMatch> {
   return call<PlayerMatch>(
     `/v1/clubs/${encodeURIComponent(clubId)}/players/find?${new URLSearchParams({ q })}`,

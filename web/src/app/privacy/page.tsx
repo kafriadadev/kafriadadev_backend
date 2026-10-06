@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Privacy notice" };
  */
 export default function PrivacyPage() {
   return (
-    <div className="page prose">
+    <div>
       <PageHead eyebrow="Version 1.1 · Effective 3 October 2026" title="What we keep, and what we do with it" />
 
       <h2>What we collect</h2>
@@ -27,10 +27,10 @@ export default function PrivacyPage() {
 
       <h2>What is public</h2>
       <p>
-        Your name, KAFRIADA ID, sport, position, LGA, age and, once verified, your
+        Your name, KAFRIADA NET ID, sport, position, LGA, age and, once verified, your
         photograph. <strong>Your phone number, email, address, date of birth and
         emergency contact are never shown publicly</strong>, and neither is any
-        identity document. Your LGA coordinator and KAFRIADA administrators can see
+        identity document. Your LGA coordinator and KAFRIADA NET administrators can see
         your full record.
       </p>
 
@@ -41,14 +41,14 @@ export default function PrivacyPage() {
         the law requires.
       </p>
 
-      <div className="notice notice--warn">
-        <p className="notice__title">If you ask us to delete your data</p>
+      <div>
+        <p>If you ask us to delete your data</p>
         <p>
           Your name, photograph, contact details, address, date of birth, emergency
           contact and any documents are erased.
         </p>
-        <p className="mb0">
-          <strong>Your KAFRIADA ID and your payment records are kept.</strong> We
+        <p>
+          <strong>Your KAFRIADA NET ID and your payment records are kept.</strong> We
           are required to retain financial records, and the record of what
           happened cannot be altered by anyone — including us. We are telling you
           this before you register rather than after you ask.

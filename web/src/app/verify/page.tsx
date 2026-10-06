@@ -53,11 +53,11 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
     if (error instanceof ApiError && error.status === 401) redirect("/sign-in?ended=1");
     if (error instanceof ApiError && error.status === 404) {
       return (
-        <div className="page stack">
+        <div>
           <h1>Get verified</h1>
-          <div className="notice notice--warn" role="status">
-            <p className="notice__title">Only athletes can be verified</p>
-            <p className="mb0">This account has no athlete record.</p>
+          <div role="status">
+            <p>Only athletes can be verified</p>
+            <p>This account has no athlete record.</p>
           </div>
         </div>
       );
@@ -69,21 +69,21 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
   const saved = one(params.saved);
 
   return (
-    <div className="page stack">
+    <div>
       <div>
-        <a href="/me" className="back">My account</a>
-        <p className="eyebrow mb0">Verification</p>
+        <a href="/me">My account</a>
+        <p>Verification</p>
       </div>
 
       {error ? (
-        <div className="notice notice--bad" role="alert" tabIndex={-1}>
-          <p className="notice__title">That did not work</p>
-          <p className="mb0">{error}</p>
+        <div role="alert" tabIndex={-1}>
+          <p>That did not work</p>
+          <p>{error}</p>
         </div>
       ) : saved ? (
-        <div className="notice notice--good" role="status">
-          <p className="notice__title">Received</p>
-          <p className="mb0">Your file is saved. You can add the other one now.</p>
+        <div role="status">
+          <p>Received</p>
+          <p>Your file is saved. You can add the other one now.</p>
         </div>
       ) : null}
 
@@ -116,24 +116,24 @@ function fileLabel(status: FileStatus): string {
 /** The two file boxes. Shared by the first submission and by a resubmission. */
 function UploadForm({ v }: { v: Verification }) {
   return (
-    <form action={uploadAction} encType="multipart/form-data" className="doc">
-      <div className="doc__body">
-        <div className="field">
+    <form action={uploadAction} encType="multipart/form-data">
+      <div>
+        <div>
           <label htmlFor="photo">Your photo</label>
-          <span className="hint">Face clearly visible, no cap, no sunglasses.</span>
+          <span>Face clearly visible, no cap, no sunglasses.</span>
           <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="user" />
-          <span className="hint">{fileLabel(v.photo)}</span>
+          <span>{fileLabel(v.photo)}</span>
         </div>
 
-        <div className="field">
+        <div>
           <label htmlFor="document">Your ID document</label>
-          <span className="hint">NIN slip, voter&rsquo;s card, driver&rsquo;s licence or passport.</span>
+          <span>NIN slip, voter&rsquo;s card, driver&rsquo;s licence or passport.</span>
           <input id="document" name="document" type="file" accept="image/jpeg,image/png,image/webp" />
-          <span className="hint">{fileLabel(v.document)}</span>
+          <span>{fileLabel(v.document)}</span>
         </div>
 
-        <SubmitButton className="btn btn--ghost btn--block" pending="Uploading your files…" detail="Please keep this page open. This can take a few seconds.">Save my files</SubmitButton>
-        <p className="hint mt-4">
+        <SubmitButton pending="Uploading your files…" detail="Please keep this page open. This can take a few seconds.">Save my files</SubmitButton>
+        <p>
           Maximum 10MB per image. Your document is used only to check your identity and age, and is
           deleted 30 days after a decision. Your photo stays on your profile.
         </p>
@@ -148,24 +148,24 @@ function Start({ v, withdrawn }: { v: Verification; withdrawn: boolean }) {
     <>
       <h1>Get verified</h1>
       {withdrawn ? (
-        <div className="notice notice--warn" role="status">
-          <p className="notice__title">Your earlier verification was withdrawn</p>
-          <p className="mb0">You can start again below.</p>
+        <div role="status">
+          <p>Your earlier verification was withdrawn</p>
+          <p>You can start again below.</p>
         </div>
       ) : null}
 
-      <section className="doc" aria-label="What you get">
-        <div className="doc__body">
-          <p className="eyebrow">Add your photo and verified badge</p>
-          <ul className="bullets">
+      <section aria-label="What you get">
+        <div>
+          <p>Add your photo and verified badge</p>
+          <ul>
             <li>Your photo on your public profile</li>
             <li>A verified badge scouts can trust</li>
             <li>Checked by your LGA coordinator</li>
           </ul>
-          <dl className="facts">
-            <div className="fact">
+          <dl>
+            <div>
               <dt>One payment. No renewal.</dt>
-              <dd><span className="amount">{formatNaira(v.price_kobo)}</span></dd>
+              <dd><span>{formatNaira(v.price_kobo)}</span></dd>
             </div>
           </dl>
         </div>
@@ -175,15 +175,15 @@ function Start({ v, withdrawn }: { v: Verification; withdrawn: boolean }) {
       <UploadForm v={v} />
 
       {processing ? (
-        <p className="hint">
+        <p>
           We are getting your files ready. <a href="/verify">Check again</a>
         </p>
       ) : null}
 
       {v.ready_to_pay ? (
-        <a href="/pay" className="btn btn--primary btn--block">Continue to payment</a>
+        <a href="/pay">Continue to payment</a>
       ) : (
-        <p className="hint">Add both files to continue to payment.</p>
+        <p>Add both files to continue to payment.</p>
       )}
     </>
   );
@@ -193,15 +193,15 @@ function UnderReview({ v, me }: { v: Verification; me: Me }) {
   return (
     <>
       <h1>Under review</h1>
-      <div className="notice" role="status">
-        <p className="notice__title">Your LGA coordinator is checking your documents</p>
-        <p className="mb0">Usually decided within 24 hours.</p>
+      <div role="status">
+        <p>Your LGA coordinator is checking your documents</p>
+        <p>Usually decided within 24 hours.</p>
       </div>
 
-      <section className="doc" aria-label="Progress">
-        <div className="doc__body">
-          <p className="eyebrow">Progress</p>
-          <ol className="steps">
+      <section aria-label="Progress">
+        <div>
+          <p>Progress</p>
+          <ol>
             <li data-done="true">Documents received</li>
             <li data-done="true">
               {v.paid_amount_kobo !== null ? `${formatNaira(v.paid_amount_kobo)} paid` : "Paid"}
@@ -210,7 +210,7 @@ function UnderReview({ v, me }: { v: Verification; me: Me }) {
             <li data-now="true">Being checked{v.attempt > 1 ? ` (attempt ${v.attempt} of 3)` : ""}</li>
             <li data-todo="true">Photo goes live</li>
           </ol>
-          <p className="hint">
+          <p>
             We will send an SMS to {me.phone} when a decision is made. You do not need to keep
             this page open.
           </p>
@@ -224,11 +224,11 @@ function Approved({ me }: { me: Me }) {
   return (
     <>
       <h1>You are verified</h1>
-      <div className="notice notice--good" role="status">
-        <p className="notice__title">Your photo and badge are live</p>
+      <div role="status">
+        <p>Your photo and badge are live</p>
         <p>Anyone who scans your card now sees your photograph.</p>
         {me.kuid ? (
-          <a href={`/a/${encodeURIComponent(me.kuid)}`} className="btn btn--primary">
+          <a href={`/a/${encodeURIComponent(me.kuid)}`}>
             See my public profile
           </a>
         ) : null}
@@ -241,15 +241,15 @@ function Escalated({ v }: { v: Verification }) {
   return (
     <>
       <h1>Please see your coordinator</h1>
-      <div className="notice notice--warn" role="status">
-        <p className="notice__title">We could not approve this after three tries</p>
+      <div role="status">
+        <p>We could not approve this after three tries</p>
         <p>
           Your LGA coordinator will help you in person. You do not need to pay again.
         </p>
         {v.reason ? (
           <>
-            <p className="hint">The reviewer wrote:</p>
-            <blockquote className="quote">{v.reason}</blockquote>
+            <p>The reviewer wrote:</p>
+            <blockquote>{v.reason}</blockquote>
           </>
         ) : null}
       </div>
@@ -262,10 +262,10 @@ function Rejected({ v }: { v: Verification }) {
   return (
     <>
       <h1>Not approved</h1>
-      <div className="notice notice--bad" role="status">
-        <p className="notice__title">Reason from the reviewer</p>
-        <blockquote className="quote">{v.reason}</blockquote>
-        <p className="mb0">
+      <div role="status">
+        <p>Reason from the reviewer</p>
+        <blockquote>{v.reason}</blockquote>
+        <p>
           <strong>You do not pay again.</strong> Your {formatNaira(v.paid_amount_kobo ?? v.price_kobo)}{" "}
           still covers this. You have {v.attempts_left} more attempt{v.attempts_left === 1 ? "" : "s"}.
         </p>
@@ -279,7 +279,7 @@ function Rejected({ v }: { v: Verification }) {
           Resubmit for review
         </SubmitButton>
         {!ready ? (
-          <p className="hint">Both files must be added and ready before you can send it again.</p>
+          <p>Both files must be added and ready before you can send it again.</p>
         ) : null}
       </form>
     </>

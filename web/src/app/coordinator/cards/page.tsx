@@ -47,10 +47,10 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
 
   if (!lga) {
     return (
-      <div className="stack no-print">
+      <div>
         <h1>Print cards</h1>
         <Flash variant="warn" title="No LGA to print for">
-          <p className="mb0">
+          <p>
             Choose a local government area on <a href="/coordinator">your dashboard</a> first.
           </p>
         </Flash>
@@ -79,9 +79,9 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
   const marked = one(params.marked);
 
   return (
-    <div className="page page--wide stack">
+    <div>
       <CoordinatorNav current="/coordinator/cards" lga={lga} />
-      <div className="stack no-print">
+      <div>
         <PageHead
           eyebrow="Coordinator"
           title="Print cards"
@@ -91,54 +91,53 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
 
         {problem ? (
           <Flash variant="bad" title="That did not work">
-            <p className="mb0">{problem}</p>
+            <p>{problem}</p>
           </Flash>
         ) : null}
         {marked ? (
           <Flash variant="good" title="Recorded">
-            <p className="mb0">
+            <p>
               {marked === "1" ? "One card is" : `${marked} cards are`} now marked as printed.
             </p>
           </Flash>
         ) : null}
 
-        <form method="get" className="panel toolbar toolbar--3">
+        <form method="get">
           <input type="hidden" name="lga" value={lga} />
-          <div className="field">
+          <div>
             <label htmlFor="since">Registered from</label>
             <input id="since" name="since" type="date" defaultValue={since} />
           </div>
-          <div className="field">
+          <div>
             <label htmlFor="until">Registered to</label>
             <input id="until" name="until" type="date" defaultValue={until} />
           </div>
-          <div className="field">
+          <div>
             <label htmlFor="unprinted">Show</label>
             <select id="unprinted" name="unprinted" defaultValue={String(unprinted)}>
               <option value="true">Not yet printed</option>
               <option value="false">All</option>
             </select>
           </div>
-          <button type="submit" className="btn btn--primary btn--block">Find</button>
+          <button type="submit">Find</button>
         </form>
 
         {batch && batch.total === 0 ? <EmptyState title="No athletes match" /> : null}
 
         {batch && batch.total > 0 ? (
-          <div className="panel stack">
-            <p className="mb0">
+          <div>
+            <p>
               <strong>{batch.total}</strong> {batch.total === 1 ? "athlete" : "athletes"} &middot;{" "}
               {Math.ceil(batch.total / batch.per_sheet)} sheets of A4, {batch.per_sheet} cards per sheet.
               {batch.pages > 1 ? ` This is page ${batch.page} of ${batch.pages}: ${onPage} cards, ${sheets} sheets.` : ""}
             </p>
-            <p className="hint">
+            <p>
               Use your browser&rsquo;s Print option (Ctrl+P). The cards print eight to a sheet at
               card size. If it cannot print from here, download the PDF instead.
             </p>
-            <div className="cluster">
+            <div>
               <a
                 href={`/coordinator/cards/pdf?${keep()}`}
-                className="btn btn--primary"
               >
                 Download PDF
               </a>
@@ -149,7 +148,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
                 <input type="hidden" name="unprinted" value={String(unprinted)} />
                 <input type="hidden" name="page" value={String(page)} />
                 <input type="hidden" name="kuids" value={batch.people.map((p) => p.kuid).join(",")} />
-                <SubmitButton className="btn btn--ghost" pending="Recording…">
+                <SubmitButton pending="Recording…">
                   Mark these as printed
                 </SubmitButton>
               </form>
@@ -164,7 +163,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
       </div>
 
       {batch && batch.total > 0 ? (
-        <div className="cardgrid" aria-label="Cards to print">
+        <div aria-label="Cards to print">
           {batch.people.map((p) => (
             <figure key={p.kuid}>
               {/* eslint-disable-next-line @next/next/no-img-element */}

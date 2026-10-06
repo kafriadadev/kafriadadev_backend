@@ -42,7 +42,7 @@ export default async function SignInPage({
   }
 
   return (
-    <div className="auth stack">
+    <div>
       <PageHead
         eyebrow="Welcome back"
         title="Sign in"
@@ -50,25 +50,25 @@ export default async function SignInPage({
 
       {error ? (
         <Flash variant="bad" title="We could not sign you in">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : reset ? (
         <Flash variant="good" title="Your password is changed">
-          <p className="mb0">
+          <p>
             Sign in with your new password. Every other device was signed out.
           </p>
         </Flash>
       ) : ended ? (
         <Flash title="You were signed out">
-          <p className="mb0">
+          <p>
             Your session ended. Sign in again to continue.
           </p>
         </Flash>
       ) : null}
 
-      <form action={signInAction} className="doc" noValidate>
-        <div className="doc__body">
-          <div className="field">
+      <form action={signInAction} noValidate>
+        <div>
+          <div>
             <label htmlFor="phone">Phone number</label>
             <input
               id="phone"
@@ -82,7 +82,7 @@ export default async function SignInPage({
             />
           </div>
 
-          <div className="field">
+          <div>
             <label htmlFor="password">Password</label>
             <input
               id="password"
@@ -94,9 +94,9 @@ export default async function SignInPage({
           </div>
 
           {needEmail ? (
-            <div className="field field--error">
+            <div>
               <label htmlFor="email">Email</label>
-              <span className="hint" id="email-hint">
+              <span id="email-hint">
                 Your account has no email yet. We will send a code to confirm it.
               </span>
               <input id="email" name="email" type="email" required autoComplete="email"
@@ -106,10 +106,10 @@ export default async function SignInPage({
 
           <SubmitButton pending="Signing you in…">Sign in</SubmitButton>
 
-          <p className="hint form-foot">
+          <p>
             <a href="/forgot">Forgot your password?</a>
           </p>
-          <p className="hint center mt-2">
+          <p>
             No account yet? <a href="/register">Register free</a>
           </p>
         </div>

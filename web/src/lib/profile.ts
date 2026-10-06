@@ -8,6 +8,9 @@ export const SPORTS = [
   "Boxing", "Wrestling", "Table Tennis", "Badminton", "Swimming",
 ] as const;
 
+/** The pilot registers football only. The API still accepts the others above. */
+export const PILOT_SPORT = "Football";
+
 export const NOT_APPLICABLE = "Not applicable";
 
 /** Position, or event, by sport. A sport not listed takes "Not applicable" only. */

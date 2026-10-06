@@ -5,8 +5,8 @@ import { PageHead } from "@/components/PageHead";
 import { SubmitButton } from "@/components/SubmitButton";
 import { listLgas } from "@/lib/api";
 import {
-  GENDERS, LEVELS, NATIONALITIES, NIGERIAN, NIGERIAN_STATES, NOT_APPLICABLE, POSITIONS,
-  SIDES, SPORTS,
+  GENDERS, LEVELS, NATIONALITIES, NIGERIAN, NIGERIAN_STATES, NOT_APPLICABLE, PILOT_SPORT,
+  POSITIONS, SIDES,
 } from "@/lib/profile";
 import { registerAthlete } from "./actions";
 
@@ -52,27 +52,22 @@ export default async function RegisterPage({
   const Field = ({
     name, label, hint, children,
   }: { name: string; label: string; hint?: string; children: React.ReactNode }) => (
-    <div className={badField === name ? "field field--error" : "field"}>
+    <div>
       <label htmlFor={name}>{label}</label>
-      {hint ? <span className="hint" id={`${name}-hint`}>{hint}</span> : null}
+      {hint ? <span id={`${name}-hint`}>{hint}</span> : null}
       {children}
-      {badField === name ? <span className="error">{error}</span> : null}
+      {badField === name ? <span>{error}</span> : null}
     </div>
   );
 
   const positionGroups = (
     <>
-      {Object.entries(POSITIONS).map(([sport, list]) => (
-        <optgroup key={sport} label={sport}>
-          {list.map((p) => <option key={`${sport}-${p}`} value={p}>{p}</option>)}
-        </optgroup>
-      ))}
-      <option value={NOT_APPLICABLE}>{NOT_APPLICABLE} (boxing, wrestling, racket sports)</option>
+      {POSITIONS[PILOT_SPORT].map((p) => <option key={p} value={p}>{p}</option>)}
     </>
   );
 
   return (
-    <div className="page stack">
+    <div>
       <PageHead
         eyebrow="Athlete registration"
         title="Register as an athlete"
@@ -84,23 +79,23 @@ export default async function RegisterPage({
           sighted person which box to fix. Both, not either. */}
       {error ? (
         <Flash variant="bad" title="We could not register you yet">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : null}
 
       {loadFailed ? (
-        <Flash variant="bad" title="Cannot reach KAFRIADA">
-          <p className="mb0">
+        <Flash variant="bad" title="Cannot reach KAFRIADA NET">
+          <p>
             We could not load the list of Local Government Areas. Please try again in a moment.
           </p>
         </Flash>
       ) : null}
 
-      <form action={registerAthlete} className="doc" noValidate>
-        <div className="doc__body">
-          <fieldset className="fieldset">
+      <form action={registerAthlete} noValidate>
+        <div>
+          <fieldset>
             <legend>1. About you</legend>
-            <div className="field-row">
+            <div>
               <Field name="first_name" label="First name" hint="As written on your ID document.">
                 <input id="first_name" name="first_name" required autoComplete="given-name"
                   defaultValue={value("first_name")} aria-describedby="first_name-hint" />
@@ -114,7 +109,7 @@ export default async function RegisterPage({
               <input id="middle_name" name="middle_name" autoComplete="additional-name"
                 defaultValue={value("middle_name")} />
             </Field>
-            <div className="field-row">
+            <div>
               <Field name="gender" label="Sex" hint="The category you compete in.">
                 <select id="gender" name="gender" required defaultValue={value("gender")}
                   aria-describedby="gender-hint">
@@ -127,7 +122,7 @@ export default async function RegisterPage({
                   defaultValue={value("date_of_birth")} aria-describedby="date_of_birth-hint" />
               </Field>
             </div>
-            <div className="field-row">
+            <div>
               <Field name="nationality" label="Nationality">
                 <select id="nationality" name="nationality" required
                   defaultValue={value("nationality") || NIGERIAN}>
@@ -145,9 +140,9 @@ export default async function RegisterPage({
             </div>
           </fieldset>
 
-          <fieldset className="fieldset">
+          <fieldset>
             <legend>2. Contact and address</legend>
-            <div className="field-row">
+            <div>
               <Field name="phone" label="Phone number" hint="One phone, one account.">
                 <input id="phone" name="phone" type="tel" inputMode="tel" required
                   placeholder="0803 000 0000" autoComplete="tel"
@@ -162,7 +157,7 @@ export default async function RegisterPage({
               <input id="address_line" name="address_line" required autoComplete="street-address"
                 defaultValue={value("address_line")} aria-describedby="address_line-hint" />
             </Field>
-            <div className="field-row">
+            <div>
               <Field name="town" label="Town or city">
                 <input id="town" name="town" required autoComplete="address-level2"
                   defaultValue={value("town")} />
@@ -189,14 +184,10 @@ export default async function RegisterPage({
             </div>
           </fieldset>
 
-          <fieldset className="fieldset">
-            <legend>3. Your sport</legend>
-            <div className="field-row">
-              <Field name="sport" label="Sport">
-                <select id="sport" name="sport" required defaultValue={value("sport") || "Football"}>
-                  {SPORTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </Field>
+          <fieldset>
+            <legend>3. Your football</legend>
+            <div>
+              <input type="hidden" name="sport" value={PILOT_SPORT} />
               <Field name="level_played" label="Highest level played">
                 <select id="level_played" name="level_played" required
                   defaultValue={value("level_played")}>
@@ -205,12 +196,10 @@ export default async function RegisterPage({
                 </select>
               </Field>
             </div>
-            <div className="field-row">
-              <Field name="playing_position" label="Main position or event"
-                hint="Choose from your sport's group.">
+            <div>
+              <Field name="playing_position" label="Main position">
                 <select id="playing_position" name="playing_position" required
-                  defaultValue={value("playing_position")}
-                  aria-describedby="playing_position-hint">
+                  defaultValue={value("playing_position")}>
                   <option value="">Choose</option>
                   {positionGroups}
                 </select>
@@ -223,7 +212,7 @@ export default async function RegisterPage({
                 </select>
               </Field>
             </div>
-            <div className="field-row">
+            <div>
               <Field name="dominant_side" label="Stronger foot or hand">
                 <select id="dominant_side" name="dominant_side" required
                   defaultValue={value("dominant_side")}>
@@ -236,7 +225,7 @@ export default async function RegisterPage({
                   min={0} max={60} required defaultValue={value("years_experience")} />
               </Field>
             </div>
-            <div className="field-row">
+            <div>
               <Field name="height_cm" label="Height (cm)">
                 <input id="height_cm" name="height_cm" type="number" inputMode="numeric"
                   min={120} max={230} required placeholder="175" defaultValue={value("height_cm")} />
@@ -248,13 +237,13 @@ export default async function RegisterPage({
             </div>
           </fieldset>
 
-          <fieldset className="fieldset">
+          <fieldset>
             <legend>4. Emergency contact</legend>
             <Field name="emergency_name" label="Full name">
               <input id="emergency_name" name="emergency_name" required
                 defaultValue={value("emergency_name")} />
             </Field>
-            <div className="field-row">
+            <div>
               <Field name="emergency_relationship" label="Relationship to you"
                 hint="For example parent, brother, guardian.">
                 <input id="emergency_relationship" name="emergency_relationship" required
@@ -268,7 +257,7 @@ export default async function RegisterPage({
             </div>
           </fieldset>
 
-          <fieldset className="fieldset">
+          <fieldset>
             <legend>5. Your account</legend>
             <Field name="password" label="Choose a password"
               hint="At least 10 characters. A short phrase you will remember works well.">
@@ -277,22 +266,22 @@ export default async function RegisterPage({
             </Field>
           </fieldset>
 
-          <div className={badField === "accept_privacy_notice" ? "consent field--error" : "consent"}>
+          <div>
             <input id="accept_privacy_notice" name="accept_privacy_notice" type="checkbox"
               value="yes" required />
             <label htmlFor="accept_privacy_notice">
               I am 18 or older, the details above are true, and I accept the{" "}
               <a href="/privacy">privacy notice</a>. I understand that if I later ask to be
-              deleted, my personal details are erased but my KAFRIADA ID and payment records
+              deleted, my personal details are erased but my KAFRIADA NET ID and payment records
               are kept.
             </label>
           </div>
 
-          <div className="mt-5">
+          <div>
             <SubmitButton pending="Creating your account…">Register</SubmitButton>
           </div>
 
-          <p className="hint form-foot">
+          <p>
             Already registered? <a href="/sign-in">Sign in</a>
           </p>
         </div>

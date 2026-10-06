@@ -200,17 +200,14 @@ try {
     await ctx.close();
   }
 
-  // -- The phone menu with JavaScript OFF --------------------------------------
-  // A <details> disclosure: the browser opens it, no script involved.
+  // -- Navigation with JavaScript OFF -----------------------------------------
   {
     const ctx = await browser.newContext({ viewport: PHONE, javaScriptEnabled: false, isMobile: true });
     const page = await ctx.newPage();
-    console.log("\n=== MENU, JavaScript OFF ===");
+    console.log("\n=== NAVIGATION, JavaScript OFF ===");
     await page.goto(BASE + "/privacy", { waitUntil: "load", timeout: 90_000 });
-    const hidden = !(await page.locator(".nav-menu__panel").isVisible());
-    await page.locator(".nav-menu > summary").click();
-    const shown = await page.locator(".nav-menu__panel a[href='/me']").isVisible();
-    check("menu is closed on arrival and opens without any script", hidden && shown);
+    const shown = await page.locator("header nav a[href='/me']").first().isVisible();
+    check("the main navigation is reachable without any script", shown);
     await ctx.close();
   }
 

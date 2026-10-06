@@ -34,7 +34,7 @@ export default async function MyClubsPage({ searchParams }: { searchParams: Prom
   const done = one(query.done);
 
   return (
-    <div className="page stack">
+    <div>
       <PageHead
         back={{ href: "/me", label: "My account" }}
         eyebrow="Clubs"
@@ -43,46 +43,46 @@ export default async function MyClubsPage({ searchParams }: { searchParams: Prom
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : null}
       {done === "accept" ? (
         <Flash variant="good" title="You have joined the club">
-          <p className="mb0">Your club now shows on your record.</p>
+          <p>Your club now shows on your record.</p>
         </Flash>
       ) : null}
       {done === "decline" ? (
         <Flash variant="good" title="Invitation declined">
-          <p className="mb0">It has been removed from your list.</p>
+          <p>It has been removed from your list.</p>
         </Flash>
       ) : null}
 
-      <h2 className="section-title mt-lg">Current club</h2>
+      <h2>Current club</h2>
       {mine.current ? (
         <ClubCard m={mine.current} />
       ) : (
         <EmptyState title="You are not on a club roster" />
       )}
 
-      <h2 className="section-title mt-lg">Invitations</h2>
+      <h2>Invitations</h2>
       {mine.invitations.length ? (
         mine.invitations.map((m) => (
           <ClubCard key={m.roster_id} m={m}>
             {mine.current ? (
-              <p className="hint">
+              <p>
                 Accepting will move you from {mine.current.club_name} to {m.club_name}.
               </p>
             ) : null}
-            <div className="cluster">
+            <div>
               <form action={answerAction}>
                 <input type="hidden" name="roster" value={m.roster_id} />
                 <input type="hidden" name="answer" value="accept" />
-                <SubmitButton className="btn btn--primary" pending="Joining…">Accept</SubmitButton>
+                <SubmitButton pending="Joining…">Accept</SubmitButton>
               </form>
               <form action={answerAction}>
                 <input type="hidden" name="roster" value={m.roster_id} />
                 <input type="hidden" name="answer" value="decline" />
-                <SubmitButton className="btn btn--ghost" pending="Declining…">Decline</SubmitButton>
+                <SubmitButton pending="Declining…">Decline</SubmitButton>
               </form>
             </div>
           </ClubCard>
@@ -97,11 +97,11 @@ export default async function MyClubsPage({ searchParams }: { searchParams: Prom
 
 function ClubCard({ m, children }: { m: Membership; children?: React.ReactNode }) {
   return (
-    <section className="doc" aria-label={m.club_name}>
-      <div className="doc__body">
-        <h2 className="doc__title">{m.club_name}</h2>
-        <p className={children ? "mb-3" : "mb0"}>
-          <span className={m.verified_club ? "pill pill--issued" : "pill pill--pending"}>
+    <section aria-label={m.club_name}>
+      <div>
+        <h2>{m.club_name}</h2>
+        <p>
+          <span>
             {m.verified_club ? "Verified club" : "Not a verified club"}
           </span>{" "}
           {m.sport} &middot; {m.lga_name}

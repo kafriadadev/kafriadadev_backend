@@ -29,7 +29,7 @@ export default async function ForgotPage({
   const phone = one(params.phone);
 
   return (
-    <div className="auth stack">
+    <div>
       <PageHead
         eyebrow="Account recovery"
         title="Reset your password"
@@ -37,18 +37,18 @@ export default async function ForgotPage({
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : null}
 
       {!sent ? (
         <>
-          <p className="lede">
+          <p>
             We&apos;ll send a code to confirm it&apos;s you.
           </p>
-          <form action={sendResetCodeAction} className="doc" noValidate>
-            <div className="doc__body">
-              <div className="field">
+          <form action={sendResetCodeAction} noValidate>
+            <div>
+              <div>
                 <label htmlFor="phone">Phone number</label>
                 <input
                   id="phone"
@@ -61,7 +61,7 @@ export default async function ForgotPage({
                   defaultValue={phone}
                 />
               </div>
-              <button type="submit" className="btn btn--primary btn--block">
+              <button type="submit">
                 Send code
               </button>
             </div>
@@ -70,16 +70,16 @@ export default async function ForgotPage({
       ) : (
         <>
           <Flash title="Check your messages">
-            <p className="mb0">
-              If that number has a KAFRIADA account, a code is on its way to it.
+            <p>
+              If that number has a KAFRIADA NET account, a code is on its way to it.
               The code expires in 10 minutes.
             </p>
           </Flash>
 
-          <form action={resetPasswordAction} className="doc" noValidate>
-            <div className="doc__body">
+          <form action={resetPasswordAction} noValidate>
+            <div>
               <input type="hidden" name="phone" value={phone} />
-              <div className="field">
+              <div>
                 <label htmlFor="code">6-digit code</label>
                 <input
                   id="code"
@@ -89,12 +89,11 @@ export default async function ForgotPage({
                   required
                   maxLength={6}
                   placeholder="000000"
-                  className="code-input"
                 />
               </div>
-              <div className="field">
+              <div>
                 <label htmlFor="new_password">New password</label>
-                <span className="hint" id="new-pw-hint">
+                <span id="new-pw-hint">
                   At least 10 characters. A short phrase you will remember is
                   better than a short word with symbols in it.
                 </span>
@@ -108,10 +107,10 @@ export default async function ForgotPage({
                   aria-describedby="new-pw-hint"
                 />
               </div>
-              <button type="submit" className="btn btn--primary btn--block">
+              <button type="submit">
                 Set new password
               </button>
-              <p className="hint form-foot">
+              <p>
                 Every device signed in to this account will be signed out.
               </p>
             </div>
@@ -119,7 +118,7 @@ export default async function ForgotPage({
         </>
       )}
 
-      <p className="hint muted">
+      <p>
         Remembered it? <a href="/sign-in">Sign in</a>.
       </p>
     </div>

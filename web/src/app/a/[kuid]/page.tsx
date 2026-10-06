@@ -25,7 +25,7 @@ export async function generateMetadata({
     const p = await getProfile(kuid);
     return {
       title: `${p.full_name} · ${p.kuid}`,
-      description: `${p.full_name}, ${p.sport}${p.playing_position ? ` (${p.playing_position})` : ""}, ${p.lga_name}, ${p.state_name}. Registered with KAFRIADA in ${p.registered_year}.`,
+      description: `${p.full_name}, ${p.sport}${p.playing_position ? ` (${p.playing_position})` : ""}, ${p.lga_name}, ${p.state_name}. Registered with KAFRIADA NET in ${p.registered_year}.`,
     };
   } catch {
     return { title: "Athlete not found" };
@@ -54,12 +54,12 @@ export default async function ProfilePage({
   }
 
   return (
-    <div className="page stack">
-      <article className="doc">
-        <div className="doc__body">
-          <div className="media-row">
+    <div>
+      <article>
+        <div>
+          <div>
             {profile.is_verified && profile.photo_url ? (
-              <div className="portrait">
+              <div>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`/photo/${encodeURIComponent(profile.kuid)}`}
@@ -69,31 +69,29 @@ export default async function ProfilePage({
                 />
               </div>
             ) : (
-              <div className="portrait" aria-hidden="true">
-                <Silhouette />
-              </div>
+              <p>No photograph on file</p>
             )}
 
-            <div className="grow">
-              <p className="eyebrow mb-2">
+            <div>
+              <p>
                 Registered athlete
               </p>
-              <h1 className="doc__title">
+              <h1>
                 {profile.full_name}
               </h1>
-              <p className="doc__sub">
+              <p>
                 {profile.sport}
                 {profile.playing_position ? ` · ${profile.playing_position}` : ""}
               </p>
 
-              <p className="mt-3 mb0 cluster">
+              <p>
                 <VerificationBadge verified={profile.is_verified} />
                 {profile.issued_by_kafriada ? (
-                  <span className="pill pill--issued">
-                    <Tick /> Issued by KAFRIADA
+                  <span>
+                    <Tick /> Issued by KAFRIADA NET
                   </span>
                 ) : (
-                  <span className="pill pill--pending">Unsigned link</span>
+                  <span>Unsigned link</span>
                 )}
               </p>
             </div>
@@ -105,36 +103,35 @@ export default async function ProfilePage({
               can be photocopied and the signature copied with it. Saying
               "verified athlete" here would mislead a scout. */}
           <div
-            className={profile.issued_by_kafriada ? "notice notice--good mt-5" : "notice mt-5"}
           >
-            <p className="notice__title">
+            <p>
               {profile.issued_by_kafriada ? "This code is genuine" : "About this page"}
             </p>
-            <p className="mb0">
+            <p>
               {profile.issued_by_kafriada
-                ? "This QR code was issued by KAFRIADA. Check that the photograph matches the person in front of you."
-                : "This page was opened without a KAFRIADA QR code, so we cannot confirm where the link came from. The record below is still correct."}
+                ? "This QR code was issued by KAFRIADA NET. Check that the photograph matches the person in front of you."
+                : "This page was opened without a KAFRIADA NET QR code, so we cannot confirm where the link came from. The record below is still correct."}
             </p>
           </div>
 
-          <dl className="facts">
-            <div className="fact">
-              <dt>KAFRIADA ID</dt>
-              <dd className="kuid">{profile.kuid}</dd>
+          <dl>
+            <div>
+              <dt>KAFRIADA NET ID</dt>
+              <dd>{profile.kuid}</dd>
             </div>
-            <div className="fact">
+            <div>
               <dt>Age</dt>
               <dd>{profile.age}</dd>
             </div>
-            <div className="fact">
+            <div>
               <dt>Registered</dt>
               <dd>{profile.lga_name}, {profile.state_name}</dd>
             </div>
-            <div className="fact">
+            <div>
               <dt>Since</dt>
               <dd>{profile.registered_year}</dd>
             </div>
-            <div className="fact">
+            <div>
               <dt>Identity</dt>
               <dd>
                 {profile.is_verified ? (
@@ -142,40 +139,24 @@ export default async function ProfilePage({
                 ) : profile.verification_withdrawn ? (
                   "Verification withdrawn"
                 ) : (
-                  <span className="unset">Not yet checked</span>
+                  <span>Not yet checked</span>
                 )}
               </dd>
             </div>
           </dl>
         </div>
 
-        <div className="doc__perf" />
-        <div className="mrz">
-          <small>KAFRIADA unique identifier</small>
-          {profile.kuid}
-        </div>
       </article>
 
-      <p className="hint hint">
+      <p>
         This page shows only what an athlete has agreed to publish. It never
         shows a phone number, a date of birth or any identity document.
       </p>
 
-      <p className="no-print">
-        <a href="/register" className="btn btn--ghost">Get your own KAFRIADA ID</a>
+      <p>
+        <a href="/register">Get your own KAFRIADA NET ID</a>
       </p>
     </div>
-  );
-}
-
-/** Shown instead of a photograph until a verification is approved.
-    The absence is the paywall, so it has to look deliberate, not broken. */
-function Silhouette() {
-  return (
-    <svg viewBox="0 0 64 76" role="presentation" focusable="false">
-      <circle cx="32" cy="24" r="14" fill="currentColor" />
-      <path d="M4 76c0-16 12.5-26 28-26s28 10 28 26z" fill="currentColor" />
-    </svg>
   );
 }
 

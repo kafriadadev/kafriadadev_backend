@@ -30,6 +30,40 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-06 — Frontend redesign, Phase 0: clear the ground
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **Product decisions recorded:** the name is KAFRIADA NET; football only; the new frontend
+  lives in this repo's `web/`; English first with every string ready for translation;
+  a PWA in the final phase; the card reads "Issued by KAFRIADA NET".
+- **The old look is gone.** `globals.css` and its fonts are deleted. An AST codemod removed
+  every `className` attribute from every page (776). The shared components render
+  bare semantic HTML and keep their props. The seal, perforation, duplicate ID strip,
+  silhouette and sample card are removed.
+- **Football only in the forms.** `PILOT_SPORT` in `lib/profile.ts`; registration and club
+  forms send it as a fixed value and offer football positions only. The API still accepts
+  the other sports, so existing records and tests are unaffected.
+- **Every "KAFRIADA" in web copy is now "KAFRIADA NET"** (55 strings).
+- `web/KEPT.md` lists every file carried over and why.
+- `check-render.mjs`: the phone-menu check (old `.nav-menu` classes) is replaced by a
+  class-free check that the main navigation is reachable with JavaScript off.
+
+**Verified:** `npm run typecheck` and `npm run build` clean. `check:render` against the
+running API (Supabase, pooler) and web: all 66 page × viewport checks pass, and the
+no-JavaScript registration, email confirmation, password reset and sign-in round trips
+pass. Signed-in screens were not audited (no `SIGNIN_*` set).
+
+**Not done / open:**
+- The backend card renderer (`contexts/identity/card.py`) and API messages still print
+  "KAFRIADA"; changed with the new card design in Phase 4.
+- Every page still ships Next's ~102 KB shared runtime; PUB-01's zero-JavaScript budget is
+  a Phase 3 item.
+- The logo needs an SVG trace (Phase 1).
+- Next: Phase 1, the design system and `/styleguide`.
+
+---
+
 ## 2026-10-03 — Clubs sign up on their own, with a full record (migration 0015)
 **Commit(s):** see the commit that adds this entry; the badge change before it is `1f21717`.
 

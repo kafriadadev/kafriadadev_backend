@@ -56,24 +56,24 @@ export default async function ClubReviewsPage({ searchParams }: { searchParams: 
 
       {done ? (
         <Flash variant="good" title={done === "approved" ? "Club verified" : "Rejected"}>
-          <p className="mb0">The club has been told.</p>
+          <p>The club has been told.</p>
         </Flash>
       ) : null}
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : null}
 
       {waiting.length === 0 ? <EmptyState title="No club is waiting for a decision" /> : null}
 
       {waiting.map((w) => (
-        <section className="doc" key={w.club_id} aria-label={w.club_name}>
-          <div className="doc__body">
-            <h2 className="doc__title">{w.club_name}</h2>
-            <p className="hint">{w.lga_name} &middot; submitted {stamp(w.submitted_at)}</p>
-            <div className="split split--even">
-            <figure className="evidence">
+        <section key={w.club_id} aria-label={w.club_name}>
+          <div>
+            <h2>{w.club_name}</h2>
+            <p>{w.lga_name} &middot; submitted {stamp(w.submitted_at)}</p>
+            <div>
+            <figure>
               <figcaption>Registration document or LGA letter</figcaption>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -88,20 +88,20 @@ export default async function ClubReviewsPage({ searchParams }: { searchParams: 
             <form action={decideAction}>
               <input type="hidden" name="club" value={w.club_id} />
               <input type="hidden" name="decision" value="approve" />
-              <SubmitButton className="btn btn--primary btn--block" pending="Verifying…">
+              <SubmitButton pending="Verifying…">
                 Approve
               </SubmitButton>
             </form>
 
-            <form action={decideAction} className="mt-4">
+            <form action={decideAction}>
               <input type="hidden" name="club" value={w.club_id} />
               <input type="hidden" name="decision" value="reject" />
-              <div className="field">
+              <div>
                 <label htmlFor={`reason-${w.club_id}`}>Reject with a reason</label>
-                <span className="hint">The club reads this exactly as you write it.</span>
+                <span>The club reads this exactly as you write it.</span>
                 <textarea id={`reason-${w.club_id}`} name="reason" maxLength={1000} required />
               </div>
-              <SubmitButton className="btn btn--ghost btn--block" pending="Rejecting…">
+              <SubmitButton pending="Rejecting…">
                 Reject with reason
               </SubmitButton>
             </form>

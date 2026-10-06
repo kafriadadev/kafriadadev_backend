@@ -78,7 +78,7 @@ export default async function VerifyClubPage({
   const ready = v.document === "ready";
 
   return (
-    <div className="page stack">
+    <div>
       <PageHead
         back={{ href: base, label: "Club" }}
         eyebrow={<>Club &middot; {v.club_name}</>}
@@ -87,12 +87,12 @@ export default async function VerifyClubPage({
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : null}
       {one(query.saved) ? (
         <Flash variant="good" title="Document saved">
-          <p className="mb0">You can pay now.</p>
+          <p>You can pay now.</p>
         </Flash>
       ) : null}
 
@@ -100,31 +100,31 @@ export default async function VerifyClubPage({
 
       {v.verified ? (
         <Flash variant="good" title="This club is verified">
-          <p className="mb0">The verified badge shows on your club page.</p>
+          <p>The verified badge shows on your club page.</p>
         </Flash>
       ) : v.club_status !== "approved" ? (
         <Flash variant="warn" title="Waiting for approval">
-          <p className="mb0">A club must be approved before it can be verified.</p>
+          <p>A club must be approved before it can be verified.</p>
         </Flash>
       ) : v.state === "under_review" ? (
         <Flash variant="info" title="Your club is being reviewed">
-          <p className="mb0">
+          <p>
             An administrator is checking your document. You will be told as soon as it is decided.
           </p>
         </Flash>
       ) : (
         <>
-          <section className="doc" aria-label="What you get">
-            <div className="doc__body">
-              <p className="eyebrow">Verified club</p>
-              <ul className="bullets">
+          <section aria-label="What you get">
+            <div>
+              <p>Verified club</p>
+              <ul>
                 <li>A verified badge on your club page</li>
-                <li>Checked by a KAFRIADA administrator</li>
+                <li>Checked by a KAFRIADA NET administrator</li>
               </ul>
-              <dl className="facts">
-                <div className="fact">
+              <dl>
+                <div>
                   <dt>One payment. No renewal.</dt>
-                  <dd><span className="amount">{formatNaira(v.price_kobo)}</span></dd>
+                  <dd><span>{formatNaira(v.price_kobo)}</span></dd>
                 </div>
               </dl>
             </div>
@@ -132,30 +132,29 @@ export default async function VerifyClubPage({
 
           {v.state === "rejected" && v.reason ? (
             <Flash variant="bad" title="Not verified this time">
-              <p className="mb0">{v.reason}</p>
+              <p>{v.reason}</p>
             </Flash>
           ) : null}
 
           <h2>{v.state === "rejected" ? "Send a better document" : "Step 1 of 2 — your document"}</h2>
-          <form action={uploadDocumentAction} encType="multipart/form-data" className="doc">
-            <div className="doc__body">
+          <form action={uploadDocumentAction} encType="multipart/form-data">
+            <div>
               <input type="hidden" name="club" value={id} />
-              <div className="field">
+              <div>
                 <label htmlFor="document">Club registration or LGA letter</label>
-                <span className="hint">A clear photo or scan of the whole page.</span>
+                <span>A clear photo or scan of the whole page.</span>
                 <input id="document" name="document" type="file" accept="image/jpeg,image/png,image/webp" />
-                <span className="hint">
+                <span>
                   {v.document ? (DOCUMENT_LABEL[v.document] ?? "Added") : "Not added yet"}
                 </span>
               </div>
               <SubmitButton
-                className="btn btn--ghost btn--block"
                 pending="Uploading your document…"
                 detail="Please keep this page open. This can take a few seconds."
               >
                 Save my document
               </SubmitButton>
-              <p className="hint mt-4 mb0">
+              <p>
                 Maximum 10MB. The document is used only to check the club.
               </p>
             </div>
@@ -167,13 +166,13 @@ export default async function VerifyClubPage({
               <SubmitButton disabled={!ready} pending="Sending for review…">
                 Send for review again
               </SubmitButton>
-              <p className="hint">The payment you already made covers this. You do not pay again.</p>
+              <p>The payment you already made covers this. You do not pay again.</p>
             </form>
           ) : (
             <>
               <h2>Step 2 of 2 — pay</h2>
               {v.paid ? (
-                <p className="hint">This club has already paid. Nothing more is due.</p>
+                <p>This club has already paid. Nothing more is due.</p>
               ) : (
                 <form action={startClubPaymentAction}>
                   <input type="hidden" name="club" value={id} />
@@ -184,9 +183,9 @@ export default async function VerifyClubPage({
                   >
                     Pay {formatNaira(v.price_kobo)} with Paystack
                   </SubmitButton>
-                  <p className="hint form-foot">
+                  <p>
                     {ready
-                      ? "You will leave KAFRIADA to pay. We never see your card details."
+                      ? "You will leave KAFRIADA NET to pay. We never see your card details."
                       : "Add your document first."}
                   </p>
                 </form>
@@ -205,7 +204,7 @@ function PaymentNotice({ payment, club }: { payment: Payment; club: string }) {
   if (payment.state === "confirmed") {
     return (
       <Flash variant="good" title="Payment confirmed">
-        <p className="mb0">
+        <p>
           We received {formatNaira(payment.amount_kobo)}. Your club is now with an administrator.
         </p>
       </Flash>
@@ -215,14 +214,14 @@ function PaymentNotice({ payment, club }: { payment: Payment; club: string }) {
     return (
       <Flash variant="info" title="We are confirming your payment with Paystack">
         <p>This usually takes a few seconds. You can close this page safely.</p>
-        <a href={again} className="btn btn--ghost">Check again</a>
+        <a href={again}>Check again</a>
       </Flash>
     );
   }
   if (payment.state === "review") {
     return (
       <Flash variant="warn" title="Your payment needs a check by our team">
-        <p className="mb0">
+        <p>
           Please do not pay again. We will contact you on the phone number you registered with.
         </p>
       </Flash>
@@ -230,7 +229,7 @@ function PaymentNotice({ payment, club }: { payment: Payment; club: string }) {
   }
   return (
     <Flash variant="bad" title="The payment was not completed">
-      <p className="mb0">
+      <p>
         If money left your account, it will show here as confirmed once Paystack tells us.
         Otherwise you can try again below.
       </p>

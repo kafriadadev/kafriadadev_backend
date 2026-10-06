@@ -20,7 +20,7 @@ const one = (v: string | string[] | undefined): string =>
 /**
  * Find an athlete (CRD-03): a plain GET form and server-rendered results.
  *
- * Name (partial), KAFRIADA ID (partial) or a whole phone number, inside one LGA. An
+ * Name (partial), KAFRIADA NET ID (partial) or a whole phone number, inside one LGA. An
  * athlete anywhere else comes back as no result at all — never "not permitted" — so
  * this cannot be used to learn who exists elsewhere.
  */
@@ -44,10 +44,10 @@ export default async function FindAthletePage({ searchParams }: { searchParams: 
 
   if (!lga) {
     return (
-      <div className="page stack">
+      <div>
         <h1>Find an athlete</h1>
         <Flash variant="warn" title="No LGA to search">
-          <p className="mb0">
+          <p>
             Choose a local government area on <a href="/coordinator">your dashboard</a> first.
           </p>
         </Flash>
@@ -73,7 +73,7 @@ export default async function FindAthletePage({ searchParams }: { searchParams: 
     `/coordinator/find?${new URLSearchParams({ lga, q, page: String(p) })}`;
 
   return (
-    <div className="page page--wide stack">
+    <div>
       <CoordinatorNav current="/coordinator/find" lga={lga} />
       <PageHead
         eyebrow="Coordinator"
@@ -82,28 +82,28 @@ export default async function FindAthletePage({ searchParams }: { searchParams: 
         app
       />
 
-      <form method="get" className="panel toolbar toolbar--2" role="search">
+      <form method="get" role="search">
         <input type="hidden" name="lga" value={lga} />
-        <div className="field">
-          <label htmlFor="q">KAFRIADA ID, phone or name</label>
+        <div>
+          <label htmlFor="q">KAFRIADA NET ID, phone or name</label>
           <input id="q" name="q" required minLength={2} defaultValue={q} placeholder="Musa Ibrahim" />
         </div>
-        <button type="submit" className="btn btn--primary btn--block">Search</button>
+        <button type="submit">Search</button>
       </form>
 
       {denied ? (
         <Flash variant="bad" title="You do not have access to this">
-          <p className="mb0">You can only search your own local government area.</p>
+          <p>You can only search your own local government area.</p>
         </Flash>
       ) : null}
 
       {results && !results.people.length ? <EmptyState title="No results" /> : null}
 
       {results && results.people.length ? (
-        <div className="table-wrap">
-          <table className="table">
+        <div>
+          <table>
             <thead>
-              <tr><th>Name</th><th>KAFRIADA ID</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr>
+              <tr><th>Name</th><th>KAFRIADA NET ID</th><th>Status</th><th><span>Actions</span></th></tr>
             </thead>
             <tbody>
               {results.people.map((p) => (
@@ -111,20 +111,19 @@ export default async function FindAthletePage({ searchParams }: { searchParams: 
                   <td data-label="">
                     <span>
                       <strong>{p.full_name}</strong>
-                      {p.playing_position ? <><br /><span className="hint">{p.playing_position}</span></> : null}
+                      {p.playing_position ? <><br /><span>{p.playing_position}</span></> : null}
                     </span>
                   </td>
-                  <td data-label="ID"><span className="kuid">{p.kuid}</span></td>
+                  <td data-label="ID"><span>{p.kuid}</span></td>
                   <td data-label="Status">
                     <VerificationBadge verified={p.verified} />
                   </td>
                   <td data-label="">
-                    <span className="list__actions">
-                      <a href={`/a/${encodeURIComponent(p.kuid)}`} className="btn btn--ghost btn--sm">Profile</a>
+                    <span>
+                      <a href={`/a/${encodeURIComponent(p.kuid)}`}>Profile</a>
                       {p.verified ? null : (
                         <a
                           href={`/assist-pay?${new URLSearchParams({ lga, kuid: p.kuid })}`}
-                          className="btn btn--ghost btn--sm"
                         >
                           Pay for this athlete
                         </a>

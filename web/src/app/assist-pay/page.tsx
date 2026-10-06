@@ -48,10 +48,10 @@ export default async function AssistPayPage({ searchParams }: { searchParams: Pr
 
   if (!lga) {
     return (
-      <div className="page stack">
+      <div>
         <h1>Pay for an athlete</h1>
         <Flash variant="warn" title="No LGA to act in">
-          <p className="mb0">
+          <p>
             This account is not an LGA coordinator. Assisted payment is done by
             the coordinator of the athlete&rsquo;s own LGA.
           </p>
@@ -61,9 +61,9 @@ export default async function AssistPayPage({ searchParams }: { searchParams: Pr
   }
 
   return (
-    <div className="page page--wide">
+    <div>
       <CoordinatorNav current="/assist-pay" lga={lga} />
-      <div className="page stack">
+      <div>
       <PageHead
         eyebrow="Coordinator"
         title="Pay for an athlete"
@@ -73,16 +73,16 @@ export default async function AssistPayPage({ searchParams }: { searchParams: Pr
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : null}
 
-      <form action={startAssistedPaymentAction} className="doc" noValidate>
-        <div className="doc__body">
+      <form action={startAssistedPaymentAction} noValidate>
+        <div>
           <input type="hidden" name="lga" value={lga} />
-          <div className={error ? "field field--error" : "field"}>
-            <label htmlFor="kuid">Athlete&rsquo;s KAFRIADA ID</label>
-            <span className="hint" id="kuid-hint">
+          <div>
+            <label htmlFor="kuid">Athlete&rsquo;s KAFRIADA NET ID</label>
+            <span id="kuid-hint">
               Must be an athlete in your own LGA who has already uploaded a
               photo and ID document.
             </span>
@@ -92,7 +92,6 @@ export default async function AssistPayPage({ searchParams }: { searchParams: Pr
               required
               placeholder="KA-NG-JG-BKD-2026-000001"
               defaultValue={kuid}
-              className="input-mono"
               aria-describedby="kuid-hint"
             />
           </div>

@@ -8,7 +8,7 @@ import { ApiError, getMe, getProfile, type Me } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 import { signOutAction } from "./actions";
 
-export const metadata: Metadata = { title: "My KAFRIADA" };
+export const metadata: Metadata = { title: "My KAFRIADA NET" };
 export const dynamic = "force-dynamic";
 
 const ROLE_NAMES: Record<string, string> = {
@@ -22,7 +22,7 @@ const ROLE_NAMES: Record<string, string> = {
 };
 
 /**
- * My KAFRIADA (ATH-01, first cut): who is signed in, their ID, and the way out.
+ * My KAFRIADA NET (ATH-01, first cut): who is signed in, their ID, and the way out.
  *
  * Everything is a link or a form, so it works with JavaScript off. The session
  * is checked by the API on every render; a stale cookie lands back on sign-in.
@@ -57,51 +57,51 @@ export default async function MePage({
     : false;
 
   return (
-    <div className="page page--wide">
+    <div>
       <PageHead
         eyebrow="My account"
         title={me.full_name}
         app
         actions={
           <form action={signOutAction}>
-            <button type="submit" className="btn btn--ghost">Sign out</button>
+            <button type="submit">Sign out</button>
           </form>
         }
       />
 
-      <div className="split">
-        <div className="stack--lg">
+      <div>
+        <div>
           {welcome ? (
             <Flash variant="good" title="Your email is confirmed" autoDismissMs={6000}>
-              <p className="mb0">Your account is open.</p>
+              <p>Your account is open.</p>
             </Flash>
           ) : null}
 
           {kuid ? (
             <section aria-labelledby="athlete-h">
-              <h2 className="section-title" id="athlete-h">My ID</h2>
-              <div className="tiles">
-                <a href={`/card/${kuid}`} className="tile tile--primary">
-                  <span className="tile__title">My card</span>
-                  <span className="tile__text">Print or download your ID card.</span>
+              <h2 id="athlete-h">My ID</h2>
+              <div>
+                <a href={`/card/${kuid}`}>
+                  <span>My card</span>
+                  <span>Print or download your ID card.</span>
                 </a>
-                <a href={`/a/${kuid}`} className="tile">
-                  <span className="tile__title">Public profile</span>
-                  <span className="tile__text">What a club or scout sees when they scan.</span>
+                <a href={`/a/${kuid}`}>
+                  <span>Public profile</span>
+                  <span>What a club or scout sees when they scan.</span>
                 </a>
                 {verified ? null : (
-                  <a href="/verify" className="tile">
-                    <span className="tile__title">Get verified</span>
-                    <span className="tile__text">Add your photograph and the verified badge.</span>
+                  <a href="/verify">
+                    <span>Get verified</span>
+                    <span>Add your photograph and the verified badge.</span>
                   </a>
                 )}
-                <a href="/details" className="tile">
-                  <span className="tile__title">My details</span>
-                  <span className="tile__text">Address, height, weight, emergency contact.</span>
+                <a href="/details">
+                  <span>My details</span>
+                  <span>Address, height, weight, emergency contact.</span>
                 </a>
-                <a href="/payments" className="tile">
-                  <span className="tile__title">My payments</span>
-                  <span className="tile__text">Every payment you have started.</span>
+                <a href="/payments">
+                  <span>My payments</span>
+                  <span>Every payment you have started.</span>
                 </a>
               </div>
             </section>
@@ -109,11 +109,11 @@ export default async function MePage({
 
           {kuid ? (
             <section aria-labelledby="clubs-h">
-              <h2 className="section-title" id="clubs-h">Clubs</h2>
-              <div className="tiles">
-                <a href="/clubs" className="tile">
-                  <span className="tile__title">My clubs</span>
-                  <span className="tile__text">Invitations and the club you play for.</span>
+              <h2 id="clubs-h">Clubs</h2>
+              <div>
+                <a href="/clubs">
+                  <span>My clubs</span>
+                  <span>Invitations and the club you play for.</span>
                 </a>
               </div>
             </section>
@@ -121,30 +121,30 @@ export default async function MePage({
 
           {hasWorkAreas ? (
             <section aria-labelledby="work-h">
-              <h2 className="section-title" id="work-h">Work areas</h2>
-              <div className="tiles">
+              <h2 id="work-h">Work areas</h2>
+              <div>
                 {isAdmin ? (
-                  <a href="/admin" className="tile">
-                    <span className="tile__title">Administrator console</span>
-                    <span className="tile__text">Money, users, clubs and the audit log.</span>
+                  <a href="/admin">
+                    <span>Administrator console</span>
+                    <span>Money, users, clubs and the audit log.</span>
                   </a>
                 ) : null}
                 {isCoordinator ? (
-                  <a href="/coordinator" className="tile">
-                    <span className="tile__title">Coordinator dashboard</span>
-                    <span className="tile__text">Reviews, athletes and card printing.</span>
+                  <a href="/coordinator">
+                    <span>Coordinator dashboard</span>
+                    <span>Reviews, athletes and card printing.</span>
                   </a>
                 ) : null}
                 {isAdmin || isCoordinator ? (
-                  <a href="/clubs/new" className="tile">
-                    <span className="tile__title">Register a club for someone</span>
-                    <span className="tile__text">For a club that cannot sign itself up.</span>
+                  <a href="/clubs/new">
+                    <span>Register a club for someone</span>
+                    <span>For a club that cannot sign itself up.</span>
                   </a>
                 ) : null}
                 {clubs.map((r) => (
-                  <a key={r.grant_id} href={`/clubs/${encodeURIComponent(r.scope_id as string)}`} className="tile">
-                    <span className="tile__title">{r.scope_name ?? "My club"}</span>
-                    <span className="tile__text">Roster, invitations and verification.</span>
+                  <a key={r.grant_id} href={`/clubs/${encodeURIComponent(r.scope_id as string)}`}>
+                    <span>{r.scope_name ?? "My club"}</span>
+                    <span>Roster, invitations and verification.</span>
                   </a>
                 ))}
               </div>
@@ -152,30 +152,30 @@ export default async function MePage({
           ) : null}
         </div>
 
-        <aside className="stack">
-          <section className="doc" aria-label="Your account">
-            <div className="doc__body">
-              <p className="eyebrow">Account</p>
-              <dl className="facts">
+        <aside>
+          <section aria-label="Your account">
+            <div>
+              <p>Account</p>
+              <dl>
                 {me.kuid ? (
-                  <div className="fact">
-                    <dt>KAFRIADA ID</dt>
-                    <dd><span className="kuid">{me.kuid}</span></dd>
+                  <div>
+                    <dt>KAFRIADA NET ID</dt>
+                    <dd><span>{me.kuid}</span></dd>
                   </div>
                 ) : null}
                 {me.kuid ? (
-                  <div className="fact">
+                  <div>
                     <dt>Status</dt>
                     <dd><VerificationBadge verified={verified} /></dd>
                   </div>
                 ) : null}
                 {me.lga_name ? (
-                  <div className="fact">
+                  <div>
                     <dt>LGA</dt>
                     <dd>{me.lga_name}</dd>
                   </div>
                 ) : null}
-                <div className="fact">
+                <div>
                   <dt>Phone</dt>
                   <dd>
                     {me.phone}
@@ -186,9 +186,9 @@ export default async function MePage({
           </section>
 
           {staffRoles.length ? (
-            <div className="notice">
-              <p className="notice__title">Your roles</p>
-              <ul className="bullets mb-3">
+            <div>
+              <p>Your roles</p>
+              <ul>
                 {staffRoles.map((r) => (
                   <li key={r.grant_id}>
                     {ROLE_NAMES[r.role] ?? r.role}
@@ -196,7 +196,7 @@ export default async function MePage({
                   </li>
                 ))}
               </ul>
-              <p className="hint mb0">
+              <p>
                 Staff are signed out after 30 minutes without activity, because
                 phones are shared in the field.
               </p>

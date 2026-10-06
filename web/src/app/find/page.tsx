@@ -23,18 +23,18 @@ export default function FindPage() {
   }
 
   return (
-    <div className="page">
+    <div>
       <PageHead
         eyebrow="Public lookup"
         title="Look up an athlete"
-        lede="Enter the KAFRIADA ID printed on the card. No account needed."
+        lede="Enter the KAFRIADA NET ID printed on the card. No account needed."
       />
 
-      <form action={find} className="doc">
-        <div className="doc__body">
-          <div className="field">
-            <label htmlFor="kuid">KAFRIADA ID</label>
-            <span className="hint" id="kuid-hint">
+      <form action={find}>
+        <div>
+          <div>
+            <label htmlFor="kuid">KAFRIADA NET ID</label>
+            <span id="kuid-hint">
               For example KA-NG-JG-BKD-2026-000123. Capital letters and dashes.
             </span>
             <input
@@ -45,16 +45,15 @@ export default function FindPage() {
               spellCheck={false}
               placeholder="KA-NG-JG-___-____-______"
               aria-describedby="kuid-hint"
-              className="input-mono"
             />
           </div>
-          <button type="submit" className="btn btn--primary btn--block">
+          <button type="submit">
             Look up
           </button>
         </div>
       </form>
 
-      <p className="hint mt-lg">
+      <p>
         Easier still: point your phone camera at the QR code on the card.
       </p>
     </div>

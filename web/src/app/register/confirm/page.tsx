@@ -38,7 +38,7 @@ export default async function ConfirmEmailPage({
   const sentTo = waiting.email || "your email address";
 
   return (
-    <div className="auth stack">
+    <div>
       <PageHead
         eyebrow="Confirm your email"
         title="Enter the code we emailed"
@@ -47,20 +47,20 @@ export default async function ConfirmEmailPage({
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : sent ? (
         <Flash variant="good" title="Another code is on its way" autoDismissMs={8000}>
-          <p className="mb0">Check your email. The timer below shows when you can ask again.</p>
+          <p>Check your email. The timer below shows when you can ask again.</p>
         </Flash>
       ) : null}
 
-      <form action={confirmEmailAction} className="doc" noValidate>
-        <div className="doc__body">
-          <div className="field">
+      <form action={confirmEmailAction} noValidate>
+        <div>
+          <div>
             <label htmlFor="code">6-digit code</label>
-            <span className="hint" id="code-hint">
-              It expires in 10 minutes. KAFRIADA will never ask you for it.
+            <span id="code-hint">
+              It expires in 10 minutes. KAFRIADA NET will never ask you for it.
             </span>
             <input
               id="code"
@@ -71,7 +71,6 @@ export default async function ConfirmEmailPage({
               maxLength={6}
               placeholder="000000"
               aria-describedby="code-hint"
-              className="code-input"
             />
           </div>
           <SubmitButton pending="Checking your code…">Confirm my email</SubmitButton>
@@ -80,13 +79,13 @@ export default async function ConfirmEmailPage({
 
       <ResendCountdown seconds={sent ? Number(wait) || 60 : 0}>
         <form action={resendCodeAction}>
-          <button type="submit" className="btn btn--ghost">Send another code</button>
+          <button type="submit">Send another code</button>
         </form>
       </ResendCountdown>
 
-      <div className="notice">
-        <p className="notice__title">Why we ask</p>
-        <p className="mb0">
+      <div>
+        <p>Why we ask</p>
+        <p>
           Your account opens once your email is confirmed. We use it for receipts,
           verification decisions and to help you back in if you forget your password.
         </p>

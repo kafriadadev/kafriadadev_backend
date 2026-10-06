@@ -50,7 +50,7 @@ export default async function AdminHome() {
 
       {o.ledger_ok === false ? (
         <Flash variant="bad" title="The ledger check failed">
-          <p className="mb0">
+          <p>
             The last nightly check found a problem
             {o.ledger_checked_at ? ` (${stamp(o.ledger_checked_at)})` : ""}. Nothing else matters
             until it is resolved.
@@ -59,14 +59,14 @@ export default async function AdminHome() {
       ) : null}
       {o.unresolved > 0 ? (
         <Flash variant="warn" title={`${o.unresolved} unresolved ${o.unresolved === 1 ? "payment" : "payments"}`}>
-          <p className="mb0">
+          <p>
             These need a person: the amount paid did not match what was agreed.
           </p>
         </Flash>
       ) : null}
       {o.review_median_hours !== null && o.review_median_hours > REVIEW_TARGET_HOURS ? (
         <Flash variant="warn" title="Reviews are slower than the target">
-          <p className="mb0">
+          <p>
             The median decision took {o.review_median_hours} hours this month; the target is{" "}
             {REVIEW_TARGET_HOURS}.
           </p>
@@ -74,8 +74,8 @@ export default async function AdminHome() {
       ) : null}
 
       <section aria-labelledby="money-h">
-        <h2 className="section-title" id="money-h">Money, last 24 hours</h2>
-        <div className="stats">
+        <h2 id="money-h">Money, last 24 hours</h2>
+        <div>
           <Stat label="Collected" value={formatNaira(o.collected_kobo)} tone="good" />
           <Stat label="Payments" value={o.payments} />
           <Stat label="Unresolved" value={o.unresolved} tone={o.unresolved > 0 ? "warn" : undefined} />
@@ -89,8 +89,8 @@ export default async function AdminHome() {
       </section>
 
       <section aria-labelledby="funnel-h">
-        <h2 className="section-title" id="funnel-h">Funnel</h2>
-        <div className="stats">
+        <h2 id="funnel-h">Funnel</h2>
+        <div>
           <Stat label="Registered" value={o.registered} href="/admin/users" />
           <Stat label="Paid for verification" value={o.paid} />
           <Stat label="Conversion" value={`${o.conversion_percent}%`} />
@@ -107,7 +107,7 @@ export default async function AdminHome() {
 
       {o.clubs_waiting > 0 ? (
         <Flash variant="info" title={`${o.clubs_waiting} club ${o.clubs_waiting === 1 ? "review" : "reviews"} waiting`}>
-          <a href="/admin/club-verification" className="btn btn--primary">Review clubs</a>
+          <a href="/admin/club-verification">Review clubs</a>
         </Flash>
       ) : null}
     </AdminShell>

@@ -25,7 +25,7 @@ export async function startAssistedPaymentAction(formData: FormData): Promise<vo
     redirect(`/assist-pay?${new URLSearchParams({ lga, kuid, error: message })}`);
   };
 
-  if (!kuid) bounceBack("Enter the athlete's KAFRIADA ID.");
+  if (!kuid) bounceBack("Enter the athlete's KAFRIADA NET ID.");
 
   let started;
   try {

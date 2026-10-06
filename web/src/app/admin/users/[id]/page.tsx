@@ -60,7 +60,7 @@ export default async function UserPage({
           <AdminShell current="/admin/users">
             <PageHead eyebrow="Administrator" title="User" app />
             <Flash variant="bad" title="Not found or not allowed">
-              <p className="mb0">
+              <p>
                 There is no such user, or you do not have access. <a href="/admin/users">Back to users</a>
               </p>
             </Flash>
@@ -89,7 +89,7 @@ export default async function UserPage({
         lede={
           <>
             {user.phone_masked}
-            {user.kuid ? <> &middot; <span className="kuid">{user.kuid}</span></> : null}
+            {user.kuid ? <> &middot; <span>{user.kuid}</span></> : null}
           </>
         }
         app
@@ -97,66 +97,66 @@ export default async function UserPage({
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : null}
       {done ? (
         <Flash variant="good" title="Done">
-          <p className="mb0">{done}</p>
+          <p>{done}</p>
         </Flash>
       ) : null}
 
-      <div className="split">
-      <div className="stack">
-      <h2 className="section-title">Roles</h2>
+      <div>
+      <div>
+      <h2>Roles</h2>
       {user.roles.length === 0 ? <EmptyState title="This person holds no roles" /> : null}
       {user.roles.map((r) => (
-        <section className="doc" key={r.grant_id} aria-label={r.role}>
-          <div className="doc__body">
-            <p className="bold mb0">
+        <section key={r.grant_id} aria-label={r.role}>
+          <div>
+            <p>
               {r.role}
               {r.scope_name ? ` — ${r.scope_name}` : r.scope_kind === "global" ? "" : ` — ${r.scope_id}`}
             </p>
-            <details className="disclose">
+            <details>
             <summary>Revoke this role</summary>
             <form action={revokeAction}>
               <input type="hidden" name="user" value={user.user_id} />
               <input type="hidden" name="grant" value={r.grant_id} />
-              <div className="field">
+              <div>
                 <label htmlFor={`reason-${r.grant_id}`}>Reason for revoking</label>
                 <input id={`reason-${r.grant_id}`} name="reason" required maxLength={300} />
               </div>
-              <div className="field">
+              <div>
                 <label htmlFor={`pw-${r.grant_id}`}>Your password</label>
                 <input id={`pw-${r.grant_id}`} name="current_password" type="password" required autoComplete="current-password" />
               </div>
-              <SubmitButton className="btn btn--danger" pending="Revoking…">Revoke this role</SubmitButton>
+              <SubmitButton pending="Revoking…">Revoke this role</SubmitButton>
             </form>
             </details>
           </div>
         </section>
       ))}
 
-      <h2 className="section-title mt-lg">Sessions</h2>
-      <form action={endSessionsAction} className="doc">
-        <div className="doc__body">
+      <h2>Sessions</h2>
+      <form action={endSessionsAction}>
+        <div>
           <input type="hidden" name="user" value={user.user_id} />
-          <div className="field">
+          <div>
             <label htmlFor="end-reason">Reason for ending every session</label>
             <input id="end-reason" name="reason" required maxLength={300} />
           </div>
-          <SubmitButton className="btn btn--ghost" pending="Ending sessions…">End all sessions</SubmitButton>
+          <SubmitButton pending="Ending sessions…">End all sessions</SubmitButton>
         </div>
       </form>
 
       </div>
 
-      <aside className="stack">
-      <h2 className="section-title">Grant a role</h2>
-      <form action={grantAction} className="doc">
-        <div className="doc__body">
+      <aside>
+      <h2>Grant a role</h2>
+      <form action={grantAction}>
+        <div>
           <input type="hidden" name="user" value={user.user_id} />
-          <div className="field">
+          <div>
             <label htmlFor="role">Role</label>
             <select id="role" name="role" required defaultValue="">
               <option value="">Choose a role</option>
@@ -167,9 +167,9 @@ export default async function UserPage({
               ))}
             </select>
           </div>
-          <div className="field">
+          <div>
             <label htmlFor="scope_id">Where it applies</label>
-            <span className="hint">
+            <span>
               Required for every role except those not tied to a place. A role that needs a place
               cannot be granted without one.
             </span>
@@ -185,18 +185,18 @@ export default async function UserPage({
               </optgroup>
             </select>
           </div>
-          <div className="field">
+          <div>
             <label htmlFor="club_id">Or a club&rsquo;s id</label>
-            <input id="club_id" name="club_id" autoComplete="off" className="input-mono" />
+            <input id="club_id" name="club_id" autoComplete="off" />
           </div>
-          <div className="field">
+          <div>
             <label htmlFor="reason">Reason</label>
             <input id="reason" name="reason" required maxLength={300} />
           </div>
-          <div className="field">
+          <div>
             <label htmlFor="current_password">Your password</label>
             <input id="current_password" name="current_password" type="password" required autoComplete="current-password" />
-            <span className="hint">You are asked for your password again before this is saved.</span>
+            <span>You are asked for your password again before this is saved.</span>
           </div>
           <SubmitButton pending="Granting…">Grant role</SubmitButton>
         </div>

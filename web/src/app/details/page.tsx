@@ -41,10 +41,10 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
     if (error instanceof ApiError && error.status === 401) redirect("/sign-in?ended=1");
     if (error instanceof ApiError && error.status === 404) {
       return (
-        <div className="page stack">
+        <div>
           <h1>My details</h1>
           <Flash variant="warn" title="No athlete record">
-            <p className="mb0">This account is not registered as an athlete.</p>
+            <p>This account is not registered as an athlete.</p>
           </Flash>
         </div>
       );
@@ -61,16 +61,16 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
   const Field = ({
     name, label, hint, children,
   }: { name: string; label: string; hint?: string; children: React.ReactNode }) => (
-    <div className={badField === name ? "field field--error" : "field"}>
+    <div>
       <label htmlFor={name}>{label}</label>
-      {hint ? <span className="hint">{hint}</span> : null}
+      {hint ? <span>{hint}</span> : null}
       {children}
-      {badField === name ? <span className="error">{error}</span> : null}
+      {badField === name ? <span>{error}</span> : null}
     </div>
   );
 
   return (
-    <div className="page stack">
+    <div>
       <PageHead
         back={{ href: "/me", label: "My account" }}
         eyebrow="Account"
@@ -80,11 +80,11 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
 
       {saved ? (
         <Flash variant="good" title="Saved" autoDismissMs={4000}>
-          <p className="mb0">Your details are updated.</p>
+          <p>Your details are updated.</p>
         </Flash>
       ) : incomplete ? (
         <Flash variant="warn" title="Your record is incomplete">
-          <p className="mb0">
+          <p>
             You registered before these details were asked for. Please fill in every field
             below and save.
           </p>
@@ -93,21 +93,21 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : null}
 
-      <section className="doc" aria-label="Set at registration">
-        <div className="doc__body">
-          <p className="eyebrow">Set at registration</p>
-          <dl className="facts">
-            <div className="fact"><dt>Name</dt><dd>{details.full_name}</dd></div>
-            <div className="fact">
+      <section aria-label="Set at registration">
+        <div>
+          <p>Set at registration</p>
+          <dl>
+            <div><dt>Name</dt><dd>{details.full_name}</dd></div>
+            <div>
               <dt>Sex</dt>
               <dd>{details.gender ? (GENDERS[details.gender] ?? details.gender) : "Not recorded"}</dd>
             </div>
-            <div className="fact"><dt>Date of birth</dt><dd>{dob(details.date_of_birth)}</dd></div>
-            <div className="fact">
+            <div><dt>Date of birth</dt><dd>{dob(details.date_of_birth)}</dd></div>
+            <div>
               <dt>Nationality</dt>
               <dd>
                 {details.nationality ?? "Not recorded"}
@@ -116,23 +116,23 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
                   : ""}
               </dd>
             </div>
-            <div className="fact"><dt>Sport</dt><dd>{details.sport}</dd></div>
-            <div className="fact"><dt>LGA</dt><dd>{details.lga_name}</dd></div>
+            <div><dt>Sport</dt><dd>{details.sport}</dd></div>
+            <div><dt>LGA</dt><dd>{details.lga_name}</dd></div>
             {details.email ? (
-              <div className="fact"><dt>Email</dt><dd className="break">{details.email}</dd></div>
+              <div><dt>Email</dt><dd>{details.email}</dd></div>
             ) : null}
           </dl>
-          <p className="hint mt-4 mb0">
+          <p>
             To correct any of these, speak to your LGA coordinator.
           </p>
         </div>
       </section>
 
-      <form action={updateDetailsAction} className="doc" noValidate>
-        <div className="doc__body">
-          <fieldset className="fieldset">
+      <form action={updateDetailsAction} noValidate>
+        <div>
+          <fieldset>
             <legend>Sport profile</legend>
-            <div className="field-row">
+            <div>
               <Field name="playing_position" label={`Main position or event (${details.sport})`}>
                 <select id="playing_position" name="playing_position" required
                   defaultValue={details.playing_position ?? ""}>
@@ -148,7 +148,7 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
                 </select>
               </Field>
             </div>
-            <div className="field-row">
+            <div>
               <Field name="dominant_side" label="Stronger foot or hand">
                 <select id="dominant_side" name="dominant_side" required
                   defaultValue={details.dominant_side ?? ""}>
@@ -164,7 +164,7 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
                 </select>
               </Field>
             </div>
-            <div className="field-row">
+            <div>
               <Field name="height_cm" label="Height (cm)">
                 <input id="height_cm" name="height_cm" type="number" inputMode="numeric"
                   min={120} max={230} required defaultValue={details.height_cm ?? ""} />
@@ -174,7 +174,7 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
                   min={35} max={200} required defaultValue={details.weight_kg ?? ""} />
               </Field>
             </div>
-            <div className="field-row">
+            <div>
               <Field name="years_experience" label="Years playing">
                 <input id="years_experience" name="years_experience" type="number"
                   inputMode="numeric" min={0} max={60} required
@@ -192,7 +192,7 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
             </div>
           </fieldset>
 
-          <fieldset className="fieldset">
+          <fieldset>
             <legend>Address</legend>
             <Field name="address_line" label="Home address" hint="House number and street.">
               <input id="address_line" name="address_line" required autoComplete="street-address"
@@ -204,13 +204,13 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
             </Field>
           </fieldset>
 
-          <fieldset className="fieldset">
+          <fieldset>
             <legend>Emergency contact</legend>
             <Field name="emergency_name" label="Full name">
               <input id="emergency_name" name="emergency_name" required
                 defaultValue={details.emergency_name ?? ""} />
             </Field>
-            <div className="field-row">
+            <div>
               <Field name="emergency_relationship" label="Relationship to you">
                 <input id="emergency_relationship" name="emergency_relationship" required
                   defaultValue={details.emergency_relationship ?? ""} />
@@ -222,7 +222,7 @@ export default async function DetailsPage({ searchParams }: { searchParams: Prom
             </div>
           </fieldset>
 
-          <button type="submit" className="btn btn--primary btn--block">Save my details</button>
+          <button type="submit">Save my details</button>
         </div>
       </form>
     </div>

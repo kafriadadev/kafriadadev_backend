@@ -46,7 +46,7 @@ export default async function RevokeClubPage({
           <AdminShell current="/admin/clubs">
             <PageHead eyebrow="Administrator" title="Withdraw a club&rsquo;s verification" app />
             <Flash variant="bad" title="Not found or not allowed">
-              <p className="mb0">
+              <p>
                 There is no such club, or you do not have access. <a href="/admin/clubs">Back to clubs</a>
               </p>
             </Flash>
@@ -70,32 +70,32 @@ export default async function RevokeClubPage({
 
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : null}
 
-      <section className="doc narrow" aria-label={club.name}>
-        <div className="doc__body">
-          <dl className="facts">
-            <div className="fact"><dt>Club</dt><dd>{club.name}</dd></div>
-            <div className="fact"><dt>Area</dt><dd>{club.lga_name}</dd></div>
-            <div className="fact">
+      <section aria-label={club.name}>
+        <div>
+          <dl>
+            <div><dt>Club</dt><dd>{club.name}</dd></div>
+            <div><dt>Area</dt><dd>{club.lga_name}</dd></div>
+            <div>
               <dt>Verification</dt>
               <dd>{club.verified ? "Verified" : "Not currently verified"}</dd>
             </div>
           </dl>
 
           {club.verified ? (
-            <form action={revokeClubAction} className="mt-5">
+            <form action={revokeClubAction}>
               <input type="hidden" name="club" value={id} />
-              <div className="field">
+              <div>
                 <label htmlFor="reason">Reason</label>
-                <span className="hint">Kept permanently. Shown to the club, unlike a routine note.</span>
+                <span>Kept permanently. Shown to the club, unlike a routine note.</span>
                 <textarea id="reason" name="reason" maxLength={2000} required />
               </div>
-              <div className="field">
+              <div>
                 <label htmlFor="current_password">Your password</label>
-                <span className="hint">Confirms this is really you, same as any other admin action.</span>
+                <span>Confirms this is really you, same as any other admin action.</span>
                 <input
                   id="current_password"
                   name="current_password"
@@ -107,7 +107,7 @@ export default async function RevokeClubPage({
               <SubmitButton pending="Withdrawing…">Withdraw this club&rsquo;s verification</SubmitButton>
             </form>
           ) : (
-            <p className="hint mt-4 mb0">
+            <p>
               Nothing to withdraw — only a currently verified club can be.
             </p>
           )}

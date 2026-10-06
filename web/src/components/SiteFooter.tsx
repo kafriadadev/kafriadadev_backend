@@ -1,16 +1,16 @@
-/** The footer on every page: where to look something up, and who issues the ID. */
+/** The footer on every page. */
 export function SiteFooter() {
   return (
-    <footer className="site-footer">
-      <div className="wrap site-footer__inner">
-        <p>KAFRIADA · Kowa Guru Technology · Federation of Nigerian Sports</p>
-        <nav aria-label="Footer">
-          <a href="/find">Look up an ID</a>
-          <a href="/register">Register as an athlete</a>
-          <a href="/clubs/register">Register a club</a>
-          <a href="/privacy">Privacy notice</a>
-        </nav>
-      </div>
+    <footer>
+      <p>KAFRIADA NET · Sport Network Platform</p>
+      <nav aria-label="Footer">
+        <ul>
+          <li><a href="/find">Look up an ID</a></li>
+          <li><a href="/register">Register as an athlete</a></li>
+          <li><a href="/clubs/register">Register a club</a></li>
+          <li><a href="/privacy">Privacy notice</a></li>
+        </ul>
+      </nav>
     </footer>
   );
 }

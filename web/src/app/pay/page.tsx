@@ -75,7 +75,7 @@ async function start(token: string, error: string) {
   }
 
   return (
-    <div className="page stack">
+    <div>
       <PageHead
         back={{ href: "/me", label: "My account" }}
         eyebrow="Verification"
@@ -83,37 +83,37 @@ async function start(token: string, error: string) {
       />
 
       {problem ? (
-        <div className="notice notice--bad" role="alert" tabIndex={-1}>
-          <p className="notice__title">We could not start your payment</p>
-          <p className="mb0">{problem}</p>
+        <div role="alert" tabIndex={-1}>
+          <p>We could not start your payment</p>
+          <p>{problem}</p>
         </div>
       ) : null}
 
       {quote ? (
-        <section className="doc" aria-label="Amount due">
-          <div className="doc__body">
-            <dl className="facts">
-              <div className="fact">
+        <section aria-label="Amount due">
+          <div>
+            <dl>
+              <div>
                 <dt>Amount due</dt>
-                <dd><span className="amount">{formatNaira(quote.amount_kobo)}</span></dd>
+                <dd><span>{formatNaira(quote.amount_kobo)}</span></dd>
               </div>
-              <div className="fact">
+              <div>
                 <dt>For</dt>
                 <dd>
-                  Athlete verification · <span className="kuid">{quote.kuid}</span>
+                  Athlete verification · <span>{quote.kuid}</span>
                 </dd>
               </div>
             </dl>
 
             {quote.already_paid ? (
-              <p className="hint">You have already paid for this. Nothing more is due.</p>
+              <p>You have already paid for this. Nothing more is due.</p>
             ) : (
               <form action={startPaymentAction}>
                 <SubmitButton pending="Taking you to Paystack…" detail="Please do not close or refresh this page.">
                   Pay securely with Paystack
                 </SubmitButton>
-                <p className="hint form-foot">
-                  You will leave KAFRIADA to pay. We never see your card details.
+                <p>
+                  You will leave KAFRIADA NET to pay. We never see your card details.
                 </p>
               </form>
             )}
@@ -132,11 +132,11 @@ async function returned(token: string, reference: string) {
   } catch (caught) {
     if (caught instanceof ApiError && caught.status === 404) {
       return (
-        <div className="page stack">
+        <div>
           <h1>Payment</h1>
-          <div className="notice notice--warn" role="status">
-            <p className="notice__title">We could not find that payment</p>
-            <p className="mb0">
+          <div role="status">
+            <p>We could not find that payment</p>
+            <p>
               It may belong to another account. <a href="/pay">Start again</a>
             </p>
           </div>
@@ -151,23 +151,23 @@ async function returned(token: string, reference: string) {
   const amount = formatNaira(payment.amount_kobo);
 
   return (
-    <div className="page stack">
+    <div>
       <PageHead
         eyebrow="Verification"
         title="Payment"
       />
 
       {payment.state === "confirmed" ? (
-        <div className="notice notice--good" role="status">
-          <p className="notice__title">Payment confirmed</p>
+        <div role="status">
+          <p>Payment confirmed</p>
           <p>
-            We received <span className="amount">{amount}</span>. Thank you.
+            We received <span>{amount}</span>. Thank you.
           </p>
-          <a href="/verify" className="btn btn--primary">See my verification</a>
+          <a href="/verify">See my verification</a>
         </div>
       ) : payment.state === "checking" ? (
-        <div className="notice" role="status">
-          <p className="notice__title">We are confirming your payment with Paystack</p>
+        <div role="status">
+          <p>We are confirming your payment with Paystack</p>
           <p>
             {age > STILL_CHECKING_MS
               ? "This is taking longer than usual. There is no need to keep refreshing."
@@ -175,26 +175,26 @@ async function returned(token: string, reference: string) {
             You can close this page safely: when the payment is confirmed it will
             show here.
           </p>
-          <a href={again} className="btn btn--ghost">Check again</a>
+          <a href={again}>Check again</a>
         </div>
       ) : payment.state === "review" ? (
-        <div className="notice notice--warn" role="status">
-          <p className="notice__title">Your payment needs a check by our team</p>
-          <p className="mb0">
+        <div role="status">
+          <p>Your payment needs a check by our team</p>
+          <p>
             Please do not pay again. We will contact you on the phone number you
             registered with.
           </p>
         </div>
       ) : (
-        <div className="notice notice--bad" role="status">
-          <p className="notice__title">The payment was not completed</p>
+        <div role="status">
+          <p>The payment was not completed</p>
           <p>
             If money left your account, it will show here as confirmed once
             Paystack tells us. Otherwise you can try again.
           </p>
-          <div className="cluster">
-            <a href="/pay" className="btn btn--primary">Try again</a>
-            <a href={again} className="btn btn--ghost">Check again</a>
+          <div>
+            <a href="/pay">Try again</a>
+            <a href={again}>Check again</a>
           </div>
         </div>
       )}

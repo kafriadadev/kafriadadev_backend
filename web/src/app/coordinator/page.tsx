@@ -54,10 +54,10 @@ export default async function CoordinatorPage({ searchParams }: { searchParams: 
   if (!lga) {
     if (!canChoose) {
       return (
-        <div className="page stack">
+        <div>
           <h1>Coordinator</h1>
           <Flash variant="warn" title="No LGA to show">
-            <p className="mb0">This account does not coordinate a local government area.</p>
+            <p>This account does not coordinate a local government area.</p>
           </Flash>
         </div>
       );
@@ -73,10 +73,10 @@ export default async function CoordinatorPage({ searchParams }: { searchParams: 
       if (error.status === 401) redirect("/sign-in?ended=1");
       if (error.status === 403 || error.status === 404) {
         return (
-          <div className="page stack">
+          <div>
             <h1>Coordinator</h1>
             <Flash variant="bad" title="You do not have access to this">
-              <p className="mb0">You can only open your own local government area.</p>
+              <p>You can only open your own local government area.</p>
             </Flash>
             {canChoose ? <Chooser /> : null}
           </div>
@@ -90,7 +90,7 @@ export default async function CoordinatorPage({ searchParams }: { searchParams: 
   const hours = d.oldest_waiting_hours;
 
   return (
-    <div className="page page--wide stack">
+    <div>
       <CoordinatorNav current="/coordinator" lga={d.lga_id} />
       <PageHead
         eyebrow={<>{d.lga_name} LGA &middot; {me.full_name}</>}
@@ -98,7 +98,7 @@ export default async function CoordinatorPage({ searchParams }: { searchParams: 
         app
       />
 
-      <div className="stats">
+      <div>
         <Stat label="Registered" value={d.registered} />
         <Stat label="Paid" value={d.paid} />
         <Stat
@@ -112,7 +112,7 @@ export default async function CoordinatorPage({ searchParams }: { searchParams: 
 
       {d.to_review === 0 ? (
         <Flash variant="good" title="Nothing is waiting">
-          <p className="mb0">Every verification in this LGA has been decided.</p>
+          <p>Every verification in this LGA has been decided.</p>
         </Flash>
       ) : (
         <Flash
@@ -123,50 +123,50 @@ export default async function CoordinatorPage({ searchParams }: { searchParams: 
             {d.to_review === 1 ? "One verification needs" : `${d.to_review} verifications need`} a
             decision. The target is {TARGET_HOURS} hours.
           </p>
-          <a href={`/review?${q}`} className="btn btn--primary">Review now</a>
+          <a href={`/review?${q}`}>Review now</a>
         </Flash>
       )}
 
       <section aria-labelledby="todo-h">
-        <h2 className="section-title" id="todo-h">What do you need to do?</h2>
-        <div className="tiles">
-          <a href={`/review?${q}`} className="tile">
-            <span className="tile__title">Review verifications</span>
-            <span className="tile__text">Check photographs and ID documents.</span>
+        <h2 id="todo-h">What do you need to do?</h2>
+        <div>
+          <a href={`/review?${q}`}>
+            <span>Review verifications</span>
+            <span>Check photographs and ID documents.</span>
           </a>
-          <a href={`/coordinator/find?${q}`} className="tile">
-            <span className="tile__title">Find an athlete</span>
-            <span className="tile__text">Search this LGA by name, phone or ID.</span>
+          <a href={`/coordinator/find?${q}`}>
+            <span>Find an athlete</span>
+            <span>Search this LGA by name, phone or ID.</span>
           </a>
-          <a href={`/coordinator/cards?${q}`} className="tile">
-            <span className="tile__title">Print QR cards</span>
-            <span className="tile__text">Eight cards to an A4 sheet.</span>
+          <a href={`/coordinator/cards?${q}`}>
+            <span>Print QR cards</span>
+            <span>Eight cards to an A4 sheet.</span>
           </a>
           {d.can_assist && !d.cap_reached ? (
-            <a href={`/assist-pay?${q}`} className="tile">
-              <span className="tile__title">Pay for an athlete</span>
-              <span className="tile__text">Record a cash payment for verification.</span>
+            <a href={`/assist-pay?${q}`}>
+              <span>Pay for an athlete</span>
+              <span>Record a cash payment for verification.</span>
             </a>
           ) : null}
         </div>
       </section>
 
       {d.can_assist ? (
-        <section className="doc" aria-label="Cash collected today">
-          <div className="doc__body">
-            <p className="eyebrow">Cash collected today</p>
-            <dl className="facts">
-              <div className="fact">
+        <section aria-label="Cash collected today">
+          <div>
+            <p>Cash collected today</p>
+            <dl>
+              <div>
                 <dt>{d.collected_count} {d.collected_count === 1 ? "payment" : "payments"}</dt>
-                <dd><span className="amount">{formatNaira(d.collected_kobo)}</span></dd>
+                <dd><span>{formatNaira(d.collected_kobo)}</span></dd>
               </div>
-              <div className="fact">
+              <div>
                 <dt>Daily limit</dt>
                 <dd>{formatNaira(d.limit_kobo)} / {d.limit_count} payments</dd>
               </div>
             </dl>
             {d.cap_reached ? (
-              <p className="hint mb0">
+              <p>
                 You have reached today&rsquo;s limit. Assisted payments start again tomorrow.
               </p>
             ) : null}
@@ -187,8 +187,8 @@ async function Chooser({ current }: { current?: string }) {
     /* an unreachable list leaves an empty selector; the page still works for the LGA already chosen */
   }
   return (
-    <form method="get" className="panel toolbar toolbar--2">
-      <div className="field">
+    <form method="get">
+      <div>
         <label htmlFor="lga">Local government area</label>
         <select id="lga" name="lga" defaultValue={current ?? ""}>
           <option value="">Choose an area</option>
@@ -197,7 +197,7 @@ async function Chooser({ current }: { current?: string }) {
           ))}
         </select>
       </div>
-      <button type="submit" className="btn btn--ghost btn--block">Show</button>
+      <button type="submit">Show</button>
     </form>
   );
 }

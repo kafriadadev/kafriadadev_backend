@@ -10,12 +10,12 @@ const LINKS = [
   { href: "/admin/reversal", label: "Record a refund" },
 ] as const;
 
-/** The administrator console: a sidebar on a desktop, tabs on a phone. */
+/** The administrator console's sections. */
 export function AdminShell({ current, children }: { current: string; children: React.ReactNode }) {
   return (
-    <div className="page page--wide console">
+    <div>
       <SubNav links={LINKS} current={current} label="Administrator" heading="Administrator" />
-      <div className="stack">{children}</div>
+      <div>{children}</div>
     </div>
   );
 }

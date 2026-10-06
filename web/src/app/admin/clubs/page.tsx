@@ -69,7 +69,7 @@ export default async function AdminClubsPage({ searchParams }: { searchParams: P
           variant="good"
           title={done === "approved" ? "Club approved" : done === "revoked" ? "Verification withdrawn" : "Club suspended"}
         >
-          <p className="mb0">
+          <p>
             {done === "approved"
               ? "The club can now build a roster."
               : done === "revoked"
@@ -80,11 +80,11 @@ export default async function AdminClubsPage({ searchParams }: { searchParams: P
       ) : null}
       {error ? (
         <Flash variant="bad" title="That did not work">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : null}
 
-      <nav aria-label="Filter" className="filters">
+      <nav aria-label="Filter">
         {FILTERS.map((f) =>
           f.key === status ? (
             <strong key={f.key} aria-current="page">{f.label}</strong>
@@ -97,28 +97,28 @@ export default async function AdminClubsPage({ searchParams }: { searchParams: P
       {result.clubs.length === 0 ? (
         <EmptyState title="No clubs here" />
       ) : (
-        <ul className="list">
+        <ul>
           {result.clubs.map((c) => (
-            <li className="list__item" key={c.club_id}>
-              <div className="list__main">
-                <p className="list__title">
+            <li key={c.club_id}>
+              <div>
+                <p>
                   <a href={`/clubs/${c.club_id}`}>{c.name}</a>{" "}
-                  <span className={c.status === "approved" ? "pill pill--issued" : "pill pill--pending"}>
+                  <span>
                     {STATUS_LABEL[c.status] ?? c.status}
                   </span>{" "}
-                  {c.verified ? <span className="pill pill--issued">Verified</span> : null}
+                  {c.verified ? <span>Verified</span> : null}
                 </p>
-                <p className="list__meta">
+                <p>
                   {c.sport} &middot; {c.lga_name} &middot; run by {c.representative}
                 </p>
               </div>
-              <div className="list__actions">
+              <div>
                 {c.status !== "approved" ? (
                   <form action={clubStatusAction}>
                     <input type="hidden" name="club" value={c.club_id} />
                     <input type="hidden" name="status" value={status} />
                     <input type="hidden" name="change" value="approve" />
-                    <SubmitButton className="btn btn--primary btn--sm" pending="Approving…">Approve</SubmitButton>
+                    <SubmitButton pending="Approving…">Approve</SubmitButton>
                   </form>
                 ) : null}
                 {c.status !== "suspended" ? (
@@ -126,11 +126,11 @@ export default async function AdminClubsPage({ searchParams }: { searchParams: P
                     <input type="hidden" name="club" value={c.club_id} />
                     <input type="hidden" name="status" value={status} />
                     <input type="hidden" name="change" value="suspend" />
-                    <SubmitButton className="btn btn--ghost btn--sm" pending="Suspending…">Suspend</SubmitButton>
+                    <SubmitButton pending="Suspending…">Suspend</SubmitButton>
                   </form>
                 ) : null}
                 {c.verified ? (
-                  <a href={`/admin/clubs/${c.club_id}/revoke`} className="btn btn--ghost btn--sm">Withdraw verification</a>
+                  <a href={`/admin/clubs/${c.club_id}/revoke`}>Withdraw verification</a>
                 ) : null}
               </div>
             </li>

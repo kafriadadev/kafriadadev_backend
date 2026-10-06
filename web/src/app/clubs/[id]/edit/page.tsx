@@ -65,7 +65,7 @@ export default async function EditClubPage({
   };
 
   return (
-    <div className="page stack">
+    <div>
       <PageHead
         back={{ href: `/clubs/${encodeURIComponent(id)}?tab=details`, label: club.name }}
         eyebrow="Club"
@@ -75,12 +75,12 @@ export default async function EditClubPage({
 
       {error ? (
         <Flash variant="bad" title="We could not save that">
-          <p className="mb0">{error}</p>
+          <p>{error}</p>
         </Flash>
       ) : null}
 
-      <form action={updateClubAction} className="doc" noValidate>
-        <div className="doc__body">
+      <form action={updateClubAction} noValidate>
+        <div>
           <input type="hidden" name="club" value={id} />
           <ClubFields
             values={{ get, all }}
