@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { styleguideEnabled as enabled } from "@/lib/styleguide";
 
 import { Logo } from "@/components/brand/Logo";
 import {
@@ -16,10 +17,6 @@ import { CentreCircle, HalfwayLine, PenaltyArc, Pitch } from "@/components/pitch
 export const metadata: Metadata = { title: "Style guide", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
-/** Development only, or a deployed review build started with STYLEGUIDE=1. */
-function enabled() {
-  return process.env.NODE_ENV !== "production" || process.env.STYLEGUIDE === "1";
-}
 
 const BRAND = [
   { token: "--pitch", hex: "#0EAD2C", swatch: "bg-pitch", note: "Logo green. Fills only: 2.99:1 on white. Boot text on it 6.48:1." },
@@ -112,6 +109,7 @@ export default async function StyleGuide() {
         <p className="font-mono text-xs text-muted">/styleguide · Phase 1</p>
         <h1 className="mt-2">{t("styleguide.title")}</h1>
         <p className="mt-3 max-w-measure text-md text-muted">{t("styleguide.lede")}</p>
+        <p className="mt-4"><a href="/styleguide/components" className="font-bold">Components, in every state</a></p>
       </header>
 
       <Section id="brand" title="Logo">

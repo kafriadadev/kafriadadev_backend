@@ -1,19 +1,19 @@
 import { getTranslations } from "next-intl/server";
+import { Footer } from "@/components/ui/Navigation";
 
-/** The footer on every page. Bare until the Phase 2 redesign. */
 export async function SiteFooter() {
-  const t = await getTranslations();
+  const t = await getTranslations("nav");
+  const tb = await getTranslations("brand");
   return (
-    <footer>
-      <p>{t("brand.name")} · {t("brand.tagline")}</p>
-      <nav aria-label={t("nav.footer")}>
-        <ul>
-          <li><a href="/find">{t("nav.findId")}</a></li>
-          <li><a href="/register">{t("nav.registerAthlete")}</a></li>
-          <li><a href="/clubs/register">{t("nav.registerClub")}</a></li>
-          <li><a href="/privacy">{t("nav.privacy")}</a></li>
-        </ul>
-      </nav>
-    </footer>
+    <Footer
+      tagline={tb("tagline")}
+      label={t("footer")}
+      links={[
+        { href: "/find", label: t("findId") },
+        { href: "/register", label: t("registerAthlete") },
+        { href: "/clubs/register", label: t("registerClub") },
+        { href: "/privacy", label: t("privacy") },
+      ]}
+    />
   );
 }

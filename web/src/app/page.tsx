@@ -33,7 +33,7 @@ export default function Home() {
       </section>
 
       <section aria-labelledby="how">
-        <p id="how">How it works</p>
+        <h2 id="how">How it works</h2>
         <div>
           <div>
             <span aria-hidden="true">1</span>

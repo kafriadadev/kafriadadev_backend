@@ -18,7 +18,13 @@
     "myAccount": "My account",
     "registerFree": "Register free",
     "registerAthlete": "Register as an athlete",
-    "privacy": "Privacy notice"
+    "privacy": "Privacy notice",
+    "menu": "Menu",
+    "menuTitle": "Menu",
+    "close": "Close",
+    "signIn": "Sign in",
+    "athlete": "Athlete",
+    "coordinator": "Coordinator"
   },
   "referee": {
     "whistle": "Information",
@@ -39,5 +45,47 @@
     "lede": "Every token and building block of KAFRIADA NET, in one place. Review it in light and dark before screens are built.",
     "sampleHeadline": "Your permanent football ID. Free.",
     "sampleBody": "Register once and receive an ID that is yours for life. Any club or scout can check it in seconds."
+  },
+  "ui": {
+    "verified": "Verified",
+    "unverified": "Unverified",
+    "copy": "Copy",
+    "copied": "Copied",
+    "optional": "optional",
+    "idLabel": "KAFRIADA NET ID",
+    "noPhoto": "No photograph on file",
+    "photoAlt": "Photograph of {name}",
+    "loading": "Loading",
+    "formErrors": "Check these and try again",
+    "tellCoordinator": "Tell your LGA coordinator this code",
+    "stepOf": "Step {current} of {total}",
+    "progress": "Progress"
+  },
+  "tabs": {
+    "home": "Home",
+    "card": "My card",
+    "clubs": "Clubs",
+    "verify": "Verify",
+    "me": "Me",
+    "queue": "Queue",
+    "find": "Find",
+    "pay": "Pay",
+    "cards": "Cards",
+    "cash": "Cash"
+  },
+  "footballPositions": {
+    "Goalkeeper": "Goalkeeper",
+    "Centre-back": "Centre-back",
+    "Full-back": "Full-back",
+    "Defensive midfielder": "Defensive mid",
+    "Central midfielder": "Central mid",
+    "Attacking midfielder": "Attacking mid",
+    "Winger": "Winger",
+    "Striker": "Striker"
+  },
+  "card": {
+    "scan": "Scan to check",
+    "scanHelp": "Any phone camera opens this player's public profile. It never shows a phone number or date of birth.",
+    "issuedBy": "Issued by KAFRIADA NET · Federation of Nigerian Sports"
   }
 }

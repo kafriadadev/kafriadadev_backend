@@ -50,6 +50,7 @@
   --scoreboard: var(--boot);
   --scoreboard-text: var(--chalk);    /* 19.34 */
   --scoreboard-accent: var(--yellow-card); /* 11.95 on boot */
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230A0F0B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 
   /* -- The printed card: never inverts, so a photo of it always matches -- */
   --plate-bg: var(--chalk);
@@ -124,6 +125,7 @@
     --check-bg: #0E2A16;
     --chalk-line: var(--chalk);
     --scoreboard: #000000;  /* chalk 21.0 */
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F2F6F1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.5), 0 4px 12px rgb(0 0 0 / 0.4);
     --shadow-float: 0 8px 28px rgb(0 0 0 / 0.6);
   }
@@ -144,6 +146,7 @@
   --check-bg: #0E2A16;
   --chalk-line: var(--chalk);
   --scoreboard: #000000;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F2F6F1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.5), 0 4px 12px rgb(0 0 0 / 0.4);
   --shadow-float: 0 8px 28px rgb(0 0 0 / 0.6);
 }

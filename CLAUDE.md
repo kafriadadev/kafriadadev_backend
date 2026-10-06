@@ -555,6 +555,11 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `components/icons`. Strings in `web/messages/en.json` (next-intl). `/styleguide` runs
   with `STYLEGUIDE=1`. **Waiting on the user's style-guide approval before Phase 2.**
   Cross-document view transitions are off: they stalled no-JS form round trips in Edge.
+- **Frontend redesign, Phase 2 — done 2026-10-06.** Components in `web/src/components/ui/`
+  (every state at `/styleguide/components`), illustrations in `components/illustrations`.
+  New gate: `npm run check:a11y` (axe, needs the web tier up; `STYLEGUIDE=1` adds the style
+  guide). Links are underlined by default. A `@container` element needs an explicit width.
+  Next: Phase 3, PUB-01–05 and AUT-01–05 on the new components.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.

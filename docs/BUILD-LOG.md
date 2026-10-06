@@ -30,6 +30,58 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-06 — Frontend redesign, Phase 2: components
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built** (`web/src/components/ui/`, shown in every state at `/styleguide/components`):
+- **Button** (primary, secondary, ghost, danger; md 48px, lg 56px; also as a link),
+  **IconButton**, **SubmitButton** (client island: locks and says what is happening,
+  e.g. "Creating your ID…"; a plain submit button without JavaScript).
+- **Field** with hint and error wiring (`aria-describedby`, `aria-invalid`; error = red-card
+  icon + sentence + red border + thick left edge + one shake), **Input**, **Select**,
+  **PhoneInput** (+234 shown), **CodeInput** (one big field, `one-time-code`),
+  **Checkbox**, **Fieldset**, **ErrorSummary** (anchor links to each field).
+- **PositionPicker**: the API's eight football positions as radio buttons on a pitch.
+- **Stepper**: progress along a touchline, the ball on the current step.
+- **PlayerCard** in sm (roster row), md and lg, and **PrintCard** (front and back at
+  85.6 × 54 mm) on the plate tokens. **KuidStrip** sizes the ID to its strip, so it never
+  breaks; **Scoreboard**.
+- **Pill**, **VerifiedBadge** (unverified is neutral, never a warning), **Notice** (the
+  referee scale), **RefChip** (grouped in threes; the copy button appears only with
+  JavaScript), **Toast**, **PageState**, **EmptyState**, **Skeleton**, **Sheet** (on
+  `<details>`; while open its summary becomes a Close button pinned in the thumb zone,
+  since nothing else can close a `<details>` without script), **TopBar**, **TabBar**
+  (bottom on phones, rail on wide screens), **Footer**, **DataTable** (restacks into cards
+  under 640px).
+- **Illustrations** (`components/illustrations`): empty net, raised flag, empty bench,
+  kit rail, unplugged scoreboard, no signal, whistle, held card.
+- The site header and footer now use TopBar and Footer.
+- **`npm run check:a11y`** (`scripts/check-a11y.mjs`): axe-core, WCAG 2.2 A/AA plus best
+  practice, on every public page and the style guide, 320 and 1280px, light and dark.
+
+**Verified:** typecheck and build clean. `check:a11y`: no violations. `check:render`: 76
+checks pass, including the new phone-menu check (closed on arrival, opens and closes with
+JavaScript off). Card, picker and top bar checked by screenshot at 360 and 1280px.
+- **Found by axe:** Tailwind's base styles strip link underlines, so in-text links were
+  told apart by colour alone. Links are now underlined by default. Also fixed: duplicate
+  landmark labels (Stepper is a labelled list, not a nav), a heading-order gap on the old
+  landing page, and bare buttons on not-yet-rebuilt pages below the 24px target (a
+  zero-specificity base rule gives them 48px).
+- **Found by screenshot:** a `@container` element has no width of its own, so the player
+  card collapsed to 0px inside a flex row; it now fills its box. `hidden` and
+  `inline-flex` in one class list let the header's register button show on phones.
+- **`check-render.mjs` changed:** content clipped by an ancestor that fits on screen (an
+  SVG, an `overflow: hidden` box) no longer counts as overflow; page-level overflow is still
+  caught.
+
+**Not done / open:**
+- Pages still use the bare Phase 0 components (`components/PageHead`, `Flash`, …); each is
+  replaced as its screen is rebuilt, from Phase 3.
+- PhoneInput does not format as you type yet (a JS enhancement, Phase 3 with the form).
+- Motion (motion.dev) is not installed yet; the CSS layer is in place.
+
+---
+
 ## 2026-10-06 — Frontend redesign, Phase 1: the design system
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

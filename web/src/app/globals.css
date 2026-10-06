@@ -64,7 +64,11 @@
   h1 { font-size: var(--text-3xl); text-transform: uppercase; }
   h2 { font-size: var(--text-xl); }
   h3 { font-size: var(--text-lg); }
-  a { color: var(--link); text-underline-offset: 0.18em; }
+  /* Underlined by default: a link must never be told apart by colour alone.
+     Components that are visibly buttons or tabs add no-underline. */
+  a { color: var(--link); text-decoration: underline; text-decoration-thickness: 0.08em; text-underline-offset: 0.18em; }
+  /* Bare controls (pages not yet rebuilt) still meet the 48px target. */
+  :where(button, input[type="submit"]) { min-height: var(--target); padding-inline: 1rem; }
   :focus-visible {
     outline: 3px solid var(--focus);
     outline-offset: 2px;

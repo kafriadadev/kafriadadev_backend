@@ -1,27 +1,21 @@
 import { getTranslations } from "next-intl/server";
-import { Logo } from "./brand/Logo";
+import { IconSearch, IconShirtSport, IconUser } from "@/components/icons";
+import { TopBar } from "@/components/ui/Navigation";
 
-/**
- * The header on every page. Reads no cookie, so the public profile and the
- * landing page can still be cached. Bare until the Phase 2 TopBar.
- */
+/** The public top bar. Reads no cookie, so cached pages stay cached. */
 export async function SiteHeader() {
-  const t = await getTranslations();
+  const t = await getTranslations("nav");
+  const tb = await getTranslations("brand");
   return (
-    <header>
-      <p>
-        <a href="/" aria-label={t("brand.home")}>
-          <Logo className="h-8 w-auto text-text" />
-        </a>
-      </p>
-      <nav aria-label={t("nav.main")}>
-        <ul>
-          <li><a href="/find">{t("nav.findId")}</a></li>
-          <li><a href="/clubs/register">{t("nav.registerClub")}</a></li>
-          <li><a href="/me">{t("nav.myAccount")}</a></li>
-          <li><a href="/register">{t("nav.registerFree")}</a></li>
-        </ul>
-      </nav>
-    </header>
+    <TopBar
+      homeLabel={tb("home")}
+      links={[
+        { href: "/find", label: t("findId"), icon: <IconSearch size={20} aria-hidden="true" /> },
+        { href: "/clubs/register", label: t("registerClub"), icon: <IconShirtSport size={20} aria-hidden="true" /> },
+        { href: "/me", label: t("myAccount"), icon: <IconUser size={20} aria-hidden="true" /> },
+      ]}
+      action={{ href: "/register", label: t("registerFree") }}
+      menu={{ label: t("menu"), title: t("menuTitle"), close: t("close") }}
+    />
   );
 }

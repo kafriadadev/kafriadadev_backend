@@ -28,7 +28,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale === "en" ? "en-NG" : locale} className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body>
-        <a href="#main">{t("skip")}</a>
+        <a href="#main" className="sr-only z-50 rounded-pill bg-boot px-4 py-3 font-bold text-chalk focus:not-sr-only focus:fixed focus:left-4 focus:top-4">{t("skip")}</a>
         <SiteHeader />
         <main id="main">{children}</main>
         <SiteFooter />

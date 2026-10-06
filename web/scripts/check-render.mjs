@@ -47,7 +47,7 @@ const PAGES = [
   ["profile", `/a/${KUID}${SIG ? `?s=${SIG}` : ""}`],
   ["card", `/card/${KUID}`],
   // Served only when the web tier runs with STYLEGUIDE=1 (or in development).
-  ...(process.env.STYLEGUIDE ? [["styleguide", "/styleguide"]] : []),
+  ...(process.env.STYLEGUIDE ? [["styleguide", "/styleguide"], ["components", "/styleguide/components"]] : []),
 ];
 
 // 360 x 780 is the most common viewport among cheap Android handsets.
@@ -93,6 +93,16 @@ function audit() {
   };
   const hex = (c) => "#" + c.slice(0, 3).map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
 
+  // Content cut off by an ancestor that clips (an SVG, overflow:hidden, a
+  // scrolling strip) and that itself fits on screen is not visible overflow.
+  const clippedInside = (el) => {
+    for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+      const ox = getComputedStyle(a).overflowX;
+      const clips = ox !== "visible" || a.tagName.toLowerCase() === "svg";
+      if (clips && a.getBoundingClientRect().right <= vw + 1) return true;
+    }
+    return false;
+  };
   const overflow = [];
   const contrast = [];
   let checked = 0;
@@ -105,7 +115,7 @@ function audit() {
 
     // Past the right edge. overflow-x:hidden on <body> would hide this from the
     // scrollbar, which is exactly why it has to be measured per element.
-    if (rect.right > vw + 1 && !el.closest(".skip-link")) {
+    if (rect.right > vw + 1 && !el.closest(".skip-link") && !clippedInside(el)) {
       overflow.push(`${el.tagName.toLowerCase()}${el.className && typeof el.className === "string" ? "." + el.className.trim().replace(/\s+/g, ".") : ""} right=${Math.round(rect.right)}px`);
     }
 
@@ -203,13 +213,20 @@ try {
   }
 
   // -- Navigation with JavaScript OFF -----------------------------------------
+  // On a phone the links live in a <details> sheet: the browser opens it, no
+  // script involved.
   {
     const ctx = await browser.newContext({ viewport: PHONE, javaScriptEnabled: false, isMobile: true });
     const page = await ctx.newPage();
     console.log("\n=== NAVIGATION, JavaScript OFF ===");
     await page.goto(BASE + "/privacy", { waitUntil: "load", timeout: 90_000 });
-    const shown = await page.locator("header nav a[href='/me']").first().isVisible();
-    check("the main navigation is reachable without any script", shown);
+    const menu = page.locator("header details");
+    const hidden = !(await menu.locator("a[href='/me']").isVisible());
+    await menu.locator("summary").click();
+    const shown = await menu.locator("a[href='/me']").isVisible();
+    await menu.locator("summary").click();
+    const closed = !(await menu.locator("a[href='/me']").isVisible());
+    check("the phone menu is closed on arrival, opens and closes without any script", hidden && shown && closed);
     await ctx.close();
   }
 
