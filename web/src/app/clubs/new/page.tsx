@@ -1,25 +1,31 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { ClubFields } from "@/components/ClubFields";
-import { Flash } from "@/components/Flash";
-import { PageHead } from "@/components/PageHead";
-import { SubmitButton } from "@/components/SubmitButton";
+import { Checkbox, ErrorSummary } from "@/components/ui/Field";
+import { Notice } from "@/components/ui/Notice";
+import { Page, PageHead } from "@/components/ui/Page";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { ApiError, getMe, listLgas } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 import { registerClubAction } from "./actions";
 
-export const metadata: Metadata = { title: "Register a club for someone" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("clubNew"))("title") };
+}
 export const dynamic = "force-dynamic";
 
 type Search = Record<string, string | string[] | undefined>;
 
 /**
- * Staff register a club (CLB-01's manual-entry fallback): an administrator in any
- * area, an LGA coordinator in their own. Clubs normally sign themselves up at
- * /clubs/register; anyone else who lands here is sent there.
+ * Staff register a club (CLB-01's manual-entry fallback): an administrator in
+ * any area, an LGA coordinator in their own. Clubs normally sign themselves up
+ * at /clubs/register; anyone else who lands here is sent there.
  */
 export default async function NewClubPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const t = await getTranslations("clubNew");
+  const ts = await getTranslations("clubSignup");
   const params = await searchParams;
   const token = await sessionToken();
   if (!token) redirect("/sign-in");
@@ -42,58 +48,36 @@ export default async function NewClubPage({ searchParams }: { searchParams: Prom
   const error = get("error");
   const badField = get("field");
   const duplicate = get("duplicate") === "1";
-
   let open: { id: string; name: string }[] = [];
   try {
     open = (await listLgas()).filter((l) => l.is_open);
   } catch {
-    /* the selector is empty; the API still refuses an area that is not open */
+    // The selector is empty; the API still refuses an area that is not open.
   }
 
   return (
-    <div>
+    <Page>
       <PageHead
-        back={{ href: "/me", label: "My account" }}
-        eyebrow={isAdmin ? "Administrator" : "Coordinator"}
-        title="Register a club for someone"
-        lede={
-          isAdmin
-            ? "You become the club's administrator. Clubs normally sign themselves up."
-            : `For a club in ${coordinator?.scope_name ?? "your LGA"} that cannot sign itself up. You become its administrator.`
-        }
+        back={{ href: "/me", label: (await getTranslations("club"))("back") }}
+        eyebrow={isAdmin ? t("eyebrowAdmin") : t("eyebrowCoordinator")}
+        title={t("title")}
+        lede={isAdmin ? t("ledeAdmin") : t("ledeCoordinator", { lga: coordinator?.scope_name ?? t("yourLga") })}
       />
-
-      {error ? (
-        <Flash
-          variant={duplicate ? "warn" : "bad"}
-          title={duplicate ? "This name is already used" : "We could not register the club"}
-        >
-          <p>
-            {error}
-            {duplicate ? " If yours is a different club, tick the box below and submit again." : ""}
-          </p>
-        </Flash>
-      ) : null}
-
-      <form action={registerClubAction} noValidate>
-        <div>
-          <ClubFields
-            values={{ get, all }}
-            badField={badField}
-            error={error}
-            lgas={isAdmin ? open : open.filter((l) => l.id === coordinator?.scope_id)}
-          />
-          {duplicate ? (
-            <div>
-              <label htmlFor="confirm_duplicate">
-                <input id="confirm_duplicate" name="confirm_duplicate" type="checkbox" />
-                This is a different club with the same name
-              </label>
-            </div>
-          ) : null}
-          <SubmitButton pending="Registering the club…">Register club</SubmitButton>
-        </div>
+      <div className="mb-8 empty:hidden">
+        {error ? (
+          duplicate ? (
+            <Notice signal="yellow" title={ts("duplicate")}><p>{error} {ts("duplicateText")}</p></Notice>
+          ) : (
+            <ErrorSummary title={t("error")} errors={[{ field: badField || "name", message: error }]} />
+          )
+        ) : null}
+      </div>
+      <form action={registerClubAction} noValidate className="space-y-8">
+        <ClubFields values={{ get, all }} badField={badField} error={error}
+          lgas={isAdmin ? open : open.filter((l) => l.id === coordinator?.scope_id)} />
+        {duplicate ? <Checkbox name="confirm_duplicate">{ts("duplicateBox")}</Checkbox> : null}
+        <SubmitButton pendingLabel={t("pending")}>{t("submit")}</SubmitButton>
       </form>
-    </div>
+    </Page>
   );
 }

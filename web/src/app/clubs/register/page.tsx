@@ -1,24 +1,30 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { ClubFields } from "@/components/ClubFields";
-import { Flash } from "@/components/Flash";
-import { PageHead } from "@/components/PageHead";
-import { SubmitButton } from "@/components/SubmitButton";
+import { IconLock, IconMail, IconPhone, IconUser } from "@/components/icons";
+import { Checkbox, ErrorSummary, Field, Fieldset, Input, PhoneInput, Select } from "@/components/ui/Field";
+import { Notice } from "@/components/ui/Notice";
+import { Page, PageHead } from "@/components/ui/Page";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { listLgas } from "@/lib/api";
 import { OFFICIAL_ROLES } from "@/lib/clubProfile";
 import { signUpClubAction } from "./actions";
 
-export const metadata: Metadata = { title: "Register a club" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("clubSignup"))("title") };
+}
 export const dynamic = "force-dynamic";
 
 type Search = Record<string, string | string[] | undefined>;
 
 /**
- * A club signs up (CLB-01). Public: the club's representative creates their account
- * and the club in one form. Once they confirm their email, the club goes to a
- * KAFRIADA NET administrator for approval.
+ * A club signs up (CLB-01). Public: the representative creates their account
+ * and the club in one form. Once they confirm their email, the club goes to an
+ * administrator for approval. Free; the badge is optional and comes later.
  */
 export default async function ClubSignUpPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const t = await getTranslations("clubSignup");
   const params = await searchParams;
   const get = (k: string): string => {
     const v = params[k];
@@ -31,6 +37,7 @@ export default async function ClubSignUpPage({ searchParams }: { searchParams: P
   const error = get("error");
   const badField = get("field");
   const duplicate = get("duplicate") === "1";
+  const err = (name: string) => (badField === name ? error : null);
 
   let open: { id: string; name: string }[] = [];
   let loadFailed = false;
@@ -39,120 +46,79 @@ export default async function ClubSignUpPage({ searchParams }: { searchParams: P
   } catch {
     loadFailed = true;
   }
-
-  const Field = ({
-    name, label, hint, children,
-  }: { name: string; label: string; hint?: string; children: React.ReactNode }) => (
-    <div>
-      <label htmlFor={name}>{label}</label>
-      {hint ? <span>{hint}</span> : null}
-      {children}
-      {badField === name ? <span>{error}</span> : null}
-    </div>
-  );
+  const steps = t.raw("steps") as string[];
 
   return (
-    <div>
-      <PageHead
-        eyebrow="Clubs"
-        title="Register a club"
-        lede="For a club's chairman, secretary, manager or coach. About ten minutes. Every field is required unless it says optional."
-      />
+    <Page>
+      <PageHead eyebrow={t("eyebrow")} title={t("title")} lede={t("lede")} />
 
-      <div>
-        <p>How it works</p>
-        <ol>
-          <li>Fill in the club&rsquo;s details and your own.</li>
-          <li>Confirm your email with the code we send.</li>
-          <li>A KAFRIADA NET administrator reviews the club. Once approved, you can add players.</li>
+      <section aria-labelledby="how" className="mb-8 rounded-card bg-surface p-5">
+        <h2 id="how" className="text-lg uppercase">{t("how")}</h2>
+        <ol className="mt-3 space-y-2">
+          {steps.map((s, i) => (
+            <li key={s} className="flex gap-3">
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-pitch text-xs font-bold text-on-pitch" aria-hidden="true">{i + 1}</span>
+              {s}
+            </li>
+          ))}
         </ol>
+        <p className="mt-4 text-xs text-muted">{t("price")}</p>
+      </section>
+
+      <div className="mb-8 space-y-4 empty:hidden">
+        {error ? (
+          duplicate ? (
+            <Notice signal="yellow" title={t("duplicate")}><p>{error} {t("duplicateText")}</p></Notice>
+          ) : (
+            <ErrorSummary title={t("error")} errors={[{ field: badField || "name", message: error }]} />
+          )
+        ) : null}
+        {loadFailed ? <Notice signal="red" title={t("unreachable")}><p>{t("unreachableText")}</p></Notice> : null}
       </div>
 
-      {error ? (
-        <Flash
-          variant={duplicate ? "warn" : "bad"}
-          title={duplicate ? "This name is already used" : "We could not register the club yet"}
-        >
-          <p>
-            {error}
-            {duplicate ? " If yours is a different club, tick the box below and submit again." : ""}
-          </p>
-        </Flash>
-      ) : null}
-      {loadFailed ? (
-        <Flash variant="bad" title="Cannot reach KAFRIADA NET">
-          <p>We could not load the list of areas. Please try again in a moment.</p>
-        </Flash>
-      ) : null}
+      <form action={signUpClubAction} noValidate className="space-y-12">
+        <ClubFields values={{ get, all }} badField={badField} error={error} lgas={open} />
 
-      <form action={signUpClubAction} noValidate>
-        <div>
-          <ClubFields values={{ get, all }} badField={badField} error={error} lgas={open} />
-
-          <fieldset>
-            <legend>You, the club&rsquo;s representative</legend>
-            <p>
-              This becomes the club&rsquo;s account. Use your own phone and email, not the
-              club&rsquo;s.
-            </p>
-            <div>
-              <Field name="rep_first_name" label="First name">
-                <input id="rep_first_name" name="rep_first_name" required autoComplete="given-name"
-                  defaultValue={get("rep_first_name")} />
-              </Field>
-              <Field name="rep_surname" label="Surname">
-                <input id="rep_surname" name="rep_surname" required autoComplete="family-name"
-                  defaultValue={get("rep_surname")} />
-              </Field>
-            </div>
-            <Field name="rep_role" label="Your role in the club">
-              <select id="rep_role" name="rep_role" required defaultValue={get("rep_role")}>
-                <option value="">Choose</option>
+        <Fieldset legend={t("you")}>
+          <p className="-mt-2 text-xs text-muted">{t("youHint")}</p>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field name="rep_first_name" label={t("firstName")} error={err("rep_first_name")} icon={<IconUser size={18} />}>
+              {(a) => <Input {...a} required autoComplete="given-name" defaultValue={get("rep_first_name")} />}
+            </Field>
+            <Field name="rep_surname" label={t("surname")} error={err("rep_surname")}>
+              {(a) => <Input {...a} required autoComplete="family-name" defaultValue={get("rep_surname")} />}
+            </Field>
+          </div>
+          <Field name="rep_role" label={t("role")} error={err("rep_role")}>
+            {(a) => (
+              <Select {...a} required defaultValue={get("rep_role")}>
+                <option value="">—</option>
                 {OFFICIAL_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
+              </Select>
+            )}
+          </Field>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field name="rep_phone" label={t("phone")} error={err("rep_phone")} icon={<IconPhone size={18} />}>
+              {(a) => <PhoneInput {...a} required defaultValue={get("rep_phone")} />}
             </Field>
-            <div>
-              <Field name="rep_phone" label="Your phone">
-                <input id="rep_phone" name="rep_phone" type="tel" inputMode="tel" required
-                  autoComplete="tel" defaultValue={get("rep_phone")} />
-              </Field>
-              <Field name="rep_email" label="Your email" hint="We send a code here to confirm it.">
-                <input id="rep_email" name="rep_email" type="email" required autoComplete="email"
-                  defaultValue={get("rep_email")} />
-              </Field>
-            </div>
-            <Field name="password" label="Choose a password" hint="At least 10 characters.">
-              <input id="password" name="password" type="password" required minLength={10}
-                autoComplete="new-password" />
+            <Field name="rep_email" label={t("email")} hint={t("emailHint")} error={err("rep_email")} icon={<IconMail size={18} />}>
+              {(a) => <Input {...a} type="email" required autoComplete="email" defaultValue={get("rep_email")} />}
             </Field>
-          </fieldset>
-
-          {duplicate ? (
-            <div>
-              <label htmlFor="confirm_duplicate">
-                <input id="confirm_duplicate" name="confirm_duplicate" type="checkbox" />
-                This is a different club with the same name
-              </label>
-            </div>
-          ) : null}
-
-          <div>
-            <input id="accept_privacy_notice" name="accept_privacy_notice" type="checkbox"
-              value="yes" required />
-            <label htmlFor="accept_privacy_notice">
-              I represent this club, the details above are true, and I accept the{" "}
-              <a href="/privacy">privacy notice</a>.
-            </label>
           </div>
+          <Field name="password" label={t("password")} hint={t("passwordHint")} error={err("password")} icon={<IconLock size={18} />}>
+            {(a) => <Input {...a} type="password" required minLength={10} autoComplete="new-password" />}
+          </Field>
+        </Fieldset>
 
-          <div>
-            <SubmitButton pending="Registering the club…">Register the club</SubmitButton>
-          </div>
-          <p>
-            Already registered? <a href="/sign-in">Sign in</a>
-          </p>
+        <div className="space-y-4">
+          {duplicate ? <Checkbox name="confirm_duplicate">{t("duplicateBox")}</Checkbox> : null}
+          <Checkbox name="accept_privacy_notice" value="yes" required error={err("accept_privacy_notice")}>
+            {t.rich("consent", { privacy: (chunks) => <a href="/privacy">{chunks}</a> })}
+          </Checkbox>
+          <SubmitButton pendingLabel={t("pending")}>{t("submit")}</SubmitButton>
+          <p className="text-center text-muted">{t("have")} <a href="/sign-in" className="font-bold">{t("signIn")}</a></p>
         </div>
       </form>
-    </div>
+    </Page>
   );
 }

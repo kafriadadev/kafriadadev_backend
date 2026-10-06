@@ -30,6 +30,42 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-06 — Frontend redesign, Phase 5: clubs
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built** (copy in `messages/en.json`):
+- **ClubFields** on the new field components: the same record in sign-up, staff
+  registration and edit; football fixed; age groups as tick pills.
+- **CLB-01** sign-up (how-it-works, free first, duplicate-name confirm box) and the staff
+  version at `/clubs/new`. The sign-up page no longer prints the ₦15,000 badge price: it
+  has no session to read the price from, and a page must not hard-code one.
+- **CLB-02 dashboard**: scoreboard (players, verified, invites out), verified-club strip,
+  section **Tabs** (new component), the squad as player rows with shirt, ID, status and one
+  action, empty bench / kit rail, club details.
+- **CLB-03 invite**: exact match only, said on the page; the found player as a card; the
+  move-from-another-club warning. **CLB-04 verify**: stepper, price once, document upload,
+  pay, rejected with "You do not pay again", return states.
+- `scripts/e2e-club.mjs`: CLB-01 with JavaScript off → email code → CLB-02. With a super
+  administrator's login and an athlete it also approves, invites, accepts and checks the
+  squad. `check-a11y.mjs` takes `EXTRA_SESSIONS` like `check-render.mjs`.
+
+**Verified:** typecheck and build clean. `e2e-club.mjs` passes (sign-up, confirm, dashboard
+waiting for approval, empty bench, details). `check:render` with an athlete and a club
+session: **116 checks pass**. `check:a11y` on every club screen: no violations. Dashboard
+and invite reviewed by screenshot at 360px.
+- **Found:** scoreboard labels split mid-word ("VERIFIE / D") at 360px, because of the
+  page-wide `overflow-wrap: anywhere`; labels now wrap on whole words.
+
+**Not done / open:**
+- **Approve → invite → accept was not run**: approval needs a super administrator, and
+  `kafriada.appoint` requires a confirmed phone, which no account has while phone
+  confirmation waits on Twilio. Run `e2e-club.mjs` with `ADMIN_PHONE`, `ADMIN_PASSWORD`
+  and `ATHLETE_PHONE` once an administrator exists.
+- The club verification payment was not paid end to end (same path as VER-03, proven in
+  Phase 4).
+
+---
+
 ## 2026-10-06 — Frontend redesign, Phase 4: athlete and verification screens
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

@@ -27,6 +27,10 @@ const VIEWS = [
 const SIGNED_IN = process.env.SIGNIN_PHONE && process.env.SIGNIN_PASSWORD
   ? ["/me", "/verify", "/pay", "/payments", "/clubs", "/details"] : [];
 
+// EXTRA_SESSIONS='[{"token":"...","paths":["/clubs/<id>"]}]': audit more paths
+// with that session (the same shape check-render.mjs takes). One session per run.
+const EXTRA = JSON.parse(process.env.EXTRA_SESSIONS ?? "[]");
+
 const browser = await chromium.launch({ channel: "msedge" });
 let failures = 0;
 for (const v of VIEWS) {
@@ -38,7 +42,8 @@ for (const v of VIEWS) {
     await page.fill("#password", process.env.SIGNIN_PASSWORD);
     await Promise.all([page.waitForURL(/\/me/, { timeout: 60_000 }), page.click("form button[type=submit]")]);
   }
-  for (const path of [...PAGES, ...SIGNED_IN]) {
+  for (const extra of EXTRA) await ctx.addCookies([{ name: "kaf_session", value: extra.token, url: BASE }]);
+  for (const path of [...PAGES, ...SIGNED_IN, ...EXTRA.flatMap((e) => e.paths)]) {
     const res = await page.goto(BASE + path, { waitUntil: "load", timeout: 90_000 });
     await page.addScriptTag({ path: AXE });
     const result = await page.evaluate(async () =>

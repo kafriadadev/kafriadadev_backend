@@ -1,16 +1,19 @@
+import { getTranslations } from "next-intl/server";
+
+import { IconMail, IconMapPin, IconPhone, IconRedCard, IconShirtSport } from "@/components/icons";
+import { Field, Fieldset, Input, PhoneInput, Select } from "@/components/ui/Field";
+import { AGE_GROUPS, CATEGORIES, CLUB_LEVELS, CLUB_TYPES, OFFICIAL_ROLES } from "@/lib/clubProfile";
 import { PILOT_SPORT } from "@/lib/profile";
-import {
-  AGE_GROUPS, CATEGORIES, CLUB_LEVELS, CLUB_TYPES, OFFICIAL_ROLES,
-} from "@/lib/clubProfile";
 
 type Values = { get(key: string): string; all(key: string): string[] };
 
 /**
  * The club's record as form fields: the same sections in sign-up, staff
- * registration and editing. Sport and area are shown as fixed text when editing,
- * because a club that changed either would be a different club.
+ * registration and editing. Football only in the pilot. When editing, sport
+ * and area are shown as fixed text, because a club that changed either would
+ * be a different club.
  */
-export function ClubFields({
+export async function ClubFields({
   values,
   badField,
   error,
@@ -25,158 +28,145 @@ export function ClubFields({
   /** When editing: the sport and area, not editable. */
   fixed?: { sport: string; lga_name: string };
 }) {
-  const Field = ({
-    name, label, hint, children,
-  }: { name: string; label: string; hint?: string; children: React.ReactNode }) => (
-    <div>
-      <label htmlFor={name}>{label}</label>
-      {hint ? <span>{hint}</span> : null}
-      {children}
-      {badField === name ? <span>{error}</span> : null}
+  const t = await getTranslations("clubFields");
+  const optional = (await getTranslations("ui"))("optional");
+  const v = values.get;
+  const err = (name: string) => (badField === name ? error : null);
+  const chosenGroups = values.all("age_groups");
+  const Fixed = ({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) => (
+    <div className="space-y-1.5">
+      <p className="flex items-center gap-2 font-bold"><span className="text-muted" aria-hidden="true">{icon}</span>{label}</p>
+      <p className="flex min-h-12 items-center rounded-input bg-surface-2 px-3">{value}</p>
     </div>
   );
-  const v = values.get;
-  const chosenGroups = values.all("age_groups");
 
   return (
-    <>
-      <fieldset>
-        <legend>The club</legend>
-        <Field name="name" label="Registered name" hint="As the club is known officially.">
-          <input id="name" name="name" required defaultValue={v("name")} />
+    <div className="space-y-12">
+      <Fieldset legend={t("club")}>
+        {fixed ? null : <input type="hidden" name="sport" value={PILOT_SPORT} />}
+        <Field name="name" label={t("name")} hint={t("nameHint")} error={err("name")} icon={<IconShirtSport size={18} />}>
+          {(a) => <Input {...a} required defaultValue={v("name")} />}
         </Field>
-        <div>
-          <Field name="short_name" label="Short name" hint="For example JFC.">
-            <input id="short_name" name="short_name" required maxLength={20} defaultValue={v("short_name")} />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field name="short_name" label={t("shortName")} hint={t("shortNameHint")} error={err("short_name")}>
+            {(a) => <Input {...a} required maxLength={20} defaultValue={v("short_name")} />}
           </Field>
-          <Field name="year_founded" label="Year founded">
-            <input id="year_founded" name="year_founded" type="number" inputMode="numeric"
-              min={1900} required placeholder="2015" defaultValue={v("year_founded")} />
+          <Field name="year_founded" label={t("founded")} error={err("year_founded")}>
+            {(a) => <Input {...a} type="number" inputMode="numeric" min={1900} required defaultValue={v("year_founded")} />}
           </Field>
-        </div>
-        <div>
-          <Field name="type" label="Kind of club">
-            <select id="type" name="type" required defaultValue={v("type")}>
-              <option value="">Choose</option>
-              {Object.entries(CLUB_TYPES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-            </select>
+          <Field name="type" label={t("type")} error={err("type")}>
+            {(a) => (
+              <Select {...a} required defaultValue={v("type")}>
+                <option value="">{t("choose")}</option>
+                {Object.entries(CLUB_TYPES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </Select>
+            )}
           </Field>
-          {fixed ? (
-            <div>
-              <label>Sport</label>
-              <p>{fixed.sport}</p>
-            </div>
-          ) : (
-            <input type="hidden" name="sport" value={PILOT_SPORT} />
-          )}
-        </div>
-        <div>
-          <Field name="category" label="Category">
-            <select id="category" name="category" required defaultValue={v("category")}>
-              <option value="">Choose</option>
-              {Object.entries(CATEGORIES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-            </select>
+          {fixed ? <Fixed label={t("sport")} value={fixed.sport} icon={<IconShirtSport size={18} />} /> : <Fixed label={t("sport")} value={PILOT_SPORT} icon={<IconShirtSport size={18} />} />}
+          <Field name="category" label={t("category")} error={err("category")}>
+            {(a) => (
+              <Select {...a} required defaultValue={v("category")}>
+                <option value="">{t("choose")}</option>
+                {Object.entries(CATEGORIES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </Select>
+            )}
           </Field>
-          <Field name="level" label="Level">
-            <select id="level" name="level" required defaultValue={v("level")}>
-              <option value="">Choose</option>
-              {Object.entries(CLUB_LEVELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-            </select>
+          <Field name="level" label={t("level")} error={err("level")}>
+            {(a) => (
+              <Select {...a} required defaultValue={v("level")}>
+                <option value="">{t("choose")}</option>
+                {Object.entries(CLUB_LEVELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </Select>
+            )}
           </Field>
         </div>
-        <div>
-          <span>Age groups</span>
-          <span>Tick every age group the club fields a team in.</span>
-          <div>
+        <fieldset id="age_groups" className="border-0 p-0" aria-describedby={err("age_groups") ? "age_groups-error" : "age_groups-hint"}>
+          <legend className="font-bold">{t("ageGroups")}</legend>
+          <p id="age_groups-hint" className="mt-1 text-xs text-muted">{t("ageGroupsHint")}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
             {Object.entries(AGE_GROUPS).map(([k, l]) => (
-              <label key={k} htmlFor={`age_${k}`}>
-                <input id={`age_${k}`} type="checkbox" name="age_groups" value={k}
-                  defaultChecked={chosenGroups.includes(k)} />
+              <label key={k} htmlFor={`age_${k}`} className="inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-pill border-2 border-line-strong px-4 has-[:checked]:border-pitch has-[:checked]:bg-check-bg">
+                <input id={`age_${k}`} type="checkbox" name="age_groups" value={k} defaultChecked={chosenGroups.includes(k)} className="size-5 accent-[var(--pitch-deep)]" />
                 {l}
               </label>
             ))}
           </div>
-          {badField === "age_groups" ? <span>{error}</span> : null}
-        </div>
-      </fieldset>
+          {err("age_groups") ? (
+            <p id="age_groups-error" className="mt-2 flex items-start gap-2 font-bold text-danger">
+              <IconRedCard size={20} className="mt-0.5 shrink-0" aria-hidden="true" />{error}
+            </p>
+          ) : null}
+        </fieldset>
+      </Fieldset>
 
-      <fieldset>
-        <legend>Home ground</legend>
-        <Field name="ground_name" label="Ground or training venue">
-          <input id="ground_name" name="ground_name" required defaultValue={v("ground_name")} />
+      <Fieldset legend={t("ground")}>
+        <Field name="ground_name" label={t("groundName")} error={err("ground_name")}>
+          {(a) => <Input {...a} required defaultValue={v("ground_name")} />}
         </Field>
-        <Field name="ground_address" label="Address">
-          <input id="ground_address" name="ground_address" required defaultValue={v("ground_address")} />
+        <Field name="ground_address" label={t("groundAddress")} error={err("ground_address")}>
+          {(a) => <Input {...a} required defaultValue={v("ground_address")} />}
         </Field>
-        <div>
-          <Field name="town" label="Town">
-            <input id="town" name="town" required defaultValue={v("town")} />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field name="town" label={t("town")} error={err("town")}>
+            {(a) => <Input {...a} required defaultValue={v("town")} />}
           </Field>
           {fixed ? (
-            <div>
-              <label>Local government area</label>
-              <p>{fixed.lga_name}</p>
-            </div>
+            <Fixed label={t("lga")} value={fixed.lga_name} icon={<IconMapPin size={18} />} />
           ) : (
-            <Field name="lga_id" label="Local government area">
-              <select id="lga_id" name="lga_id" required defaultValue={v("lga_id")}>
-                <option value="">Choose an area</option>
-                {(lgas ?? []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
+            <Field name="lga_id" label={t("lga")} error={err("lga_id")} icon={<IconMapPin size={18} />}>
+              {(a) => (
+                <Select {...a} required defaultValue={v("lga_id")}>
+                  <option value="">{t("chooseLga")}</option>
+                  {(lgas ?? []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </Select>
+              )}
             </Field>
           )}
         </div>
-      </fieldset>
+      </Fieldset>
 
-      <fieldset>
-        <legend>Official contact</legend>
-        <div>
-          <Field name="contact_phone" label="Club phone">
-            <input id="contact_phone" name="contact_phone" type="tel" inputMode="tel" required
-              placeholder="0803 000 0000" defaultValue={v("contact_phone")} />
+      <Fieldset legend={t("contact")}>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field name="contact_phone" label={t("phone")} error={err("contact_phone")} icon={<IconPhone size={18} />}>
+            {(a) => <PhoneInput {...a} required defaultValue={v("contact_phone")} />}
           </Field>
-          <Field name="club_email" label="Club email">
-            <input id="club_email" name="club_email" type="email" required defaultValue={v("club_email")} />
+          <Field name="club_email" label={t("email")} error={err("club_email")} icon={<IconMail size={18} />}>
+            {(a) => <Input {...a} type="email" required defaultValue={v("club_email")} />}
           </Field>
-        </div>
-        <div>
-          <Field name="cac_number" label="CAC or registration number (optional)">
-            <input id="cac_number" name="cac_number" defaultValue={v("cac_number")} />
+          <Field name="cac_number" label={t("cac")} optional optionalLabel={optional} error={err("cac_number")}>
+            {(a) => <Input {...a} defaultValue={v("cac_number")} />}
           </Field>
-          <Field name="affiliation" label="FA or league affiliation (optional)">
-            <input id="affiliation" name="affiliation" placeholder="Jigawa State FA"
-              defaultValue={v("affiliation")} />
+          <Field name="affiliation" label={t("affiliation")} optional optionalLabel={optional} error={err("affiliation")}>
+            {(a) => <Input {...a} placeholder="Jigawa State FA" defaultValue={v("affiliation")} />}
           </Field>
-        </div>
-        <div>
-          <Field name="colours" label="Club colours (optional)">
-            <input id="colours" name="colours" placeholder="Green and white" defaultValue={v("colours")} />
+          <Field name="colours" label={t("colours")} optional optionalLabel={optional} error={err("colours")}>
+            {(a) => <Input {...a} placeholder="Green and white" defaultValue={v("colours")} />}
           </Field>
-          <Field name="website" label="Website or social page (optional)">
-            <input id="website" name="website" defaultValue={v("website")} />
+          <Field name="website" label={t("website")} optional optionalLabel={optional} error={err("website")}>
+            {(a) => <Input {...a} defaultValue={v("website")} />}
           </Field>
         </div>
-      </fieldset>
+      </Fieldset>
 
-      <fieldset>
-        <legend>Second official</legend>
-        <p>Someone else at the club we can reach.</p>
-        <Field name="official2_name" label="Full name">
-          <input id="official2_name" name="official2_name" required defaultValue={v("official2_name")} />
+      <Fieldset legend={t("second")}>
+        <p className="-mt-2 text-xs text-muted">{t("secondHint")}</p>
+        <Field name="official2_name" label={t("officialName")} error={err("official2_name")}>
+          {(a) => <Input {...a} required defaultValue={v("official2_name")} />}
         </Field>
-        <div>
-          <Field name="official2_role" label="Role">
-            <select id="official2_role" name="official2_role" required defaultValue={v("official2_role")}>
-              <option value="">Choose</option>
-              {OFFICIAL_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field name="official2_role" label={t("officialRole")} error={err("official2_role")}>
+            {(a) => (
+              <Select {...a} required defaultValue={v("official2_role")}>
+                <option value="">{t("choose")}</option>
+                {OFFICIAL_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+              </Select>
+            )}
           </Field>
-          <Field name="official2_phone" label="Phone">
-            <input id="official2_phone" name="official2_phone" type="tel" inputMode="tel" required
-              defaultValue={v("official2_phone")} />
+          <Field name="official2_phone" label={t("officialPhone")} error={err("official2_phone")}>
+            {(a) => <PhoneInput {...a} required defaultValue={v("official2_phone")} />}
           </Field>
         </div>
-      </fieldset>
-    </>
+      </Fieldset>
+    </div>
   );
 }

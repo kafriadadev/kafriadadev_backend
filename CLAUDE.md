@@ -571,6 +571,9 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   (`contexts/identity/card.py`, fonts and logo in `api/src/kafriada/assets/`). Paystack's
   checkout has a Cloudflare bot check: `web/scripts/e2e-verify.mjs` stops at the hand-off;
   a person pays with test card 4084 0840 8408 4081, then stage 2 (`REFERENCE=…`).
+- **Frontend redesign, Phase 5 — done 2026-10-06.** CLB-01–04 rebuilt; `web/scripts/e2e-club.mjs`.
+  Approve/invite/accept needs a super administrator (none exists: appoint wants a confirmed
+  phone). Next: Phase 6, coordinator screens.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.

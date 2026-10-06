@@ -25,8 +25,9 @@ export function Scoreboard({ items, className }: { items: { label: string; value
   return (
     <dl className={cn("grid grid-cols-[repeat(auto-fit,minmax(6.25rem,1fr))] gap-px overflow-hidden rounded-card bg-[color-mix(in_srgb,var(--scoreboard-text)_18%,transparent)]", className)}>
       {items.map((it) => (
-        <div key={it.label} className="bg-scoreboard p-4 text-scoreboard-text">
-          <dt className="text-xs font-bold uppercase tracking-[0.14em] opacity-85">{it.label}</dt>
+        <div key={it.label} className="bg-scoreboard p-3 text-scoreboard-text sm:p-4">
+          {/* Whole words only: a label must never split mid-word in a narrow column. */}
+          <dt className="text-xs font-bold uppercase tracking-[0.04em] [overflow-wrap:normal] [hyphens:none] sm:tracking-[0.12em]">{it.label}</dt>
           <dd className={cn("mt-1 font-display text-3xl font-extrabold italic leading-none scoreboard-digits", it.accent && "text-scoreboard-accent")}>
             {it.value}
           </dd>

@@ -51,6 +51,9 @@ export {
   IconClock,
   IconCreditCard,
   IconRefresh,
+  IconUserPlus,
+  IconSend,
+  IconFileText,
 } from "@tabler/icons-react";
 
 type IconProps = Omit<SVGProps<SVGSVGElement>, "stroke"> & {
