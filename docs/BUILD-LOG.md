@@ -30,6 +30,61 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-06 — Frontend redesign, Phase 6: coordinator screens; blank error pages fixed; spinner
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **CoordinatorShell**: the coordinator's own tabs (Today · Review · Find · Pay · Cards;
+  bottom bar on phones, rail on a tablet) and **today's cash total pinned** at the top of
+  every coordinator screen.
+- **CRD-01** dashboard: scoreboard, the oldest case amber at 18 h and red at 24 h, the
+  empty queue said as good news, four big job tiles, cash against the daily cap.
+- **CRD-02** review: one case at a time, photo and document large, claimed details, the
+  ID strip; **Approve** behind a "face, name, 18 or older" tick that the action now
+  enforces; **Reject** with the reason the athlete reads verbatim; Skip.
+- **CRD-03** find (partial names allowed here; outside the LGA is "no results") with a
+  one-tap "Pay for athlete". **CRD-04** assisted payment: the athlete's card, what is
+  about to happen, a **cash-collected tick the action now enforces**, Paystack hand-off.
+  **CRD-06** card printing with the print layout restored: eight cards to an A4 sheet at
+  85.6 × 54 mm, a page break after every eighth.
+- **Unreachable API no longer means a blank page.** Next renders `error.tsx` only with
+  JavaScript, so a JavaScript-off browser got an empty 500 whenever the API timed out.
+  `lib/api.ts` now redirects a page's data read to a server-rendered `/unavailable`
+  (PUB-05: red card, "Nothing you entered was lost", reference, Try again back to the
+  page via `middleware.ts`'s `x-kaf-path`). Form submissions are untouched: their actions
+  keep showing the message on the form. The public profile does the same in its
+  `getServerSideProps` rather than calling an unreachable API "not found".
+- **Spinner** (`components/ui/Spinner.tsx`): the logo's running figure rising on each beat
+  inside a turning chalk centre circle, CSS only; still under reduced motion. Replaces the
+  ball in every SubmitButton and the loading skeleton; in the style guide.
+- `scripts/dev_staff.py`: test coordinator and super administrator with a password (dev
+  database only; the suite's own fixture helper). `scripts/e2e-coordinator.mjs`.
+
+**Verified:** typecheck and build clean. `e2e-coordinator.mjs` all pass on a 768px tablet
+(coordinator) and a 360px phone (athlete), JavaScript off: CRD-01 with the cash strip;
+**reject = the reason + 1 tap**; VER-05 shows the reason verbatim and "You do not pay
+again"; the athlete resubmits; **approve = 2 taps (tick, approve)**; the athlete is
+verified and the photo is public; CRD-03 by ID and an out-of-LGA ID as no results; CRD-04
+opens with the athlete chosen and hands off to Paystack's checkout. `e2e-club.mjs` with
+the test administrator now runs approve → invite → accept → squad (Phase 5's open item).
+`check:render` with athlete + coordinator sessions: all pass; `check:a11y` coordinator
+screens: no violations. With the API stopped, /me, /coordinator and /a/{kuid} show the
+unavailable page with JavaScript off.
+- **Found:** a DataTable's sticky header sat over its first row on wide screens
+  (`overflow-hidden` made the table its scroll container; now `overflow-clip`); IDs split in
+  the table's phone layout; the card filter overflowed at 768px; focus could land under the
+  sticky bars (`scroll-padding-top`). The API's connection pool went stale after hours of
+  test runs and made every call 10–40 s; a restart fixed it.
+
+**Not done / open:**
+- **Cash is 3 taps from a search result** (Pay for athlete, tick, Continue), one over the
+  gate's two. Folding the tick into the result row would make it 2; your call.
+- **CRD-05 settlement is not built**: the API has no settlement endpoint.
+- The coordinator sees no price on CRD-04 (the API gives the price only to the athlete).
+- Other server errors (not "unreachable") still render blank without JavaScript.
+
+---
+
 ## 2026-10-06 — Frontend redesign, Phase 5: clubs
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 
@@ -57,10 +112,8 @@ and invite reviewed by screenshot at 360px.
   page-wide `overflow-wrap: anywhere`; labels now wrap on whole words.
 
 **Not done / open:**
-- **Approve → invite → accept was not run**: approval needs a super administrator, and
-  `kafriada.appoint` requires a confirmed phone, which no account has while phone
-  confirmation waits on Twilio. Run `e2e-club.mjs` with `ADMIN_PHONE`, `ADMIN_PASSWORD`
-  and `ATHLETE_PHONE` once an administrator exists.
+- ~~Approve → invite → accept~~ run 2026-10-06 with a test administrator from
+  `scripts/dev_staff.py`: all pass (see the Phase 6 entry).
 - The club verification payment was not paid end to end (same path as VER-03, proven in
   Phase 4).
 

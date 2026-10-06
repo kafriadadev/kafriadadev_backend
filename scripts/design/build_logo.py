@@ -52,7 +52,7 @@ const FIG_GREEN = "{P["fig_green"]}";
 const NAME = "{P["name"]}";
 
 /** The figure's dark body and the wordmark use currentColor, so they follow the theme. */
-function Figure() {{
+export function Figure() {{
   return (
     <>
       <path fill="currentColor" d={{FIG_BLACK}} />

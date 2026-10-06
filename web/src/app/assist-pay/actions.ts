@@ -26,6 +26,8 @@ export async function startAssistedPaymentAction(formData: FormData): Promise<vo
   };
 
   if (!kuid) bounceBack("Enter the athlete's KAFRIADA NET ID.");
+  // CRD-04: the cash is in hand before anything is charged.
+  if (!formData.get("cash_collected")) bounceBack("Tick the box once you have collected the cash.");
 
   let started;
   try {

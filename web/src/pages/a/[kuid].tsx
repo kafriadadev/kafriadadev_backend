@@ -10,7 +10,7 @@ import { Footer, TopBar } from "@/components/ui/Navigation";
 import { PageState } from "@/components/ui/PageState";
 import { PlayerCard } from "@/components/ui/PlayerCard";
 import { DEFAULT_LOCALE } from "@/i18n/request";
-import { getProfile, type PublicProfile } from "@/lib/api";
+import { getProfile, isUnreachable, type PublicProfile } from "@/lib/api";
 import messages from "../../../messages/en.json";
 
 /**
@@ -39,7 +39,11 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ params, qu
   let profile: PublicProfile | null = null;
   try {
     profile = await getProfile(kuid, sig);
-  } catch {
+  } catch (error) {
+    // Unreachable is not "not found": send them to the unavailable page.
+    if (isUnreachable(error)) {
+      return { redirect: { destination: `/unavailable?${new URLSearchParams({ from: `/a/${kuid}` })}`, permanent: false } };
+    }
     // A malformed ID and a missing one get the same answer, so nobody can walk
     // the register by guessing.
   }

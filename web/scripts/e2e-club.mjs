@@ -91,9 +91,9 @@ if (process.env.ADMIN_PHONE && process.env.ADMIN_PASSWORD && process.env.ATHLETE
   check(`the invitation is sent (${new URL(page.url()).search})`, page.url().includes("invited=1"));
 
   await athlete.goto(`${BASE}/clubs`, { waitUntil: "load" });
-  check("ATH-05 shows the invitation", (await athlete.locator("main").innerText()).includes(fill.name));
+  check("ATH-05 shows the invitation", (await athlete.locator("main").innerText()).toLowerCase().includes(fill.name.toLowerCase()));
   await Promise.all([athlete.waitForLoadState("load"), athlete.locator("form").filter({ has: athlete.locator("input[value=accept]") }).locator("button").first().click()]);
-  check("the athlete accepts and has a club", (await athlete.locator("main").innerText()).includes("You have joined the club"));
+  check("the athlete accepts and has a club", (await athlete.locator("main").innerText()).toLowerCase().includes("you have joined the club"));
 
   await page.goto(`${BASE}${href}`, { waitUntil: "load" });
   check("CLB-02's squad shows the player", (await page.locator("main").innerText()).includes(kuid ?? "~"));

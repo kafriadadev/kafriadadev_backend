@@ -24,6 +24,10 @@ export async function decideAction(formData: FormData): Promise<void> {
     `/review?${new URLSearchParams({ lga, ...extra }).toString()}`;
 
   if (!lga || !id) redirect("/review");
+  // CRD-02: an approval says the reviewer compared face, name and age with the document.
+  if (decision === "approve" && !formData.get("checked")) {
+    redirect(back({ error: "Tick the box once you have checked the face, the name and the age." }));
+  }
   if (decision === "reject" && !reason.trim()) {
     redirect(back({ error: "Say what is wrong, so the athlete can fix it." }));
   }

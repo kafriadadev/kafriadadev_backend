@@ -573,7 +573,12 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   a person pays with test card 4084 0840 8408 4081, then stage 2 (`REFERENCE=…`).
 - **Frontend redesign, Phase 5 — done 2026-10-06.** CLB-01–04 rebuilt; `web/scripts/e2e-club.mjs`.
   Approve/invite/accept needs a super administrator (none exists: appoint wants a confirmed
-  phone). Next: Phase 6, coordinator screens.
+  phone). Test staff: `cd api && .venv/Scripts/python.exe ../scripts/dev_staff.py` (dev only).
+- **Frontend redesign, Phase 6 — done 2026-10-06.** CRD-01–04 and 06 on `CoordinatorShell`.
+  `/unavailable` is the no-JS PUB-05 when the API cannot be reached (`lib/api.ts` redirects
+  page GETs; `middleware.ts` passes the path). Logo `Spinner` in every SubmitButton.
+  **Restart the API after long test sessions**: its pool went stale (10–40 s per call).
+  Open: CRD-05 (no API), cash is 3 taps. Next: login by phone or email, then Phase 7 admin.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.

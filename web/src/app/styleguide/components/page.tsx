@@ -21,6 +21,7 @@ import { PlayerCard, PrintCard, type PlayerCardData } from "@/components/ui/Play
 import { PositionPicker } from "@/components/ui/PositionPicker";
 import { RefChip } from "@/components/ui/RefChip";
 import { KuidStrip, Scoreboard } from "@/components/ui/Scoreboard";
+import { Spinner } from "@/components/ui/Spinner";
 import { Stepper } from "@/components/ui/Stepper";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { styleguideEnabled } from "@/lib/styleguide";
@@ -77,6 +78,17 @@ export default async function Components() {
           </form>
         </Row>
         <Note>SubmitButton: with JavaScript it locks and shows &ldquo;Creating your ID…&rdquo; with the ball bouncing.</Note>
+      </Block>
+
+      <Block id="spinner" title="Spinner">
+        <Row>
+          <Spinner size={96} label={t("ui.loading")} />
+          <Spinner size={64} />
+          <Spinner size={44} />
+          <Spinner size={26} />
+          <span className="rounded-card bg-[var(--night)] p-4 [--line-strong:var(--chalk)]"><Spinner size={64} className="text-chalk" /></span>
+        </Row>
+        <Note>The logo&rsquo;s figure rising on each beat inside a chalk centre circle. CSS only. Under reduced motion it stops turning and only fades.</Note>
       </Block>
 
       <Block id="fields" title="Fields">

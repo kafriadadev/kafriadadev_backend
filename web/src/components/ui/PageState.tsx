@@ -1,5 +1,6 @@
 import { cn } from "@/lib/cn";
 import { RefChip } from "./RefChip";
+import { Spinner } from "./Spinner";
 
 /**
  * A whole-screen state: not found, not allowed, signed out, too many
@@ -69,7 +70,9 @@ export function EmptyState({
 export function Skeleton({ lines = 3, className, label }: { lines?: number; className?: string; label: string }) {
   return (
     <div role="status" aria-label={label} className={cn("space-y-3", className)}>
-      <div className="h-24 animate-pulse rounded-card border-2 border-dashed border-line-strong" />
+      <div className="grid h-24 place-items-center rounded-card border-2 border-dashed border-line-strong">
+        <Spinner size={44} />
+      </div>
       {Array.from({ length: lines }, (_, i) => (
         <div key={i} className="h-3 animate-pulse rounded-pill bg-surface-2" style={{ width: `${92 - i * 18}%` }} />
       ))}

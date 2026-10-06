@@ -21,7 +21,9 @@ export function DataTable({
 }) {
   if (!rows.length && empty) return <>{empty}</>;
   return (
-    <div className={cn("overflow-hidden rounded-card border border-line", className)}>
+    // overflow-clip, not hidden: hidden makes this box the sticky header's scroll
+    // container, and the header's 64px offset would then sit over the first row.
+    <div className={cn("overflow-clip rounded-card border border-line", className)}>
       <table className="w-full border-collapse text-left">
         <caption className="sr-only">{caption}</caption>
         <thead className="sticky top-16 hidden bg-surface-2 text-xs uppercase tracking-[0.1em] text-muted sm:table-header-group">
@@ -48,7 +50,7 @@ export function DataTable({
                   <span className="text-xs font-bold uppercase tracking-[0.1em] text-muted sm:hidden" aria-hidden="true">
                     {c.label}
                   </span>
-                  <span className="min-w-0 text-right sm:text-[inherit]">{r[c.key]}</span>
+                  <span className={cn("min-w-0 text-right sm:text-[inherit]", c.mono && "whitespace-nowrap")}>{r[c.key]}</span>
                 </td>
               ))}
             </tr>

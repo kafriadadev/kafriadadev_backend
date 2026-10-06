@@ -1,36 +1,41 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { CoordinatorNav } from "@/components/CoordinatorNav";
-import { EmptyState } from "@/components/EmptyState";
-import { Flash } from "@/components/Flash";
-import { PageHead } from "@/components/PageHead";
-import { Pager } from "@/components/Pager";
-import { SubmitButton } from "@/components/SubmitButton";
-import { ApiError, type CardBatch, getCardBatch, getMe } from "@/lib/api";
+import { IconDownload, IconPrinter, IconSearch } from "@/components/icons";
+import { KitRail, RaisedFlag } from "@/components/illustrations";
+import { Button } from "@/components/ui/Button";
+import { CoordinatorShell } from "@/components/ui/CoordinatorShell";
+import { Field, Input, Select } from "@/components/ui/Field";
+import { Notice } from "@/components/ui/Notice";
+import { PageHead } from "@/components/ui/Page";
+import { EmptyState, PageState } from "@/components/ui/PageState";
+import { Pager } from "@/components/ui/Pager";
+import { SubmitButton } from "@/components/ui/SubmitButton";
+import { ApiError, getCardBatch, getMe, type CardBatch } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 import { markPrintedAction } from "./actions";
 
-export const metadata: Metadata = { title: "Print cards" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("cards2"))("title") };
+}
 export const dynamic = "force-dynamic";
 
 type Search = Record<string, string | string[] | undefined>;
-const one = (v: string | string[] | undefined): string =>
-  Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
+const one = (v: string | string[] | undefined): string => (Array.isArray(v) ? (v[0] ?? "") : (v ?? ""));
 
 /**
  * Bulk QR card printing (CRD-06): a registration drive into a stack of cards.
- *
- * A plain GET form filters by registration date and print status. Printing is the
- * browser's own — this page carries a print stylesheet that lays the cards out eight to
- * an A4 sheet at credit-card size — and there is a PDF of the same page for a browser
- * that cannot. A very large batch is paged, never built as one enormous document.
+ * A plain GET form filters by date and print status. Printing is the
+ * browser's own: on paper only the cards appear, eight to an A4 sheet at real
+ * card size (85.6 × 54 mm). The PDF is the same sheets for a browser that
+ * cannot print. A large batch is paged, never one enormous document.
  */
 export default async function CardsPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const t = await getTranslations("cards2");
   const params = await searchParams;
   const token = await sessionToken();
   if (!token) redirect("/sign-in");
-
   let own = "";
   try {
     own = (await getMe(token)).roles.find((r) => r.scope_kind === "lga")?.scope_id ?? "";
@@ -38,23 +43,16 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
     if (error instanceof ApiError && error.status === 401) redirect("/sign-in?ended=1");
     throw error;
   }
-
   const lga = one(params.lga) || own;
   const since = one(params.since);
   const until = one(params.until);
   const unprinted = one(params.unprinted) !== "false";
   const page = Math.max(Number.parseInt(one(params.page) || "1", 10) || 1, 1);
-
   if (!lga) {
     return (
-      <div>
-        <h1>Print cards</h1>
-        <Flash variant="warn" title="No LGA to print for">
-          <p>
-            Choose a local government area on <a href="/coordinator">your dashboard</a> first.
-          </p>
-        </Flash>
-      </div>
+      <PageState art={<RaisedFlag />} title={t("noLga")} action={<Button href="/coordinator" size="lg" block>{t("dashboard")}</Button>}>
+        {t("noLgaText")}
+      </PageState>
     );
   }
 
@@ -63,84 +61,54 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
   try {
     batch = await getCardBatch(token, lga, { since, until, unprinted, page });
   } catch (error) {
-    if (error instanceof ApiError) {
-      if (error.status === 401) redirect("/sign-in?ended=1");
-      if (error.status === 403) problem = "You can only print cards for your own local government area.";
-      else if (error.status === 422) problem = "Check the dates: use the form year-month-day.";
-      else throw error;
-    } else throw error;
+    if (!(error instanceof ApiError)) throw error;
+    if (error.status === 401) redirect("/sign-in?ended=1");
+    if (error.status === 403) problem = t("forbidden");
+    else if (error.status === 422) problem = t("badDates");
+    else throw error;
   }
-
   const keep = (extra: Record<string, string> = {}) =>
     new URLSearchParams({ lga, since, until, unprinted: String(unprinted), page: String(page), ...extra });
-  const pageLink = (p: number) => `/coordinator/cards?${keep({ page: String(p) })}`;
   const onPage = batch?.people.length ?? 0;
   const sheets = batch ? Math.ceil(onPage / batch.per_sheet) : 0;
   const marked = one(params.marked);
 
   return (
-    <div>
-      <CoordinatorNav current="/coordinator/cards" lga={lga} />
-      <div>
-        <PageHead
-          eyebrow="Coordinator"
-          title="Print cards"
-          lede="Find the athletes whose cards you need, then print or download them."
-          app
-        />
+    <CoordinatorShell current="cards" lga={lga} token={token}>
+      <div className="print:hidden">
+        <PageHead eyebrow={t("eyebrow")} title={t("title")} lede={t("lede")} />
+        <div className="mb-6 space-y-3 empty:hidden">
+          {problem ? <Notice signal="red" title={t("error")}><p>{problem}</p></Notice> : null}
+          {marked ? <Notice signal="done" title={t("recorded")}><p>{t("marked", { count: Number(marked) })}</p></Notice> : null}
+        </div>
 
-        {problem ? (
-          <Flash variant="bad" title="That did not work">
-            <p>{problem}</p>
-          </Flash>
-        ) : null}
-        {marked ? (
-          <Flash variant="good" title="Recorded">
-            <p>
-              {marked === "1" ? "One card is" : `${marked} cards are`} now marked as printed.
-            </p>
-          </Flash>
-        ) : null}
-
-        <form method="get">
+        <form method="get" className="grid gap-4 sm:grid-cols-2 sm:items-end xl:grid-cols-[1fr_1fr_1fr_auto]">
           <input type="hidden" name="lga" value={lga} />
-          <div>
-            <label htmlFor="since">Registered from</label>
-            <input id="since" name="since" type="date" defaultValue={since} />
-          </div>
-          <div>
-            <label htmlFor="until">Registered to</label>
-            <input id="until" name="until" type="date" defaultValue={until} />
-          </div>
-          <div>
-            <label htmlFor="unprinted">Show</label>
-            <select id="unprinted" name="unprinted" defaultValue={String(unprinted)}>
-              <option value="true">Not yet printed</option>
-              <option value="false">All</option>
-            </select>
-          </div>
-          <button type="submit">Find</button>
+          <Field name="since" label={t("from")}>{(a) => <Input {...a} type="date" defaultValue={since} />}</Field>
+          <Field name="until" label={t("to")}>{(a) => <Input {...a} type="date" defaultValue={until} />}</Field>
+          <Field name="unprinted" label={t("show")}>
+            {(a) => (
+              <Select {...a} defaultValue={String(unprinted)}>
+                <option value="true">{t("unprinted")}</option>
+                <option value="false">{t("all")}</option>
+              </Select>
+            )}
+          </Field>
+          <Button type="submit" variant="secondary" icon={<IconSearch size={20} aria-hidden="true" />}>{t("find")}</Button>
         </form>
 
-        {batch && batch.total === 0 ? <EmptyState title="No athletes match" /> : null}
-
+        {batch && batch.total === 0 ? (
+          <EmptyState art={<KitRail />} title={t("none")} className="mt-8">{t("noneText")}</EmptyState>
+        ) : null}
         {batch && batch.total > 0 ? (
-          <div>
-            <p>
-              <strong>{batch.total}</strong> {batch.total === 1 ? "athlete" : "athletes"} &middot;{" "}
-              {Math.ceil(batch.total / batch.per_sheet)} sheets of A4, {batch.per_sheet} cards per sheet.
-              {batch.pages > 1 ? ` This is page ${batch.page} of ${batch.pages}: ${onPage} cards, ${sheets} sheets.` : ""}
-            </p>
-            <p>
-              Use your browser&rsquo;s Print option (Ctrl+P). The cards print eight to a sheet at
-              card size. If it cannot print from here, download the PDF instead.
-            </p>
-            <div>
-              <a
-                href={`/coordinator/cards/pdf?${keep()}`}
-              >
-                Download PDF
-              </a>
+          <section aria-labelledby="batch" className="mt-8 space-y-4">
+            <h2 id="batch" className="text-lg uppercase">
+              {t("summary", { total: batch.total, sheets: Math.ceil(batch.total / batch.per_sheet), per: batch.per_sheet })}
+            </h2>
+            {batch.pages > 1 ? <p className="text-muted">{t("pageOf", { page: batch.page, pages: batch.pages, cards: onPage, sheets })}</p> : null}
+            <p className="flex gap-2 rounded-card bg-surface p-4 text-muted"><IconPrinter className="shrink-0" aria-hidden="true" />{t("howTo")}</p>
+            <div className="flex flex-wrap gap-3">
+              <Button href={`/coordinator/cards/pdf?${keep()}`} icon={<IconDownload size={20} aria-hidden="true" />}>{t("pdf")}</Button>
               <form action={markPrintedAction}>
                 <input type="hidden" name="lga" value={lga} />
                 <input type="hidden" name="since" value={since} />
@@ -148,36 +116,30 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
                 <input type="hidden" name="unprinted" value={String(unprinted)} />
                 <input type="hidden" name="page" value={String(page)} />
                 <input type="hidden" name="kuids" value={batch.people.map((p) => p.kuid).join(",")} />
-                <SubmitButton pending="Recording…">
-                  Mark these as printed
-                </SubmitButton>
+                <SubmitButton variant="secondary" size="md" block={false} pendingLabel={t("marking")}>{t("mark")}</SubmitButton>
               </form>
             </div>
-            <Pager
-              page={batch.page}
-              prev={batch.page > 1 ? pageLink(batch.page - 1) : null}
-              next={batch.page < batch.pages ? pageLink(batch.page + 1) : null}
-            />
-          </div>
+            <Pager label={t("page", { n: batch.page })}
+              prev={batch.page > 1 ? `/coordinator/cards?${keep({ page: String(batch.page - 1) })}` : null}
+              next={batch.page < batch.pages ? `/coordinator/cards?${keep({ page: String(batch.page + 1) })}` : null}
+              labels={{ prev: t("prev"), next: t("next") }} />
+          </section>
         ) : null}
       </div>
 
       {batch && batch.total > 0 ? (
-        <div aria-label="Cards to print">
-          {batch.people.map((p) => (
-            <figure key={p.kuid}>
+        // On screen, a preview grid. On paper, two columns of real-size cards,
+        // eight to a sheet, a page break after every eighth.
+        <div aria-label={t("title")} className="mt-8 grid gap-3 sm:grid-cols-2 print:mt-0 print:grid-cols-[85.6mm_85.6mm] print:justify-center print:gap-x-[6mm] print:gap-y-[5mm]">
+          {batch.people.map((p, i) => (
+            <figure key={p.kuid} className={`m-0 break-inside-avoid ${(i + 1) % 8 === 0 ? "print:break-after-page" : ""}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`/card/${encodeURIComponent(p.kuid)}/card.png`}
-                alt={`Card for ${p.full_name}, ${p.kuid}`}
-                width={1600}
-                height={1010}
-              />
+              <img src={`/card/${encodeURIComponent(p.kuid)}/card.png`} alt={t("alt", { name: p.full_name, kuid: p.kuid })}
+                width={1600} height={1010} loading="lazy" className="h-auto w-full rounded-card shadow-lift print:h-[54mm] print:w-[85.6mm] print:rounded-[3mm] print:shadow-none" />
             </figure>
           ))}
         </div>
       ) : null}
-
-    </div>
+    </CoordinatorShell>
   );
 }

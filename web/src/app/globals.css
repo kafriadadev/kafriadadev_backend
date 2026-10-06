@@ -44,6 +44,9 @@
 @layer base {
   html {
     color-scheme: light dark;
+    /* Anything scrolled to or focused stops below the sticky top bar and a
+       table's sticky header, never under them (WCAG 2.2, focus not obscured). */
+    scroll-padding-top: 8rem;
     -webkit-text-size-adjust: 100%;
   }
   body {
@@ -123,6 +126,19 @@
   to { opacity: 1; transform: rotate(-4deg); }
 }
 
+/* The spinner: the chalk arc goes round; the figure rises on each beat. */
+@keyframes kaf-fade-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .45; }
+}
+@keyframes kaf-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes kaf-rise-beat {
+  0%, 100% { transform: translateY(6%); }
+  45% { transform: translateY(-8%); }
+}
+
 /* The reveal (AUT-03): the card turns from face down to face up. */
 @keyframes kaf-reveal {
   0% { opacity: 0; transform: rotateY(-100deg) translateY(16px) scale(.92); }
@@ -133,6 +149,15 @@
 @keyframes kaf-stamp {
   0% { opacity: 0; transform: rotate(-14deg) scale(1.8); }
   100% { opacity: 1; transform: rotate(-14deg) scale(1); }
+}
+
+@utility spin-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: kaf-spin 1.1s linear infinite;
+}
+@utility spin-figure {
+  animation: kaf-rise-beat 1.1s var(--ease-bounce) infinite;
 }
 
 @utility motion-rise {
@@ -154,6 +179,8 @@
 
 /* Reduced motion: every movement becomes a plain fade, nothing loops. */
 @media (prefers-reduced-motion: reduce) {
+  /* The spinner still says "working", without movement: a slow fade. */
+  .spin-figure { animation: kaf-fade-pulse 1.6s ease-in-out infinite !important; }
   *, *::before, *::after {
     animation-duration: 1ms !important;
     animation-delay: 0ms !important;

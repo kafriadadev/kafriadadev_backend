@@ -192,6 +192,28 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Redirect to /unavailable when called while rendering an App Router page.
+ * Outside a request (the Pages Router, a build) `headers()` throws, and the
+ * caller's own error handling applies.
+ */
+async function sendToUnavailable(): Promise<void> {
+  let from: string | null;
+  try {
+    const { headers } = await import("next/headers");
+    from = (await headers()).get("x-kaf-path");
+  } catch {
+    return;
+  }
+  const { redirect } = await import("next/navigation");
+  redirect(`/unavailable${from ? `?${new URLSearchParams({ from })}` : ""}`);
+}
+
+/** True when the API could not be reached at all (as opposed to answering with a refusal). */
+export function isUnreachable(error: unknown): boolean {
+  return error instanceof ApiError && error.status === undefined;
+}
+
 async function call<T>(
   path: string,
   init?: RequestInit & { token?: string; meta?: ClientMeta },
@@ -218,8 +240,15 @@ async function call<T>(
       cache: "no-store",
     });
   } catch {
-    // Unreachable or too slow. Say so plainly — never show a stack trace or a
-    // hostname to someone standing at a registration desk.
+    // Unreachable or too slow. Say so plainly: never a stack trace or a
+    // hostname for someone standing at a registration desk.
+    //
+    // A page reading its data (a GET while rendering) goes to /unavailable, a
+    // server-rendered PUB-05 state. Next draws error.tsx only with JavaScript,
+    // so without this an Opera Mini user would see a blank page. Writes and
+    // form submissions keep throwing: their actions show the message on the
+    // form, with what was typed kept.
+    if (!rest.method || rest.method === "GET") await sendToUnavailable();
     throw new ApiError(
       "We could not reach KAFRIADA NET just now. Please try again in a moment.",
     );
