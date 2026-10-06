@@ -11,7 +11,8 @@ import { clientMeta, startPending, startSession } from "@/lib/session";
  * On success the cookie is set on the redirect itself. An account whose email is
  * not confirmed gets no session: it goes to the confirm screen, where a fresh code
  * is waiting. One with no email at all comes back here to add one. On failure it
- * goes back to the form with the message and the phone number, never the password.
+ * goes back to the form with the message and what was typed to identify the
+ * account (a phone number or an email), never the password.
  */
 export async function signInAction(formData: FormData): Promise<void> {
   const phone = String(formData.get("phone") ?? "").trim();
@@ -24,7 +25,7 @@ export async function signInAction(formData: FormData): Promise<void> {
     redirect(`/sign-in?${params.toString()}`);
   };
 
-  if (!phone || !password) bounceBack("Enter your phone number and your password.");
+  if (!phone || !password) bounceBack("Enter your phone number or email, and your password.");
 
   let session;
   try {

@@ -15,7 +15,7 @@ import { clientMeta } from "@/lib/session";
 export async function sendResetCodeAction(formData: FormData): Promise<void> {
   const phone = String(formData.get("phone") ?? "").trim();
   if (!phone) {
-    redirect(`/forgot?${new URLSearchParams({ error: "Enter your phone number." })}`);
+    redirect(`/forgot?${new URLSearchParams({ error: "Enter your phone number or email." })}`);
   }
 
   try {

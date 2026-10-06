@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
-import { IconLock, IconPhone } from "@/components/icons";
-import { CodeInput, Field, Input, PhoneInput } from "@/components/ui/Field";
+import { IconLock, IconUser } from "@/components/icons";
+import { CodeInput, Field, Input } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
 import { Page, PageHead } from "@/components/ui/Page";
 import { SubmitButton } from "@/components/ui/SubmitButton";
@@ -38,8 +38,8 @@ export default async function ForgotPage({ searchParams }: { searchParams: Promi
 
       {!sent ? (
         <form action={sendResetCodeAction} noValidate className="space-y-5">
-          <Field name="phone" label={t("phone")} icon={<IconPhone size={18} />}>
-            {(a) => <PhoneInput {...a} required placeholder="0803 000 0000" defaultValue={phone} />}
+          <Field name="phone" label={t("phone")} icon={<IconUser size={18} />}>
+            {(a) => <Input {...a} required type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="0803 000 0000" defaultValue={phone} />}
           </Field>
           <SubmitButton pendingLabel={t("sendPending")}>{t("send")}</SubmitButton>
         </form>

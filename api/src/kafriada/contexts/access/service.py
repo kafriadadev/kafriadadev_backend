@@ -214,29 +214,31 @@ def sign_in(
     user_agent: str | None = None,
     request_id: str | None = None,
 ) -> IssuedSession:
-    """Check a phone and password and issue a session.
+    """Check a phone number or email address and a password, and issue a session.
 
-    Raises :class:`SignInRefused` for every kind of failure. Password work
-    happens between transactions, never inside one.
+    ``raw_phone`` may be either: whatever the person typed in the one sign-in
+    field. Raises :class:`SignInRefused` for every kind of failure, the same
+    for an unknown identifier as for a wrong password. Password work happens
+    between transactions, never inside one.
     """
     passwords = get_password_service()
-    try:
-        phone_e164 = phone_mod.normalise(raw_phone)
-    except phone_mod.InvalidPhoneNumberError:
+    clause = _identifier_clause(raw_phone)
+    if clause is None:
         passwords.verify_dummy()
-        raise SignInRefused() from None
+        raise SignInRefused()
+    where, key = clause
 
     with transaction() as session:
         account = session.execute(
             text(
-                """
+                f"""
                 SELECT id, full_name, password_hash, status, email, email_verified_at,
                        (locked_until IS NOT NULL AND locked_until > now()) AS locked
                   FROM ops.users
-                 WHERE phone_e164 = :phone AND anonymised_at IS NULL
+                 WHERE {where} AND anonymised_at IS NULL
                 """
             ),
-            {"phone": phone_e164},
+            {"key": key},
         ).mappings().one_or_none()
 
     if (
@@ -883,26 +885,42 @@ def _code_message(checked: otp.CodeCheck) -> str:
     return "That code is wrong or has expired. Ask for a new one."
 
 
-def _user_for_phone(raw_phone: str) -> _Found | None:
-    """Look up an account by phone. Returns None for anything unusable."""
+def _identifier_clause(raw: str) -> tuple[str, str] | None:
+    """An account is identified by its phone number or its email address.
+
+    Returns the WHERE clause and its value, or None for anything that is plainly
+    neither. Emails are unique case-insensitively (users_email_unique), so an
+    email names at most one account, as a phone does.
+    """
+    value = raw.strip()
+    if "@" in value:
+        return ("lower(email) = lower(:key)", value) if EMAIL_RE.match(value) else None
     try:
-        phone_e164 = phone_mod.normalise(raw_phone)
+        return "phone_e164 = :key", phone_mod.normalise(value)
     except phone_mod.InvalidPhoneNumberError:
         return None
+
+
+def _user_for_phone(raw_phone: str) -> _Found | None:
+    """Look up an account by phone or email. Returns None for anything unusable."""
+    clause = _identifier_clause(raw_phone)
+    if clause is None:
+        return None
+    where, key = clause
 
     with transaction() as session:
         row = session.execute(
             text(
-                """
+                f"""
                 SELECT id, full_name, phone_e164, email, password_hash, phone_verified_at,
                        email_verified_at
                   FROM ops.users
-                 WHERE phone_e164 = :phone
+                 WHERE {where}
                    AND anonymised_at IS NULL
                    AND status = 'active'
                 """
             ),
-            {"phone": phone_e164},
+            {"key": key},
         ).mappings().one_or_none()
     if row is None:
         return None

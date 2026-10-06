@@ -23,7 +23,9 @@ router = APIRouter(tags=["sessions"])
 
 
 class SignInRequest(BaseModel):
-    phone: str = Field(min_length=1, max_length=40)
+    # The one sign-in field: a phone number or an email address. Named "phone"
+    # for the clients that already send it.
+    phone: str = Field(min_length=1, max_length=254)
     password: str = Field(min_length=1, max_length=1024)
     # Only read when the account has no email on file: it is added, and a
     # confirmation code is sent to it.
@@ -74,7 +76,7 @@ class MeResponse(BaseModel):
         # which trips no account's lock at all.
         Throttle("sign_in"),
     ],
-    summary="Sign in with phone and password",
+    summary="Sign in with a phone number or email address, and a password",
 )
 def sign_in(body: SignInRequest, request: Request) -> SessionResponse:
     try:

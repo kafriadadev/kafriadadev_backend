@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { IconLock, IconMail, IconPhone } from "@/components/icons";
-import { Field, Input, PhoneInput } from "@/components/ui/Field";
+import { IconLock, IconMail, IconUser } from "@/components/icons";
+import { Field, Input } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
 import { Page, PageHead } from "@/components/ui/Page";
 import { SubmitButton } from "@/components/ui/SubmitButton";
@@ -51,8 +51,9 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
       </div>
 
       <form action={signInAction} noValidate className="space-y-5">
-        <Field name="phone" label={t("phone")} icon={<IconPhone size={18} />}>
-          {(a) => <PhoneInput {...a} required placeholder="0803 000 0000" defaultValue={one(params.phone)} />}
+        {/* One field for either: the API works out whether it is a phone or an email. */}
+        <Field name="phone" label={t("phone")} hint={t("phoneHint")} icon={<IconUser size={18} />}>
+          {(a) => <Input {...a} required type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="0803 000 0000" defaultValue={one(params.phone)} />}
         </Field>
         <Field name="password" label={t("password")} icon={<IconLock size={18} />}>
           {(a) => <Input {...a} type="password" required autoComplete="current-password" />}

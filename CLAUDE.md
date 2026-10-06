@@ -578,7 +578,10 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `/unavailable` is the no-JS PUB-05 when the API cannot be reached (`lib/api.ts` redirects
   page GETs; `middleware.ts` passes the path). Logo `Spinner` in every SubmitButton.
   **Restart the API after long test sessions**: its pool went stale (10–40 s per call).
-  Open: CRD-05 (no API), cash is 3 taps. Next: login by phone or email, then Phase 7 admin.
+  Open: CRD-05 (no API), cash is 3 taps.
+- **Sign in with a phone number or an email — done 2026-10-07.** One field; the API's
+  `_identifier_clause()` decides (an `@` means email). Sign-in, confirm, resend and reset
+  all accept either; failures still get one answer. Next: Phase 7, admin screens.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.

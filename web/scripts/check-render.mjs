@@ -242,7 +242,8 @@ try {
     const ctx = await browser.newContext({ viewport: PHONE, isMobile: true });
     const page = await ctx.newPage();
     console.log("\n=== PHONE FORMATTING, JavaScript ON ===");
-    await page.goto(BASE + "/sign-in", { waitUntil: "networkidle", timeout: 90_000 });
+    // The registration form's phone field (sign-in takes a phone or an email, unformatted).
+    await page.goto(BASE + "/register", { waitUntil: "networkidle", timeout: 90_000 });
     const phone = page.locator("#phone");
     await phone.pressSequentially("08031234567", { delay: 20 });
     const typed = await phone.inputValue();

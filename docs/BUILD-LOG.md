@@ -30,6 +30,31 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-07 — Sign in with a phone number or an email address
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:** one "Phone number or email" field on AUT-04 sign-in and AUT-05 forgot
+password. In the API, `access.service._identifier_clause()` decides: anything with an `@`
+is an email (matched case-insensitively; `users_email_unique` makes it name one account),
+anything else a phone number. Sign-in and the shared `_user_for_phone()` lookup use it, so
+email confirmation, resending a code and password reset all accept either, including the
+confirm screen after someone signs in by email before confirming it. Every failure still
+gets one answer with no field named, the dummy password check still runs for an unusable
+identifier, and a wrong password by email counts towards the same lock-out. The request
+models' identifier limit is 254, not 40. The web field is plain text with `username`
+autofill: no +234 prefix and no phone grouping, since it may be an email.
+
+**Verified:** API against Supabase: `tests/test_sign_in_by_email.py` (4: email signs in;
+any case and spacing; wrong password, unknown and malformed emails all get the same 401
+and the wrong password counts) plus `test_access_sessions.py`, 21 passed; the code-flow
+files (`test_codes_and_outbox.py`, `test_club_signup.py`), 31 passed. In Edge with
+JavaScript off: sign in by email, by email in capitals and by phone all land on /me; a wrong
+password by email is refused with the email kept. `check:render` signed in by email: all pass
+(the phone-grouping check now types into registration's phone field). `check:a11y`: no
+violations.
+
+---
+
 ## 2026-10-06 — Frontend redesign, Phase 6: coordinator screens; blank error pages fixed; spinner
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

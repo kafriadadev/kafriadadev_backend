@@ -26,7 +26,7 @@ router = APIRouter(tags=["codes"])
 
 
 class PhoneRequest(BaseModel):
-    phone: str = Field(min_length=1, max_length=40)
+    phone: str = Field(min_length=1, max_length=254)  # a phone number or an email address
 
 
 class CodeSentResponse(BaseModel):
@@ -37,7 +37,7 @@ class CodeSentResponse(BaseModel):
 
 
 class ConfirmPhoneRequest(BaseModel):
-    phone: str = Field(min_length=1, max_length=40)
+    phone: str = Field(min_length=1, max_length=254)  # a phone number or an email address
     code: str = Field(min_length=1, max_length=12)
 
 
@@ -50,7 +50,7 @@ class ConfirmedResponse(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    phone: str = Field(min_length=1, max_length=40)
+    phone: str = Field(min_length=1, max_length=254)  # a phone number or an email address
     code: str = Field(min_length=1, max_length=12)
     new_password: str = Field(min_length=1, max_length=1024)
 
