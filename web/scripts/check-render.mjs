@@ -212,6 +212,29 @@ try {
     await ctx.close();
   }
 
+  // -- PUB-01 budget: zero JavaScript, under 60 KB first load -----------------
+  // The public profile is what a scanned card opens on one bar of signal.
+  // Counted as transferred (compressed) bytes, fresh cache, JavaScript ON, so a
+  // script that would load is caught rather than skipped.
+  {
+    const ctx = await browser.newContext({ viewport: PHONE, isMobile: true });
+    const page = await ctx.newPage();
+    console.log("\n=== PUB-01 BUDGET ===");
+    const loaded = [];
+    page.on("requestfinished", async (req) => {
+      const sizes = await req.sizes().catch(() => null);
+      loaded.push({ url: req.url(), type: req.resourceType(), bytes: sizes ? sizes.responseBodySize + sizes.responseHeadersSize : 0 });
+    });
+    await page.goto(BASE + `/a/${KUID}${SIG ? `?s=${SIG}` : ""}`, { waitUntil: "networkidle", timeout: 90_000 });
+    const scripts = await page.locator("script[src]").count();
+    const inline = await page.locator("script:not([type='application/ld+json'])").count();
+    const total = loaded.reduce((n, r) => n + r.bytes, 0);
+    for (const r of loaded) console.log(`          ${String(Math.round(r.bytes / 102.4) / 10).padStart(6)} KB  ${r.type.padEnd(10)} ${r.url.replace(BASE, "")}`);
+    check(`PUB-01 ships no JavaScript (${scripts} external, ${inline} inline scripts)`, scripts === 0 && inline === 0 && !loaded.some((r) => r.type === "script"));
+    check(`PUB-01 first load is under 60 KB (${(total / 1024).toFixed(1)} KB)`, total < 60 * 1024);
+    await ctx.close();
+  }
+
   // -- Navigation with JavaScript OFF -----------------------------------------
   // On a phone the links live in a <details> sheet: the browser opens it, no
   // script involved.

@@ -35,7 +35,7 @@ export function PositionPicker({
 }) {
   const errorId = error ? `${name}-error` : undefined;
   return (
-    <fieldset className="border-0 p-0" aria-describedby={errorId}>
+    <fieldset id={name} className="border-0 p-0" aria-describedby={errorId}>
       <legend className="mb-3 font-bold">{legend}</legend>
       <div
         className={cn(

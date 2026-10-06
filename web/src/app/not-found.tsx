@@ -1,19 +1,21 @@
-import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
-/** PUB-05 for a missing record. Never alarming, always with a way forward. */
-export default function NotFound() {
+import { IconSearch } from "@/components/icons";
+import { EmptyNet } from "@/components/illustrations";
+import { Button } from "@/components/ui/Button";
+import { PageState } from "@/components/ui/PageState";
+
+/** PUB-05, not found: no alarm, always a way forward. */
+export default async function NotFound() {
+  const t = await getTranslations();
   return (
-    <div>
-      <p>Not found</p>
-      <h1>No athlete with that ID</h1>
-      <p>
-        Check the ID printed on the card and try again. A KAFRIADA NET ID looks like{" "}
-        <span>KA-NG-JG-BKD-2026-000123</span>.
-      </p>
-      <div>
-        <Link href="/find">Look up an ID</Link>
-        <Link href="/">Back to home</Link>
-      </div>
-    </div>
+    <PageState
+      art={<EmptyNet />}
+      title={t("errors.notFoundTitle")}
+      action={<Button href="/find" size="lg" block icon={<IconSearch size={20} aria-hidden="true" />}>{t("nav.findId")}</Button>}
+      secondary={<a href="/">{t("errors.home")}</a>}
+    >
+      {t("errors.notFoundText")}
+    </PageState>
   );
 }

@@ -1,95 +1,71 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { Flash } from "@/components/Flash";
-import { PageHead } from "@/components/PageHead";
-import { ResendCountdown } from "@/components/ResendCountdown";
-import { SubmitButton } from "@/components/SubmitButton";
+import { IconShieldCheck } from "@/components/icons";
+import { CodeInput, Field } from "@/components/ui/Field";
+import { FlowSteps } from "@/components/ui/FlowSteps";
+import { Notice } from "@/components/ui/Notice";
+import { Page, PageHead } from "@/components/ui/Page";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { pending } from "@/lib/session";
 import { confirmEmailAction, resendCodeAction } from "./actions";
 
-export const metadata: Metadata = { title: "Confirm your email" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("confirm"))("eyebrow") };
+}
 export const dynamic = "force-dynamic";
 
 type Search = Record<string, string | string[] | undefined>;
-const one = (v: string | string[] | undefined): string =>
-  Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
+const one = (v: string | string[] | undefined): string => (Array.isArray(v) ? (v[0] ?? "") : (v ?? ""));
 
 /**
- * Confirm your email. Reached straight after registering, or after signing in
- * to an account whose email was never confirmed; both set the pending cookie.
- * There is no session until the code is accepted.
- *
- * One input, not six boxes: a six-box widget needs JavaScript, and this screen
- * has to work without it.
+ * Confirm your email (AUT-02). Reached straight after registering, or after
+ * signing in to an account whose email was never confirmed. The KUID already
+ * exists by now, so this screen reassures before it asks. One input, not six
+ * boxes: six boxes need JavaScript.
  */
-export default async function ConfirmEmailPage({
-  searchParams,
-}: {
-  searchParams: Promise<Search>;
-}) {
+export default async function ConfirmEmailPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const t = await getTranslations("confirm");
   const params = await searchParams;
   const error = one(params.error);
   const sent = one(params.sent);
-  const wait = one(params.wait);
 
   const waiting = await pending();
   if (!waiting) redirect("/sign-in");
-  const sentTo = waiting.email || "your email address";
 
   return (
-    <div>
-      <PageHead
-        eyebrow="Confirm your email"
-        title="Enter the code we emailed"
-        lede={`Sent to ${sentTo}. Check your spam folder if it has not arrived within a few minutes.`}
-      />
+    <Page>
+      <FlowSteps current={1} />
+      <PageHead eyebrow={t("eyebrow")} title={t("title")} lede={t("sentTo", { email: waiting.email || t("yourEmail") })} />
+
+      <div className="mb-6 flex gap-3 rounded-card bg-pitch p-4 text-on-pitch">
+        <IconShieldCheck className="shrink-0" aria-hidden="true" />
+        <div>
+          <p className="font-bold">{t("safe")}</p>
+          <p>{t("safeText")}</p>
+        </div>
+      </div>
 
       {error ? (
-        <Flash variant="bad" title="That did not work">
-          <p>{error}</p>
-        </Flash>
+        <Notice signal="red" title={t("error")} className="mb-6"><p>{error}</p></Notice>
       ) : sent ? (
-        <Flash variant="good" title="Another code is on its way" autoDismissMs={8000}>
-          <p>Check your email. The timer below shows when you can ask again.</p>
-        </Flash>
+        <Notice signal="whistle" title={t("sent")} className="mb-6"><p>{t("sentText")}</p></Notice>
       ) : null}
 
-      <form action={confirmEmailAction} noValidate>
-        <div>
-          <div>
-            <label htmlFor="code">6-digit code</label>
-            <span id="code-hint">
-              It expires in 10 minutes. KAFRIADA NET will never ask you for it.
-            </span>
-            <input
-              id="code"
-              name="code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              required
-              maxLength={6}
-              placeholder="000000"
-              aria-describedby="code-hint"
-            />
-          </div>
-          <SubmitButton pending="Checking your code…">Confirm my email</SubmitButton>
-        </div>
+      <form action={confirmEmailAction} noValidate className="space-y-5">
+        <Field name="code" label={t("label")} hint={t("hint")}>
+          {(a) => <CodeInput {...a} required placeholder="000000" />}
+        </Field>
+        <SubmitButton pendingLabel={t("pending")}>{t("submit")}</SubmitButton>
       </form>
 
-      <ResendCountdown seconds={sent ? Number(wait) || 60 : 0}>
-        <form action={resendCodeAction}>
-          <button type="submit">Send another code</button>
-        </form>
-      </ResendCountdown>
+      {/* The server enforces the wait between codes and says so. */}
+      <form action={resendCodeAction} className="mt-4">
+        <SubmitButton variant="secondary" size="md" pendingLabel={t("resendPending")}>{t("resend")}</SubmitButton>
+      </form>
 
-      <div>
-        <p>Why we ask</p>
-        <p>
-          Your account opens once your email is confirmed. We use it for receipts,
-          verification decisions and to help you back in if you forget your password.
-        </p>
-      </div>
-    </div>
+      <p className="mt-8 text-xs text-muted">{t("why")}</p>
+    </Page>
   );
 }

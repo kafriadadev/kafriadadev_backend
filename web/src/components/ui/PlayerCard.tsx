@@ -106,12 +106,15 @@ export function PlayerCard({
   size = "md",
   className,
   as: As = "article",
+  nameAs: Name = "h2",
 }: {
   data: PlayerCardData;
   labels: PlayerCardLabels;
   size?: "sm" | "md" | "lg";
   className?: string;
   as?: "article" | "div";
+  /** h1 where the card is the page (the public profile). */
+  nameAs?: "h1" | "h2" | "p";
 }) {
   if (size === "sm") {
     return (
@@ -144,9 +147,9 @@ export function PlayerCard({
       <span className="absolute inset-x-0 top-14 h-1.5 -skew-y-3 bg-kit-red" aria-hidden="true" />
       <div className="relative -mt-8 px-4 pb-4">
         <Photo data={data} labels={labels} className={cn("aspect-[5/6]", big ? "w-36" : "w-28")} />
-        <h2 className={cn("mt-3 font-display font-extrabold uppercase italic leading-[0.95] text-plate-ink", big ? "text-3xl" : "text-2xl")}>
+        <Name className={cn("mt-3 font-display font-extrabold uppercase italic leading-[0.95] text-plate-ink", big ? "text-3xl" : "text-2xl")}>
           {data.fullName}
-        </h2>
+        </Name>
         <div className="mt-2 space-y-2">
           <PositionLine data={data} />
           {data.verified ? <VerifiedMark label={labels.verified} /> : null}

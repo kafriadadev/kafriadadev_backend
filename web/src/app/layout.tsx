@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { body, display, mono } from "./fonts";
+import { fontVariables } from "./fonts";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -26,7 +26,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale = await getLocale();
   const t = await getTranslations("nav");
   return (
-    <html lang={locale === "en" ? "en-NG" : locale} className={`${display.variable} ${body.variable} ${mono.variable}`}>
+    <html lang={locale === "en" ? "en-NG" : locale} className={fontVariables}>
       <body>
         <a href="#main" className="sr-only z-50 rounded-pill bg-boot px-4 py-3 font-bold text-chalk focus:not-sr-only focus:fixed focus:left-4 focus:top-4">{t("skip")}</a>
         <SiteHeader />

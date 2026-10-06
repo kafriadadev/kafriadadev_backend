@@ -83,7 +83,7 @@ export function PhoneInput({ className, ...rest }: Omit<React.InputHTMLAttribute
   return (
     <div className="flex">
       <span
-        className="inline-flex min-h-12 items-center rounded-l-input border-2 border-r-0 border-line-strong bg-surface-2 px-3 font-mono text-text"
+        className="inline-flex min-h-12 shrink-0 items-center whitespace-nowrap rounded-l-input border-2 border-r-0 border-line-strong bg-surface-2 px-3 font-mono text-text"
         aria-hidden="true"
       >
         +234
@@ -92,7 +92,7 @@ export function PhoneInput({ className, ...rest }: Omit<React.InputHTMLAttribute
         type="tel"
         inputMode="tel"
         autoComplete="tel-national"
-        className={controlClass(cn("rounded-l-none font-mono tracking-wide", className))}
+        className={controlClass(cn("min-w-0 rounded-l-none font-mono tracking-wide", className))}
         {...rest}
       />
     </div>

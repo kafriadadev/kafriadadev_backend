@@ -35,7 +35,8 @@ export async function confirmEmailAction(formData: FormData): Promise<void> {
     absoluteExpiresAt: confirmed.absolute_expires_at,
   });
   await endPending();
-  redirect("/me?welcome=1");
+  // AUT-03: hand over the ID. Accounts with no athlete record go on to /me.
+  redirect("/register/done");
 }
 
 /** Send another code. The answer never says whether one was actually sent. */

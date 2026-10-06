@@ -20,6 +20,11 @@ here.
 | `scripts/check-render.mjs` | Proves every page renders and every form round-trips with JavaScript off. Extended, not replaced. |
 | `Dockerfile`, `.dockerignore` | Deployment. |
 
+## Rebuilt on the new design (Phase 3)
+
+PUB-01 to PUB-05 and AUT-01 to AUT-05 call the same kept actions and API
+helpers. The confirm action now redirects to `/register/done` (AUT-03).
+
 ## Reduced to bare markup (rebuilt in Phase 2)
 
 Pages keep their data loading, their forms and their copy; every class name,

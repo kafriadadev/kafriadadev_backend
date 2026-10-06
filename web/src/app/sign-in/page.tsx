@@ -1,40 +1,35 @@
-import { PageHead } from "@/components/PageHead";
-import { SubmitButton } from "@/components/SubmitButton";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { Flash } from "@/components/Flash";
+import { IconLock, IconMail, IconPhone } from "@/components/icons";
+import { Field, Input, PhoneInput } from "@/components/ui/Field";
+import { Notice } from "@/components/ui/Notice";
+import { Page, PageHead } from "@/components/ui/Page";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { getMe } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 import { signInAction } from "./actions";
 
-export const metadata: Metadata = { title: "Sign in" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("signIn"))("title") };
+}
 export const dynamic = "force-dynamic";
 
 type Search = Record<string, string | string[] | undefined>;
-const one = (v: string | string[] | undefined): string =>
-  Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
+const one = (v: string | string[] | undefined): string => (Array.isArray(v) ? (v[0] ?? "") : (v ?? ""));
 
 /**
- * Sign in (AUT-04). One screen for every role — athletes, club admins and
- * coordinators all sign in here, and the role decides how long they stay
- * signed in, not a "remember me" box.
- *
- * A wrong phone and a wrong password get the same message, which the API
- * decides. The form does not guess which half was wrong either.
+ * Sign in (AUT-04). One screen for every role; the role decides how long the
+ * session lasts. A wrong phone and a wrong password get the same message,
+ * which the API decides.
  */
-export default async function SignInPage({
-  searchParams,
-}: {
-  searchParams: Promise<Search>;
-}) {
+export default async function SignInPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const t = await getTranslations("signIn");
   const params = await searchParams;
   const error = one(params.error);
-  const ended = one(params.ended);
-  const reset = one(params.reset);
   const needEmail = one(params.need_email) === "1";
 
-  // Already signed in: go straight to the account page.
   const token = await sessionToken();
   if (token) {
     const me = await getMe(token).catch(() => null);
@@ -42,78 +37,38 @@ export default async function SignInPage({
   }
 
   return (
-    <div>
-      <PageHead
-        eyebrow="Welcome back"
-        title="Sign in"
-      />
+    <Page>
+      <PageHead eyebrow={t("eyebrow")} title={t("title")} />
 
-      {error ? (
-        <Flash variant="bad" title="We could not sign you in">
-          <p>{error}</p>
-        </Flash>
-      ) : reset ? (
-        <Flash variant="good" title="Your password is changed">
-          <p>
-            Sign in with your new password. Every other device was signed out.
-          </p>
-        </Flash>
-      ) : ended ? (
-        <Flash title="You were signed out">
-          <p>
-            Your session ended. Sign in again to continue.
-          </p>
-        </Flash>
-      ) : null}
+      <div className="mb-6 empty:hidden">
+        {error ? (
+          <Notice signal="red" title={t("error")}><p>{error}</p></Notice>
+        ) : one(params.reset) ? (
+          <Notice signal="done" title={t("reset")}><p>{t("resetText")}</p></Notice>
+        ) : one(params.ended) ? (
+          <Notice signal="whistle" title={t("ended")}><p>{t("endedText")}</p></Notice>
+        ) : null}
+      </div>
 
-      <form action={signInAction} noValidate>
-        <div>
-          <div>
-            <label htmlFor="phone">Phone number</label>
-            <input
-              id="phone"
-              name="phone"
-              type="tel"
-              inputMode="tel"
-              required
-              placeholder="0803 000 0000"
-              autoComplete="tel"
-              defaultValue={one(params.phone)}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          {needEmail ? (
-            <div>
-              <label htmlFor="email">Email</label>
-              <span id="email-hint">
-                Your account has no email yet. We will send a code to confirm it.
-              </span>
-              <input id="email" name="email" type="email" required autoComplete="email"
-                aria-describedby="email-hint" />
-            </div>
-          ) : null}
-
-          <SubmitButton pending="Signing you in…">Sign in</SubmitButton>
-
-          <p>
-            <a href="/forgot">Forgot your password?</a>
-          </p>
-          <p>
-            No account yet? <a href="/register">Register free</a>
-          </p>
-        </div>
+      <form action={signInAction} noValidate className="space-y-5">
+        <Field name="phone" label={t("phone")} icon={<IconPhone size={18} />}>
+          {(a) => <PhoneInput {...a} required placeholder="0803 000 0000" defaultValue={one(params.phone)} />}
+        </Field>
+        <Field name="password" label={t("password")} icon={<IconLock size={18} />}>
+          {(a) => <Input {...a} type="password" required autoComplete="current-password" />}
+        </Field>
+        {needEmail ? (
+          <Field name="email" label={t("email")} hint={t("emailHint")} icon={<IconMail size={18} />}>
+            {(a) => <Input {...a} type="email" required autoComplete="email" />}
+          </Field>
+        ) : null}
+        <SubmitButton pendingLabel={t("pending")}>{t("submit")}</SubmitButton>
       </form>
-    </div>
+
+      <div className="mt-6 space-y-2">
+        <p><a href="/forgot">{t("forgot")}</a></p>
+        <p className="text-muted">{t("noAccount")} <a href="/register" className="font-bold">{t("register")}</a></p>
+      </div>
+    </Page>
   );
 }

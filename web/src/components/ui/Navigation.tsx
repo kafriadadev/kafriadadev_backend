@@ -27,7 +27,7 @@ export function TopBar({
   menu: { label: string; title: string; close: string };
 }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-[color-mix(in_srgb,var(--bg)_92%,transparent)] backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-line print:hidden bg-[color-mix(in_srgb,var(--bg)_92%,transparent)] backdrop-blur">
       <div className="mx-auto flex h-16 max-w-wide items-center gap-3 px-4">
         <a href="/" aria-label={homeLabel} className="mr-auto shrink-0">
           <Logo className="h-8 w-auto text-text" />
@@ -126,7 +126,7 @@ export function TabBar({ items, current, label }: { items: NavItem[]; current: s
 
 export function Footer({ tagline, links, label }: { tagline: string; links: NavItem[]; label: string }) {
   return (
-    <footer className="mt-16 border-t border-line bg-surface">
+    <footer className="mt-16 border-t border-line bg-surface print:hidden">
       <div className="mx-auto flex max-w-wide flex-col gap-6 px-4 py-10 md:flex-row md:items-start md:justify-between">
         <div>
           <Logo className="h-8 w-auto text-text" />

@@ -12,6 +12,10 @@ const config: NextConfig = {
   // node_modules actually reached at runtime. Harmless locally: `next start`
   // still serves the same build.
   output: "standalone",
+  // Server-side image fonts and the logo, read from disk by /og/[kuid].
+  outputFileTracingIncludes: {
+    "/og/[kuid]": ["./assets/fonts/**", "./public/brand/kafriada-net-horizontal.svg"],
+  },
 
   // Every launch screen must work with JavaScript disabled: Opera Mini in proxy
   // mode is common in northern Nigeria and runs almost none. Server Components

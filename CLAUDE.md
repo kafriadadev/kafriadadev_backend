@@ -559,7 +559,13 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   (every state at `/styleguide/components`), illustrations in `components/illustrations`.
   New gate: `npm run check:a11y` (axe, needs the web tier up; `STYLEGUIDE=1` adds the style
   guide). Links are underlined by default. A `@container` element needs an explicit width.
-  Next: Phase 3, PUB-01–05 and AUT-01–05 on the new components.
+- **Frontend redesign, Phase 3 — done 2026-10-06.** PUB-01–05 and AUT-01–05 rebuilt; new
+  AUT-03 at `/register/done`. **PUB-01 lives on the Pages Router** (`web/src/pages/a/[kuid].tsx`,
+  `unstable_runtimeJS: false`) for zero JavaScript; `_app` writes the font variables to
+  `:root`. Share image at `/og/[kuid]`. Fonts are local subsets (`scripts/design/subset_fonts.py`).
+  Full no-JS registration: `CODE_CMD="api/.venv/Scripts/python.exe scripts/outbox_code.py"
+  node web/scripts/e2e-register.mjs` (writes a throwaway athlete; dispatcher stopped).
+  **Open decision:** App Router pages carry ~100 KB of runtime JS, over the plan's 50 KB.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.

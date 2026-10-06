@@ -82,8 +82,8 @@
  */
 @theme static {
   /* -- Type -------------------------------------------------------------- */
-  --font-display: var(--font-display-face), "Arial Narrow", sans-serif;
-  --font-body: var(--font-body-face), system-ui, sans-serif;
+  --font-display: var(--font-display-face), var(--font-display-ext), "Arial Narrow", sans-serif;
+  --font-body: var(--font-body-face), var(--font-body-ext), system-ui, sans-serif;
   --font-mono: var(--font-mono-face), ui-monospace, monospace;
   /* Mobile first; the large steps grow toward desktop. Body never below 16. */
   --text-xs: 0.875rem;                               /* 14 */

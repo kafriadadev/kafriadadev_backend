@@ -1,61 +1,60 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { PageHead } from "@/components/PageHead";
+import { IconQrcode, IconSearch } from "@/components/icons";
+import { Field, Input } from "@/components/ui/Field";
+import { Notice } from "@/components/ui/Notice";
+import { Page, PageHead } from "@/components/ui/Page";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 
-export const metadata: Metadata = { title: "Look up an athlete" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("find"))("title") };
+}
+
+type Search = Record<string, string | string[] | undefined>;
 
 /**
- * PUB-03 — a way in for someone whose camera will not scan, or whose card has
- * a damaged code. A plain GET form, so it works everywhere and the result is a
- * shareable address.
+ * PUB-03: a way in for someone whose camera will not scan, or whose card has a
+ * damaged code. The result is /a/{kuid} with no signature, so the profile
+ * shows without the "Issued by" pill.
  */
-export default function FindPage() {
+export default async function FindPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const t = await getTranslations("find");
+  const empty = Boolean((await searchParams).empty);
+
   async function find(formData: FormData) {
     "use server";
     const raw = String(formData.get("kuid") ?? "").trim().toUpperCase();
-    // Tidy what a person actually types off a card before looking it up. The
-    // API does the same normalisation; doing it here too means the address bar
-    // ends up clean rather than carrying their typing.
-    const cleaned = raw.replace(/[\u2010-\u2015_\s]+/g, "-").replace(/-{2,}/g, "-");
+    // Tidy what a person actually types off a card. The API normalises too;
+    // doing it here keeps the address bar clean.
+    const cleaned = raw.replace(/[‐-―_\s]+/g, "-").replace(/-{2,}/g, "-");
     if (!cleaned) redirect("/find?empty=1");
     redirect(`/a/${encodeURIComponent(cleaned)}`);
   }
 
   return (
-    <div>
-      <PageHead
-        eyebrow="Public lookup"
-        title="Look up an athlete"
-        lede="Enter the KAFRIADA NET ID printed on the card. No account needed."
-      />
-
-      <form action={find}>
-        <div>
-          <div>
-            <label htmlFor="kuid">KAFRIADA NET ID</label>
-            <span id="kuid-hint">
-              For example KA-NG-JG-BKD-2026-000123. Capital letters and dashes.
-            </span>
-            <input
-              id="kuid"
-              name="kuid"
+    <Page>
+      <PageHead eyebrow={t("eyebrow")} title={t("title")} lede={t("lede")} />
+      <form action={find} className="space-y-5">
+        <Field name="kuid" label={t("label")} hint={t("hint")} error={empty ? t("empty") : null}>
+          {(a) => (
+            <Input
+              {...a}
               required
               autoComplete="off"
+              autoCapitalize="characters"
               spellCheck={false}
               placeholder="KA-NG-JG-___-____-______"
-              aria-describedby="kuid-hint"
+              className="font-mono uppercase tracking-wide"
             />
-          </div>
-          <button type="submit">
-            Look up
-          </button>
-        </div>
+          )}
+        </Field>
+        <SubmitButton pendingLabel={t("submit")} icon={<IconSearch size={20} aria-hidden="true" />}>
+          {t("submit")}
+        </SubmitButton>
       </form>
-
-      <p>
-        Easier still: point your phone camera at the QR code on the card.
-      </p>
-    </div>
+      <Notice signal="whistle" className="mt-8" title={<span className="inline-flex items-center gap-2"><IconQrcode size={20} aria-hidden="true" /> {t("scan")}</span>} />
+    </Page>
   );
 }

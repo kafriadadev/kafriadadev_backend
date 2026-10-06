@@ -30,6 +30,61 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-06 — Frontend redesign, Phase 3: public and sign-up screens
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built** (every screen on the Phase 2 components, copy in `messages/en.json`):
+- **PUB-02 landing**: chalked centre circle, headline, sample player card, one primary
+  action, a facts scoreboard (₦0 · 5 minutes · 1 ID), how it works, the LGAs open now,
+  optional verification with the card and cash routes, clubs, and a sticky "Register free"
+  on phones.
+- **PUB-01 public profile** moved to the **Pages Router** (`src/pages/a/[kuid].tsx`) with
+  `unstable_runtimeJS: false`: **zero JavaScript**, the only way to get there in Next 15.
+  Card first, then "Issued by KAFRIADA NET" + check-the-face, or the unsigned-link note;
+  facts in two columns; no-match is a 404 PageState. `Cache-Control: s-maxage=60`.
+- **WhatsApp preview**: `/og/[kuid]` draws the player card at 1200 × 630 (`next/og`), with
+  the photo when verified. Fonts vendored as TTFs in `web/assets/fonts/` (server only).
+- **PUB-03 lookup, PUB-04 privacy** (restyled; the notice text stays in the page because a
+  translation is a new reviewed version), **PUB-05** not-found and `error.tsx` with the
+  reference chip.
+- **AUT-01 register**: the same fields and action, in three parts (You, Your game, Your
+  account), the position picker on a pitch, error summary + inline error. **AUT-02
+  confirm**: "Your ID is already yours" above the code. **AUT-03 ID ready** is new
+  (`/register/done`; the confirm action now goes there): the card turns face up, an
+  ISSUED stamp lands, confetti once (`canvas-confetti`, skipped under reduced motion or
+  Save-Data), then Share on WhatsApp, Download, Print, and only below them the optional
+  ₦2,500. **AUT-04 sign in**, **AUT-05 forgot password**, and the **card page** (screen card
+  + QR; the ID-1 PrintCard on paper only).
+- **Fonts are self-hosted subsets now** (`scripts/design/subset_fonts.py`, `next/font/local`):
+  a preloaded Latin face per weight plus a Latin Extended face (the Hausa letters) behind
+  `unicode-range`, fetched only when used; the ID font holds only A–Z, 0–9 and separators.
+  Preloaded fonts 44 KB → 33.5 KB. The build no longer fetches from Google.
+- **Gates added:** `check-render.mjs` now asserts PUB-01 loads no script and stays under
+  60 KB; `scripts/e2e-register.mjs` runs a complete JavaScript-off registration through
+  the emailed code to AUT-03 (writes a throwaway athlete; code read by
+  `scripts/outbox_code.py`).
+
+**Verified:** typecheck and build clean. `check:render` 78 checks pass; **PUB-01: no
+JavaScript, 58.0 KB first load**. `check:a11y`: no violations (fixed on the way: the card's
+name is the profile's h1). `e2e-register.mjs`: all 9 checks pass against the dev database,
+three runs (KA-NG-JG-BKD-2026-001558 to 001560). AUT-03, PUB-01, landing and register
+reviewed by screenshot at 360px.
+- **Found:** on the Pages Router the font variables sat on a wrapper while the tokens
+  resolve on `:root`, so the profile silently fell back to system fonts; `_app` now writes
+  them to `:root`. Reduced motion kept animation delays (the stamp stayed hidden for
+  480 ms); delays are zeroed too.
+
+**Not done / open:**
+- **Over budget, needs a decision:** landing 190 KB / 106 KB JS, register 206 / 108,
+  sign-in 182 / 108, against 150 KB / 50 KB. The App Router runtime alone is ~100 KB.
+- The Jigawa LGA map (needs boundary data) and a live registrations count (no API for it)
+  are not on the landing page; PhoneInput does not format as you type; no step-by-step
+  reveal of the register form with JavaScript.
+- The backend card PNG/PDF and API messages still say KAFRIADA and use the old design
+  (Phase 4).
+
+---
+
 ## 2026-10-06 — Frontend redesign, Phase 2: components
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 
