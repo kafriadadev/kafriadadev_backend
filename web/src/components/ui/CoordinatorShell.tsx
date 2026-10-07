@@ -5,7 +5,7 @@ import { getCoordinatorDashboard } from "@/lib/api";
 import { formatNaira } from "@/lib/money";
 import { TabBar } from "./Navigation";
 
-export type CoordinatorTab = "today" | "queue" | "find" | "pay" | "cards";
+export type CoordinatorTab = "today" | "queue" | "find" | "pay" | "cards" | "settlement";
 
 /**
  * The coordinator's screens: their own tabs (bottom on phones, a rail on a
@@ -33,6 +33,7 @@ export async function CoordinatorShell({
     { key: "find", href: `/coordinator/find${q}`, label: t("find"), icon: icon(IconSearch) },
     { key: "pay", href: `/assist-pay${q}`, label: t("pay"), icon: icon(IconCreditCard) },
     { key: "cards", href: `/coordinator/cards${q}`, label: t("cards"), icon: icon(IconPrinter) },
+    { key: "settlement", href: `/coordinator/settlement${q}`, label: t("settlement"), icon: icon(IconCash) },
   ];
   const d = await getCoordinatorDashboard(token, lga).catch(() => null);
 

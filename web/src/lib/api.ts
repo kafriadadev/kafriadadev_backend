@@ -966,6 +966,53 @@ export function markCardsPrinted(
   });
 }
 
+export type SettlementLine = {
+  reference: string;
+  created_at: string;
+  athlete_name: string;
+  kuid: string;
+  coordinator_name: string;
+  amount_kobo: number;
+  status: "pending" | "success" | "failed" | "abandoned" | "frozen";
+};
+
+export type Settlement = {
+  lga_id: string;
+  lga_name: string;
+  since: string;
+  until: string;
+  mine: boolean;
+  lines: SettlementLine[];
+  truncated: boolean;
+  collected_count: number;
+  collected_kobo: number;
+  confirmed_count: number;
+  confirmed_kobo: number;
+  difference_kobo: number;
+  pending_count: number;
+  review_count: number;
+  abandoned_count: number;
+};
+
+export type SettlementFilters = { since: string; until: string; mine: boolean };
+
+const settlementQuery = (f: SettlementFilters): string => {
+  const params = new URLSearchParams({ mine: String(f.mine) });
+  if (f.since) params.set("since", f.since);
+  if (f.until) params.set("until", f.until);
+  return params.toString();
+};
+
+/** CRD-05: cash collected on behalf of athletes against what Paystack confirmed. */
+export function getSettlement(token: string, lga: string, filters: SettlementFilters): Promise<Settlement> {
+  return call<Settlement>(`/v1/lgas/${encodeURIComponent(lga)}/settlement?${settlementQuery(filters)}`, { token });
+}
+
+/** The same lines as CSV. */
+export function getSettlementCsv(token: string, lga: string, filters: SettlementFilters): Promise<Response | null> {
+  return getImage(`/v1/lgas/${encodeURIComponent(lga)}/settlement.csv?${settlementQuery(filters)}`, token);
+}
+
 export function getVerification(token: string): Promise<Verification> {
   return call<Verification>("/v1/verification", { token });
 }

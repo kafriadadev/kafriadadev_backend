@@ -587,6 +587,9 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   Old shared components are adapters onto `components/ui`. ADM-05 and ADM-07 have no API.
   Staff sessions end after 30 idle minutes: get a fresh token before admin audits.
   Next: Phase 8, polish and ship.
+- **CRD-05 cash settlement — done and verified 2026-10-07.** `GET /v1/lgas/{lga}/settlement`
+  (+ `.csv`, `payment.read_scoped`), `/coordinator/settlement` ("Cash" tab): collected vs
+  confirmed vs outstanding, own collections by default. 6 tests.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.

@@ -30,6 +30,37 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-07 — CRD-05, cash settlement
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:** `contexts/coordination/settlement.py` and `GET /v1/lgas/{lga}/settlement`
+(+ `.csv`), under `payment.read_scoped` scoped to the LGA (LGA coordinator, state
+coordinator, super administrator). Every assisted payment for an athlete in the LGA,
+started between two Lagos dates (default: the first of this month to today, at most a
+year): collected (every row the checkout opened for), confirmed (`success`), and the
+difference, with counts of rows waiting, frozen and abandoned. `mine=true` (default)
+narrows to the caller's own collections; `false` shows everyone's with a "collected by"
+column. Capped at 2,000 rows, flagged when cut. The CSV escapes a leading `= + - @` so a
+name cannot run as a spreadsheet formula, and prints times in Lagos. Web:
+`/coordinator/settlement` (the "Cash" tab), a GET form, the three totals on a scoreboard,
+a notice that says whether the period balances and what is outstanding, the table, and a
+CSV link proxied by `/coordinator/settlement/csv`.
+
+**Why:** a `failed` row is not counted as collected — the checkout never opened, and the
+coordinator's retry is the row that counts. An `abandoned` one is: the cash was taken
+and never paid in, which is exactly what the report exists to show.
+
+**Verified:** `tests/test_settlement_report.py` (6) plus `test_route_manifest.py`,
+`test_permission_matrix.py`, `test_coordination.py` on the local PostgreSQL — all pass.
+Live against Supabase with the test coordinator: 2 pending payments, ₦5,000.00
+outstanding. `check:render` (four states of the screen, every width and theme) and
+`check:a11y` pass; the CSV route answers 200 `text/csv`.
+
+**Not done / open:** no "handed in" record — the report shows the gap, it does not
+close it. The six-tab coordinator bar fits at 320px but is now full.
+
+---
+
 ## 2026-10-07 — PWA, staff top bar, two-tap cash, withdraw summary, a stale-pool fix
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

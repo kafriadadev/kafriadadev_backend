@@ -7,7 +7,7 @@ query to it, so nothing outside it can appear in a result.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
@@ -16,7 +16,9 @@ from pydantic import BaseModel, Field
 from kafriada.api.client import client_ip
 from kafriada.api.client import request_id as header_request_id
 from kafriada.api.security import Requires, current_principal
+from kafriada.clock import today_in_nigeria
 from kafriada.contexts.coordination import cards, service
+from kafriada.contexts.coordination import settlement as settlement_mod
 
 router = APIRouter(tags=["coordination"])
 
@@ -163,3 +165,85 @@ def mark_printed(lga_id: str, body: MarkPrintedRequest, request: Request) -> Mar
         request_id=header_request_id(request), ip_address=client_ip(request),
     )
     return MarkPrintedResponse(marked=marked)
+
+
+# ---------------------------------------------------------------------------
+# CRD-05: cash settlement
+# ---------------------------------------------------------------------------
+class SettlementLineOut(BaseModel):
+    reference: str
+    created_at: datetime
+    athlete_name: str
+    kuid: str
+    coordinator_name: str
+    amount_kobo: int
+    status: str
+
+
+class SettlementResponse(BaseModel):
+    lga_id: str
+    lga_name: str
+    since: date
+    until: date
+    mine: bool
+    lines: list[SettlementLineOut]
+    truncated: bool
+    collected_count: int
+    collected_kobo: int
+    confirmed_count: int
+    confirmed_kobo: int
+    difference_kobo: int
+    pending_count: int
+    review_count: int
+    abandoned_count: int
+
+
+def _settlement(request: Request, lga_id: str, since: date | None, until: date | None, mine: bool):
+    end = until or today_in_nigeria()
+    start = since or end.replace(day=1)
+    try:
+        found = settlement_mod.settlement(current_principal(request).user_id, lga_id, start, end, mine=mine)
+    except settlement_mod.RangeTooWideError:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Choose an end date on or after the start date, no more than a year apart.",
+        ) from None
+    if found is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="No such LGA.")
+    return found
+
+
+@router.get(
+    "/lgas/{lga_id}/settlement",
+    response_model=SettlementResponse,
+    dependencies=[Requires("payment.read_scoped", scope="lga")],
+    summary="Cash collected on behalf of athletes against what Paystack confirmed (CRD-05)",
+)
+def settlement(
+    lga_id: str, request: Request, since: date | None = None, until: date | None = None, mine: bool = True
+) -> SettlementResponse:
+    found = _settlement(request, lga_id, since, until, mine)
+    return SettlementResponse(
+        **{f: getattr(found, f) for f in SettlementResponse.model_fields if f != "lines"},
+        lines=[SettlementLineOut(**{f: getattr(x, f) for f in SettlementLineOut.model_fields}) for x in found.lines],
+    )
+
+
+@router.get(
+    "/lgas/{lga_id}/settlement.csv",
+    dependencies=[Requires("payment.read_scoped", scope="lga")],
+    summary="The settlement lines as CSV",
+    response_class=Response,
+)
+def settlement_csv(
+    lga_id: str, request: Request, since: date | None = None, until: date | None = None, mine: bool = True
+) -> Response:
+    found = _settlement(request, lga_id, since, until, mine)
+    return Response(
+        content=settlement_mod.as_csv(found),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="settlement-{lga_id}-{found.since}-{found.until}.csv"',
+            "Cache-Control": "private, no-store",
+        },
+    )
