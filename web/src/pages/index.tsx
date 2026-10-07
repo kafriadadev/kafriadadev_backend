@@ -66,7 +66,9 @@ export default function Home({ open }: Props) {
             </div>
             <p className="mt-3 text-xs text-muted">{t("home.free")}</p>
           </div>
-          <div className="mx-auto w-full max-w-xs motion-rise [animation-delay:120ms]">
+          <div className="relative mx-auto w-full max-w-xs motion-rise [animation-delay:120ms]">
+            {/* Filled by /delight.js on a capable device: the runner, leaning towards the pointer. */}
+            <div data-figure-slot="hero" className="pointer-events-none absolute -left-40 -top-12 -z-10 hidden w-72 text-text opacity-80 lg:block" aria-hidden="true" />
             <p className="sr-only">{t("home.sampleLabel")}</p>
             <PlayerCard
               as="div"
@@ -152,6 +154,7 @@ export default function Home({ open }: Props) {
       <div className="sticky bottom-0 z-20 border-t border-line bg-bg p-3 sm:hidden">
         <Button href="/register" size="lg" block>{t("home.register")}</Button>
       </div>
+      <script src="/delight.js" defer />
     </PublicDocument>
   );
 }

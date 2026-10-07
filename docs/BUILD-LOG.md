@@ -30,6 +30,41 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-07 — Hairline figures, a navigation spinner, an honest offline page
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **Hairline figures (layer 2).** `scripts/design/build_figures.py` takes the running figure
+  from the logo's own paths, redraws it as a fine outline that draws itself in, and sets it into
+  the empty-net, bench and kit-rail scenes, plus a large one for the landing page
+  (`web/public/figures/*.svg`, about 3 KB each, every class and keyframe prefixed `hf-`).
+  `public/delight.js` swaps them in when the browser is idle, and only on a capable device: a
+  fine pointer that can hover, no reduced motion, no Save-Data, no 2G/3G. The landing page's
+  runner leans towards the pointer. The illustrations carry `data-figure`; anywhere else the
+  plain drawing stays. Loaded by the App Router layout (`lazyOnload`) and the landing page.
+- **Navigation spinner.** `components/ui/NavProgress.tsx`: a link press shows the logo spinner
+  after 150 ms until the next page arrives (gone on arrival, on Back, or after 20 s). Forms already
+  had theirs. JavaScript only; `loading.tsx` was not used, because with JavaScript off its
+  streamed fallback never gives way to the page.
+- **Offline or the site down.** The service worker (`kaf-offline-v2`) now keeps two pages:
+  `/offline` when the browser reports no connection, and the new `/offline/server` ("We could not
+  reach KAFRIADA NET") when it is online but the site did not answer. Try again on both now
+  returns to the page that failed instead of `/me`. Found by the project lead: with the web server
+  stopped for a rebuild, the old worker told a connected laptop it was offline.
+
+**Verified:** in Edge, desktop: all four figures fetched and swapped, none left plain; phone and
+reduced motion: nothing fetched, the plain drawings stay; landing at 1280 px is 1280 px wide.
+Spinner present 400 ms into a navigation to a slow page. With the web server killed, a
+navigation to `/me?from=test` showed "We could not reach KAFRIADA NET" with Try again pointing at
+`/me?from=test`. The offline branch could not be exercised: Playwright's offline switch does not
+reach a service worker's own requests. `check:render` (style guide, signed-in athlete, every width):
+141 checks, all passed; budgets PUB-01 58.0 KB, landing 62.8 (1.8 KB script, delight.js), find 57.4,
+sign-in 54.5, register 65.2. `check:a11y`: no violations.
+
+**Not done / open:** Phase 8 is complete apart from the Hausa review (set aside by the project lead).
+
+---
+
 ## 2026-10-07 — Phase 8 motion pass
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

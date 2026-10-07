@@ -6,9 +6,14 @@
 
 type Props = { className?: string };
 
-function Frame({ className, children }: Props & { children: React.ReactNode }) {
+/**
+ * `figure` names a fine-line version in public/figures/ that public/delight.js
+ * may swap in on a capable device (layer 2); without it, this drawing stays.
+ */
+function Frame({ className, children, figure }: Props & { children: React.ReactNode; figure?: string }) {
   return (
     <svg
+      data-figure={figure}
       viewBox="0 0 160 120"
       className={className}
       fill="none"
@@ -31,7 +36,7 @@ export function EmptyNet({ className }: Props) {
   for (let x = 40; x <= 120; x += 10) mesh.push(<path key={`v${x}`} d={`M${x} 30L${x + (x - 80) * 0.12} 104`} strokeWidth="1.25" strokeOpacity=".5" />);
   for (let y = 40; y <= 100; y += 10) mesh.push(<path key={`h${y}`} d={`M32 ${y}H128`} strokeWidth="1.25" strokeOpacity=".5" />);
   return (
-    <Frame className={className}>
+    <Frame className={className} figure="net">
       {mesh}
       <path d="M30 108V26H130V108" strokeWidth="5" />
       <circle cx="146" cy="100" r="7" stroke="var(--chalk-line)" />
@@ -53,7 +58,7 @@ export function RaisedFlag({ className }: Props) {
 /** No players yet: an empty dugout bench. */
 export function EmptyBench({ className }: Props) {
   return (
-    <Frame className={className}>
+    <Frame className={className} figure="bench">
       <path d="M16 46Q80 10 144 46" />
       <path d="M24 42V108M136 42V108" />
       <path d="M30 80H130M30 80V96M130 80V96" />
@@ -67,7 +72,7 @@ export function EmptyBench({ className }: Props) {
 /** No clubs yet: a bare kit rail. */
 export function KitRail({ className }: Props) {
   return (
-    <Frame className={className}>
+    <Frame className={className} figure="rail">
       <path d="M20 24H140M30 24V108M130 24V108" />
       {[54, 80, 106].map((x) => (
         <path key={x} d={`M${x} 24v8a5 5 0 1 1 -5 5`} strokeWidth="2.25" />

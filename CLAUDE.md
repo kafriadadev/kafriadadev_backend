@@ -614,6 +614,12 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   (`RunRail`, CSS `:has(:valid)`, zero JS), `CountUp` on dashboards, `Tilt` on the card.
   No swipe on the review queue (it would skip the checked tick); view transitions stay off.
 
+- **Hairline figures, navigation spinner, offline vs site-down — done 2026-10-07.** Figures:
+  `scripts/design/build_figures.py` → `web/public/figures/`, swapped in by `public/delight.js`
+  on capable devices only (`data-figure` on illustrations). `NavProgress` in the root layout. The
+  service worker shows `/offline` or `/offline/server`; bump `CACHE` in `public/sw.js` when either
+  changes. Phase 8 done except the Hausa review (on hold).
+
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
 2. ~~Registration copy promised an SMS code that is never sent.~~ Done 2026-09-11,

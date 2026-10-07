@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import Script from "next/script";
+import { Suspense } from "react";
+import { NavProgress } from "@/components/ui/NavProgress";
 import { ServiceWorker } from "@/components/ui/ServiceWorker";
 import { fontVariables } from "./fonts";
 import "./globals.css";
@@ -28,6 +31,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
   const t = await getTranslations("nav");
+  const tu = await getTranslations("ui");
   return (
     <html lang={locale === "en" ? "en-NG" : locale} className={fontVariables}>
       <body>
@@ -36,6 +40,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main id="main">{children}</main>
         <SiteFooter />
         <ServiceWorker />
+        <Suspense fallback={null}>
+          <NavProgress label={tu("loading")} />
+        </Suspense>
+        {/* Layer 2: hairline figures on capable devices, when the browser is idle. */}
+        <Script src="/delight.js" strategy="lazyOnload" />
       </body>
     </html>
   );

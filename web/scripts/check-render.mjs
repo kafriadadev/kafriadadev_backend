@@ -223,13 +223,14 @@ try {
   // launch budget is 150 KB first load with at most 50 KB of JavaScript; the
   // public profile a scanned card opens is held to 60 KB and none. All five ship
   // no framework: registration may load one script, /enhance.js (phone grouping
-  // and the busy button), and nothing else may. Counted as transferred
+  // and the busy button), the landing page /delight.js (hairline figures, which do
+  // nothing on a phone), and nothing else may. Counted as transferred
   // (compressed) bytes, fresh cache, JavaScript ON, so a script that would load
   // is caught rather than skipped.
   {
     const BUDGET = [
       ["PUB-01", `/a/${KUID}${SIG ? `?s=${SIG}` : ""}`, [], 60],
-      ["PUB-02", "/", [], 150],
+      ["PUB-02", "/", ["/delight.js"], 150],
       ["PUB-03", "/find", [], 150],
       ["AUT-04", "/sign-in", [], 150],
       ["AUT-01", "/register", ["/enhance.js"], 150],
