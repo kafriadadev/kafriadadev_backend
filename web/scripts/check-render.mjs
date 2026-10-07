@@ -192,9 +192,13 @@ function check(label, pass) {
 try {
   // 320px is the narrowest screen the pilot designs for; one pass there is
   // enough to catch what only breaks when space runs out.
-  // 768 and 1280 cover the tablet and desktop layouts: the inline header, the
+  // 414 is a large phone; 768, 1024, 1280 and 1440 cover the tablet and desktop
+  // layouts at each breakpoint and either side of them: the inline header, the
   // administrator sidebar, tables shown as tables rather than stacked cards.
-  const RUNS = [["light", PHONE.width], ["dark", PHONE.width], ["dark", 320], ["light", 768], ["dark", 1280]];
+  const RUNS = [
+    ["light", PHONE.width], ["dark", PHONE.width], ["dark", 320], ["light", 414],
+    ["light", 768], ["dark", 1024], ["dark", 1280], ["light", 1440],
+  ];
   for (const [scheme, width] of RUNS) {
     const mobile = width < 700;
     const ctx = await browser.newContext({
@@ -441,7 +445,7 @@ try {
   //   EXTRA_SESSIONS='[{"token":"...","paths":["/verify"]}]'
   if (process.env.EXTRA_SESSIONS) {
     console.log("\n=== SCREENS THAT DEPEND ON STATE ===");
-    for (const [scheme, width] of [["light", PHONE.width], ["dark", 320], ["light", 768], ["dark", 1280]]) {
+    for (const [scheme, width] of [["light", PHONE.width], ["dark", 320], ["light", 414], ["light", 768], ["dark", 1024], ["dark", 1280], ["light", 1440]]) {
       console.log(`  -- ${scheme} · ${width}px`);
       for (const { token, paths } of JSON.parse(process.env.EXTRA_SESSIONS)) {
         const mobile = width < 700;

@@ -19,14 +19,20 @@ export const config = { runtime: "nodejs", unstable_runtimeJS: false };
 
 type Props = { open: Lga[] };
 
+// Which LGAs are open changes as waves roll out; five minutes is fresh enough,
+// and it spares the busiest page a call to the API on every visit.
+const FRESH_MS = 5 * 60 * 1000;
+let cached: { open: Lga[]; at: number } | null = null;
+
 export const getServerSideProps: GetServerSideProps<Props> = async ({ res }) => {
-  let open: Lga[] = [];
-  try {
-    open = (await listLgas()).filter((l) => l.is_open);
-  } catch {
-    // The page works without the list; it is a nicety.
+  if (!cached || Date.now() - cached.at >= FRESH_MS) {
+    try {
+      cached = { open: (await listLgas()).filter((l) => l.is_open), at: Date.now() };
+    } catch {
+      // The page works without the list (or with the last one); it is a nicety.
+    }
   }
-  // Which LGAs are open changes as waves roll out; five minutes is fresh enough.
+  const open = cached?.open ?? [];
   res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
   return { props: { open } };
 };
@@ -40,7 +46,8 @@ export default function Home({ open }: Props) {
     <PublicDocument>
       {/* Kick-off: the centre circle chalks itself in, the card lifts and settles. */}
       <section className="relative overflow-hidden border-b border-line bg-surface">
-        <CentreCircle draw className="pointer-events-none absolute -right-24 top-1/2 h-[140%] w-auto -translate-y-1/2 opacity-40 md:right-[8%]" />
+        {/* A fixed size anchored to the top: sized from the section, it moved when the fonts arrived. */}
+        <CentreCircle draw className="pointer-events-none absolute -right-24 -top-20 size-[40rem] opacity-40 md:right-[8%]" />
         <div className="relative mx-auto grid max-w-wide items-center gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.2fr_1fr] md:py-20">
           <div>
             <p className="inline-flex items-center gap-2 rounded-pill bg-bg px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-link">

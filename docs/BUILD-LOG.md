@@ -30,6 +30,47 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-07 — Phase 8 gate: error states, wider widths, Lighthouse
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **Every error state in the style guide.** `/styleguide/components#states` now shows the
+  generic server error (PUB-05, with its reference) and the generic 404 beside the existing
+  states, and the unreachable and offline panels use the real strings from `messages/en.json`
+  rather than sample text.
+- **`check:render` at eight widths:** 320, 360, 414, 768, 1024, 1280 and 1440 (360 in both
+  themes), for the public pages and for every screen named in `EXTRA_SESSIONS`.
+- **Landing page:** the decorative centre circle was sized from the hero's height and moved
+  when the fonts arrived (Lighthouse CLS 0.082); it is now a fixed size anchored to the top
+  (CLS 0). The open-LGA list is kept in memory for five minutes, matching the page's cache
+  header, so a visit no longer waits on the API (server response 61 ms).
+- **The inline logo is half the size.** It is drawn on every page three times (top bar,
+  menu, footer) and was 4.8 KB of each page's compressed HTML; PUB-01 had drifted to its
+  60 KB limit and started failing. `scripts/design/compact_path.py` rounds the traced paths
+  to whole units and writes them relative; `build_logo.py` uses it for `Logo.tsx` (the SVG
+  files keep full precision). At 1472 px wide, about 15 times the size it is ever shown,
+  0.04% of the inked pixels differ noticeably, all on anti-aliased edges. PUB-01's HTML: 8.5 → 5.9 KB.
+
+**Verified:** `check:render` with the style guide, a signed-in athlete, the test coordinator's
+six screens and the administrator's eight: 239 checks, all passed. After the logo change:
+budgets PUB-01 57.5 KB, landing 58.5, find 56.8, sign-in 54.0, register 64.4; `check:a11y` no
+violations; two further `check:render` runs stopped on the Supabase link (a suspended network,
+then a dark-mode `/details` served as `/unavailable` before sign-out), every check that ran
+passing (139). Lighthouse 12 (mobile, Edge):
+landing, find, sign-in and PUB-01 score 100 in performance, accessibility, best practices and
+SEO; register 93 / 100 / 100 / 100 (LCP 1.5 s, TBT 0, CLS 0). Lighthouse ran through `npx`
+as a one-off audit, not a project dependency.
+
+**Not done / open:**
+- **Hausa review:** needs a Hausa-speaking reviewer for `messages/ha.json`; nothing to build
+  until then.
+- **Motion pass:** cross-document view transitions stay off; they stalled no-JS form round
+  trips in Edge (Phase 1). Hairline figures not drawn.
+- PUB-01's server response is 0.5–1.4 s locally, all of it the API's round trips to the
+  Frankfurt dev database; production serves it from a 60-second edge cache.
+
+---
+
 ## 2026-10-07 — Public pages on the Pages Router (budget option A)
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

@@ -248,15 +248,27 @@ export default async function Components() {
             </PageState>
           </Panel>
           <Panel>
-            <PageState art={<HeldCard colour="red" />} title="We could not reach KAFRIADA NET" reference="UNR9Q2"
-              action={<Button block size="lg">Try again</Button>}>
-              Nothing you entered was lost.
+            <PageState art={<HeldCard colour="red" />} title={t("errors.serverTitle")} reference="7K2Q9X" referenceHelp={t("errors.refHelp")}
+              action={<Button block size="lg">{t("errors.retry")}</Button>} secondary={<a href="/">{t("errors.home")}</a>}>
+              {t("errors.serverText")}
             </PageState>
           </Panel>
           <Panel>
-            <PageState art={<NoSignal />} title="You are offline"
-              action={<Button block size="lg">Try again</Button>}>
-              Your phone has no connection. Your ID is safe.
+            <PageState art={<EmptyNet />} title={t("errors.notFoundTitle")}
+              action={<Button href="/" block size="lg">{t("errors.home")}</Button>}>
+              {t("errors.notFoundText")}
+            </PageState>
+          </Panel>
+          <Panel>
+            <PageState art={<HeldCard colour="red" />} title={t("errors.unreachableTitle")}
+              action={<Button block size="lg">{t("errors.retry")}</Button>}>
+              {t("errors.unreachableText")}
+            </PageState>
+          </Panel>
+          <Panel>
+            <PageState art={<NoSignal />} title={t("errors.offlineTitle")}
+              action={<Button block size="lg">{t("errors.retry")}</Button>}>
+              {t("errors.offlineText")}
             </PageState>
           </Panel>
         </div>

@@ -59,7 +59,7 @@ bash scripts/release.sh smoke http://127.0.0.1:8010
 Probes: `/healthz` (alive) and `/readyz` (can reach the database on each role;
 503 otherwise, and which role failed goes to the log, not the response).
 `check:render` drives the installed Edge (playwright-core, no download): WCAG
-contrast of every text element, overflow, split IDs at 320/360/768/1280px, light and dark,
+contrast of every text element, overflow, split IDs at 320/360/414/768/1024/1280/1440px, light and dark,
 plus JS-off registration and sign-in round trips that write nothing. Run it after
 any UI change. With `SIGNIN_PHONE`/`SIGNIN_PASSWORD` set it also signs in, audits
 `/me` and signs out — register a throwaway athlete for it; never commit its password.
@@ -605,6 +605,10 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   grouping + busy button; **keep it in step with `lib/phone.ts`**). A Pages page reads the
   session cookie name from `lib/session-cookie.ts`, never `next/headers`. Budgets in
   `check:render`: PUB-01 60 KB/no script; the rest 150 KB/50 KB script.
+
+- **Phase 8 gate — met 2026-10-07.** Every error state is in the style guide; `check:render`
+  covers 320–1440px; Lighthouse 100 on landing, find, sign-in, PUB-01 (register 93 perf).
+  Left: a Hausa reviewer for `messages/ha.json`, the motion pass, hairline figures.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
