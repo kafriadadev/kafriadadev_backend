@@ -4,6 +4,7 @@ import { IconCash, IconCreditCard, IconHome, IconPrinter, IconSearch, IconVarScr
 import { getCoordinatorDashboard } from "@/lib/api";
 import { formatNaira } from "@/lib/money";
 import { TabBar } from "./Navigation";
+import { CountUp } from "./CountUp";
 
 export type CoordinatorTab = "today" | "queue" | "find" | "pay" | "cards" | "settlement";
 
@@ -46,7 +47,7 @@ export async function CoordinatorShell({
               <IconCash size={20} aria-hidden="true" />
               {t("cash")}
             </span>
-            <span className="font-display text-2xl font-extrabold italic text-scoreboard-accent scoreboard-digits">{formatNaira(d.collected_kobo)}</span>
+            <span className="font-display text-2xl font-extrabold italic text-scoreboard-accent scoreboard-digits"><CountUp value={d.collected_kobo} format="naira" /></span>
             <span className="w-full text-xs">
               {t("cashOf", { count: d.collected_count, limit: d.limit_count, amount: formatNaira(d.limit_kobo) })}
             </span>

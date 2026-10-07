@@ -19,6 +19,7 @@ import { formatNaira } from "@/lib/money";
 import { positionUnit } from "@/lib/positions";
 import { sessionToken } from "@/lib/session";
 import { removeAction } from "./actions";
+import { CountUp } from "@/components/ui/CountUp";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("club"))("tabs.roster") };
@@ -88,9 +89,9 @@ export default async function ClubPage({ params, searchParams }: { params: Promi
 
       <Scoreboard
         items={[
-          { label: t("stats.players"), value: club.players },
-          { label: t("stats.verified"), value: club.verified_players, accent: true },
-          { label: t("stats.invites"), value: club.invites_out },
+          { label: t("stats.players"), value: <CountUp value={club.players} /> },
+          { label: t("stats.verified"), value: <CountUp value={club.verified_players} />, accent: true },
+          { label: t("stats.invites"), value: <CountUp value={club.invites_out} /> },
         ]}
       />
 

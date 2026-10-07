@@ -164,9 +164,9 @@ export function Checkbox({
 }
 
 /** Groups fields under a heading: "You", "Your game", "Your account". */
-export function Fieldset({ legend, children, className }: { legend: React.ReactNode; children: React.ReactNode; className?: string }) {
+export function Fieldset({ legend, children, className, id }: { legend: React.ReactNode; children: React.ReactNode; className?: string; id?: string }) {
   return (
-    <fieldset className={cn("space-y-5 border-0 p-0", className)}>
+    <fieldset id={id} className={cn("space-y-5 border-0 p-0", className)}>
       <legend className="mb-4 font-display text-xl font-extrabold uppercase italic">{legend}</legend>
       {children}
     </fieldset>

@@ -177,6 +177,9 @@ body:has([data-signed-in]) [data-public-only] { display: none !important; }
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: none; }
 }
+@keyframes kaf-fade {
+  from { opacity: 0; }
+}
 @keyframes kaf-shake {
   0%, 100% { transform: none; }
   20%, 60% { transform: translateX(-4px); }
@@ -220,6 +223,53 @@ body:has([data-signed-in]) [data-public-only] { display: none !important; }
   100% { opacity: 1; transform: rotate(-14deg) scale(1); }
 }
 
+/* The net (any success): the ball flies in from the right, the net gives. */
+@keyframes kaf-shot {
+  0% { transform: translate(9px, -7px) scale(.6); opacity: 0; }
+  60% { transform: translate(-1px, 0); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes kaf-ripple {
+  0%, 45% { transform: none; }
+  70% { transform: scaleX(.86) translateX(-1px); }
+  100% { transform: none; }
+}
+.net-shot {
+  transform-box: view-box;
+  animation: kaf-shot var(--dur-show) var(--ease-kick) both;
+}
+.net-ripple {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: kaf-ripple var(--dur-show) var(--ease-bounce) both;
+}
+
+/*
+ * The run (registration): how far the ball has travelled is the number of
+ * parts complete from the start, read from the form's own validity.
+ */
+form:has(.run-rail) { --run: 0; }
+form:has(.run-rail):has(#part-0:valid) { --run: 1; }
+form:has(.run-rail):has(#part-0:valid):has(#part-1:valid) { --run: 2; }
+form:has(.run-rail):has(#part-0:valid):has(#part-1:valid):has(#part-2:valid) { --run: 3; }
+.run-ball {
+  left: calc(0.75rem + min(var(--run, 0), 2) * (100% - 1.5rem) / 2);
+  transition: left var(--dur-move) var(--ease-kick);
+}
+.run-dot[data-part="0"] { left: 0.75rem; }
+.run-dot[data-part="1"] { left: 50%; }
+.run-dot[data-part="2"] { left: calc(100% - 0.75rem); }
+.run-fill {
+  width: calc(min(var(--run, 0), 2) * (100% - 1.5rem) / 2);
+  transition: width var(--dur-move) var(--ease-kick);
+}
+form:has(#part-0:valid) .run-dot[data-part="0"],
+form:has(#part-1:valid) .run-dot[data-part="1"],
+form:has(#part-2:valid) .run-dot[data-part="2"] {
+  background: var(--pitch);
+  border-color: var(--pitch);
+}
+
 @utility spin-ring {
   transform-box: fill-box;
   transform-origin: center;
@@ -231,6 +281,9 @@ body:has([data-signed-in]) [data-public-only] { display: none !important; }
 
 @utility motion-rise {
   animation: kaf-rise var(--dur-move) var(--ease-kick) both;
+}
+@utility motion-fade {
+  animation: kaf-fade var(--dur-quick) var(--ease-glide) both;
 }
 @utility motion-shake {
   animation: kaf-shake var(--dur-move) var(--ease-kick) 1;

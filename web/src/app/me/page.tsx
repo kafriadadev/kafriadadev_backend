@@ -20,6 +20,7 @@ import {
 import { formatNaira } from "@/lib/money";
 import { sessionToken } from "@/lib/session";
 import { signOutAction } from "./actions";
+import { Tilt } from "@/components/ui/Tilt";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("me"))("title") };
@@ -82,6 +83,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<R
 
       {profile && k ? (
         <div className="mb-6 grid items-start gap-6 sm:grid-cols-[minmax(0,18rem)_1fr]">
+          <Tilt>
           <PlayerCard
             data={{
               kuid: profile.kuid, fullName: profile.full_name, position: profile.playing_position, lgaName: profile.lga_name,
@@ -90,6 +92,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<R
             }}
             labels={{ idLabel: tu("idLabel"), verified: tu("verified"), photoAlt: tu("photoAlt", { name: profile.full_name }), noPhoto: tu("noPhoto") }}
           />
+          </Tilt>
           <div className="space-y-3">
             {state ? (
               <Notice

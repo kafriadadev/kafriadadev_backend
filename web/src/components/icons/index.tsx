@@ -115,6 +115,21 @@ export function IconRedCard(p: IconProps) {
   );
 }
 
+/**
+ * Done: a goal. The ball flies into the net and the net ripples (the "net"
+ * moment, CSS only, under 600 ms; a still goal under reduced motion).
+ */
+export function IconGoal(p: IconProps) {
+  return (
+    <Base {...p}>
+      <path d="M3 20V6h14v14" />
+      <path className="net-ripple" d="M7 6v14M11 6v14M3 10h14M3 14h14" strokeWidth={1} opacity={0.6} />
+      <circle className="net-shot" cx="17.5" cy="15.5" r="3.5" fill="var(--chalk)" />
+      <path className="net-shot" d="M17.5 13.6l1.6 1.2-.6 1.9h-2l-.6-1.9z" fill="currentColor" strokeWidth={0.8} />
+    </Base>
+  );
+}
+
 /** Being checked: the referee's drawn rectangle. */
 export function IconVarScreen(p: IconProps) {
   return (

@@ -610,6 +610,10 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   covers 320–1440px; Lighthouse 100 on landing, find, sign-in, PUB-01 (register 93 perf).
   Left: a Hausa reviewer for `messages/ha.json`, the motion pass, hairline figures.
 
+- **Phase 8 motion pass — done 2026-10-07.** The net (`IconGoal` on done notices), the run
+  (`RunRail`, CSS `:has(:valid)`, zero JS), `CountUp` on dashboards, `Tilt` on the card.
+  No swipe on the review queue (it would skip the checked tick); view transitions stay off.
+
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
 2. ~~Registration copy promised an SMS code that is never sent.~~ Done 2026-09-11,

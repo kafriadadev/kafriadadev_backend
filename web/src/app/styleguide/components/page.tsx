@@ -25,6 +25,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Stepper } from "@/components/ui/Stepper";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { styleguideEnabled } from "@/lib/styleguide";
+import { CountUp } from "@/components/ui/CountUp";
 
 export const metadata: Metadata = { title: "Components", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -177,11 +178,12 @@ export default async function Components() {
         <Scoreboard
           className="mt-4"
           items={[
-            { label: "In the queue", value: "17" },
-            { label: "Cash today", value: "₦12,500", accent: true },
-            { label: "Approved", value: "42" },
+            { label: "In the queue", value: <CountUp value={17} /> },
+            { label: "Cash today", value: <CountUp value={1250000} format="naira" />, accent: true },
+            { label: "Approved", value: <CountUp value={42} /> },
           ]}
         />
+        <Note>Numbers count up from zero on arrival, with JavaScript and without reduced motion; the server sends the final figure.</Note>
       </Block>
 
       <Block id="pills" title="Pill and badge">

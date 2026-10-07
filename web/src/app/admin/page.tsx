@@ -7,8 +7,8 @@ import { PageHead } from "@/components/PageHead";
 import { Flash } from "@/components/Flash";
 import { Stat } from "@/components/Stat";
 import { type AdminOverview, ApiError, getAdminOverview } from "@/lib/api";
-import { formatNaira } from "@/lib/money";
 import { sessionToken } from "@/lib/session";
+import { CountUp } from "@/components/ui/CountUp";
 
 export const metadata: Metadata = { title: "Administrator" };
 export const dynamic = "force-dynamic";
@@ -76,9 +76,9 @@ export default async function AdminHome() {
       <section aria-labelledby="money-h">
         <h2 id="money-h">Money, last 24 hours</h2>
         <div>
-          <Stat label="Collected" value={formatNaira(o.collected_kobo)} tone="good" />
-          <Stat label="Payments" value={o.payments} />
-          <Stat label="Unresolved" value={o.unresolved} tone={o.unresolved > 0 ? "warn" : undefined} />
+          <Stat label="Collected" value={<CountUp value={o.collected_kobo} format="naira" />} tone="good" />
+          <Stat label="Payments" value={<CountUp value={o.payments} />} />
+          <Stat label="Unresolved" value={<CountUp value={o.unresolved} />} tone={o.unresolved > 0 ? "warn" : undefined} />
           <Stat
             label="Ledger check"
             value={o.ledger_ok === null ? "Not run" : o.ledger_ok ? "Pass" : "Fail"}
@@ -91,17 +91,17 @@ export default async function AdminHome() {
       <section aria-labelledby="funnel-h">
         <h2 id="funnel-h">Funnel</h2>
         <div>
-          <Stat label="Registered" value={o.registered} href="/admin/users" />
-          <Stat label="Paid for verification" value={o.paid} />
+          <Stat label="Registered" value={<CountUp value={o.registered} />} href="/admin/users" />
+          <Stat label="Paid for verification" value={<CountUp value={o.paid} />} />
           <Stat label="Conversion" value={`${o.conversion_percent}%`} />
-          <Stat label="Clubs" value={o.clubs} sub={`${o.verified_clubs} verified`} href="/admin/clubs" />
+          <Stat label="Clubs" value={<CountUp value={o.clubs} />} sub={`${o.verified_clubs} verified`} href="/admin/clubs" />
           <Stat
             label="Review median, 30 days"
             value={o.review_median_hours === null ? "None yet" : `${o.review_median_hours}h`}
             sub={`Target ${REVIEW_TARGET_HOURS}h`}
             tone={o.review_median_hours !== null && o.review_median_hours > REVIEW_TARGET_HOURS ? "warn" : undefined}
           />
-          <Stat label="LGAs open" value={o.live_lgas} />
+          <Stat label="LGAs open" value={<CountUp value={o.live_lgas} />} />
         </div>
       </section>
 

@@ -30,6 +30,45 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-07 — Phase 8 motion pass
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **The net** (any success): the done notice's icon is now a goal (`IconGoal`). The ball
+  flies in and the net gives, CSS only, 560 ms; a still goal under reduced motion.
+- **The run** (AUT-01): `components/ui/RunRail.tsx`, a touchline pinned under the header
+  of the registration form. The ball moves to the next part as each one becomes complete,
+  and a finished part's marker turns green. It is driven entirely by `form:has(#part-N:valid)`
+  in `globals.css`, so it works on the zero-JavaScript register page. Hidden from screen
+  readers; it repeats the fieldset headings.
+- **Count-ups:** `components/ui/CountUp.tsx` counts a figure up from zero (560 ms) on the
+  coordinator dashboard, the pinned cash total, the settlement totals, the club dashboard
+  and the administrator overview. The server sends the final figure, so nothing changes
+  without JavaScript or under reduced motion.
+- **Card tilt:** `components/ui/Tilt.tsx` leans the player card a few degrees towards a finger
+  or pointer on `/me` and `/card/[kuid]`.
+- The menu sheet's backdrop fades in (`motion-fade`).
+- Neither piece of JavaScript uses a library: each is a few lines, so motion.dev from the plan's
+  stack table was not needed.
+
+**Why not the rest:**
+- **No swipe on the review queue.** Approving needs the "I checked the photo against the
+  document" tick; a swipe would skip it.
+- **Cross-document view transitions stay off.** They stalled no-JS form round trips in Edge
+  (Phase 1), and the forms are the product.
+
+**Verified:** a JS-off browser run on `/register` at 360 px: `--run` goes 0, 1, 2, 3 as the parts
+are completed, the ball moves 16 → 168 → 320 px, the last marker turns pitch green, and the
+page is 360 px wide (no sideways scroll). `check:render` with the style guide, a signed-in athlete,
+the coordinator dashboard and settlement, and the administrator overview and rollout: 169 checks,
+all passed, at every width. Budgets: PUB-01 57.9 KB, landing 58.9, find 57.2, sign-in 54.4,
+register 65.0 (1.6 KB script). `check:a11y`: no violations.
+
+**Not done / open:** the hairline figures (layer 2) are the remaining Phase 8 item, with the
+Hausa review.
+
+---
+
 ## 2026-10-07 — Phase 8 gate: error states, wider widths, Lighthouse
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

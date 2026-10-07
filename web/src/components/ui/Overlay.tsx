@@ -48,7 +48,7 @@ export function Sheet({
           {closeLabel}
         </span>
       </summary>
-      <div className="fixed inset-0 z-40 bg-[color-mix(in_srgb,var(--boot)_45%,transparent)]" aria-hidden="true" />
+      <div className="fixed inset-0 z-40 bg-[color-mix(in_srgb,var(--boot)_45%,transparent)] motion-fade" aria-hidden="true" />
       <div
         role="dialog"
         aria-label={title}

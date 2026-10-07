@@ -14,6 +14,7 @@ import { Scoreboard } from "@/components/ui/Scoreboard";
 import { ApiError, getCoordinatorDashboard, getMe, listLgas, type CoordinatorDashboard, type Me } from "@/lib/api";
 import { formatNaira } from "@/lib/money";
 import { sessionToken } from "@/lib/session";
+import { CountUp } from "@/components/ui/CountUp";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("coord"))("title") };
@@ -94,10 +95,10 @@ export default async function CoordinatorPage({ searchParams }: { searchParams: 
 
       <Scoreboard
         items={[
-          { label: t("stats.registered"), value: d.registered },
-          { label: t("stats.paid"), value: d.paid },
-          { label: t("stats.review"), value: d.to_review, accent: d.to_review > 0 },
-          { label: t("stats.clubs"), value: d.clubs },
+          { label: t("stats.registered"), value: <CountUp value={d.registered} /> },
+          { label: t("stats.paid"), value: <CountUp value={d.paid} /> },
+          { label: t("stats.review"), value: <CountUp value={d.to_review} />, accent: d.to_review > 0 },
+          { label: t("stats.clubs"), value: <CountUp value={d.clubs} /> },
         ]}
       />
 

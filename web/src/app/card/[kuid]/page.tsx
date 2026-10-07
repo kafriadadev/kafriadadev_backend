@@ -8,6 +8,7 @@ import { Page, PageHead } from "@/components/ui/Page";
 import { PlayerCard, PrintCard } from "@/components/ui/PlayerCard";
 import { KuidStrip } from "@/components/ui/Scoreboard";
 import { getProfile, type PublicProfile } from "@/lib/api";
+import { Tilt } from "@/components/ui/Tilt";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("cardPage"))("title"), robots: { index: false } };
@@ -53,7 +54,7 @@ export default async function CardPage({ params }: { params: Promise<{ kuid: str
       {/* On screen: the player card and its code. On paper: the ID-1 card. */}
       <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:justify-center print:hidden">
         <div className="w-full max-w-xs">
-          <PlayerCard size="lg" data={card} labels={labels} />
+          <Tilt><PlayerCard size="lg" data={card} labels={labels} /></Tilt>
         </div>
         <figure className="flex flex-col items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}

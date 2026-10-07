@@ -16,6 +16,7 @@ import { Scoreboard } from "@/components/ui/Scoreboard";
 import { ApiError, getMe, getSettlement, type Settlement, type SettlementLine } from "@/lib/api";
 import { formatNaira } from "@/lib/money";
 import { sessionToken } from "@/lib/session";
+import { CountUp } from "@/components/ui/CountUp";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("settle"))("title") };
@@ -112,9 +113,9 @@ export default async function SettlementPage({ searchParams }: { searchParams: P
           <h2 id="totals" className="sr-only">{t("title")}</h2>
           <Scoreboard
             items={[
-              { label: t("collected"), value: formatNaira(report.collected_kobo) },
-              { label: t("confirmed"), value: formatNaira(report.confirmed_kobo) },
-              { label: t("difference"), value: formatNaira(report.difference_kobo), accent: report.difference_kobo !== 0 },
+              { label: t("collected"), value: <CountUp value={report.collected_kobo} format="naira" /> },
+              { label: t("confirmed"), value: <CountUp value={report.confirmed_kobo} format="naira" /> },
+              { label: t("difference"), value: <CountUp value={report.difference_kobo} format="naira" />, accent: report.difference_kobo !== 0 },
             ]}
           />
           {report.difference_kobo === 0 ? (

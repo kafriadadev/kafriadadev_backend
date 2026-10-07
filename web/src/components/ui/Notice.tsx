@@ -1,4 +1,4 @@
-import { IconCheck, IconFlag, IconRedCard, IconVarScreen, IconWhistle, IconYellowCard } from "@/components/icons";
+import { IconFlag, IconGoal, IconRedCard, IconVarScreen, IconWhistle, IconYellowCard } from "@/components/icons";
 import { cn } from "@/lib/cn";
 import { RefChip } from "./RefChip";
 
@@ -21,7 +21,7 @@ const STYLE: Record<Signal, { box: string; icon: React.ReactNode }> = {
   red: { box: "bg-danger-bg text-text border-danger", icon: <IconRedCard className="motion-flick" aria-hidden="true" /> },
   var: { box: "bg-check-bg text-text border-check", icon: <IconVarScreen className="text-check" aria-hidden="true" /> },
   flag: { box: "bg-surface text-text border-text", icon: <IconFlag aria-hidden="true" /> },
-  done: { box: "bg-check-bg text-text border-check", icon: <IconCheck className="text-check" aria-hidden="true" /> },
+  done: { box: "bg-check-bg text-text border-check", icon: <IconGoal className="text-check" aria-hidden="true" /> },
 };
 
 /**

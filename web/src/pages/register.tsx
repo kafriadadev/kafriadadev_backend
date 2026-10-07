@@ -7,6 +7,7 @@ import { Checkbox, ErrorSummary, Field, Fieldset, Input, PhoneInput, Select } fr
 import { Notice } from "@/components/ui/Notice";
 import { Page, PageHead } from "@/components/ui/Page";
 import { PositionPicker } from "@/components/ui/PositionPicker";
+import { RunRail } from "@/components/ui/RunRail";
 import { Stepper } from "@/components/ui/Stepper";
 import { isUnreachable, listLgas, type Lga } from "@/lib/api";
 import {
@@ -74,8 +75,13 @@ export default function RegisterPage({ params, lgas, loadFailed }: Props) {
 
       <form method="post" action="/forms/register" noValidate className="space-y-12">
         <input type="hidden" name="sport" value={PILOT_SPORT} />
+        <RunRail parts={[
+          { id: "part-0", label: t("register.you") },
+          { id: "part-1", label: t("register.game") },
+          { id: "part-2", label: t("register.account") },
+        ]} />
 
-        <Fieldset legend={`1. ${t("register.you")}`}>
+        <Fieldset id="part-0" legend={`1. ${t("register.you")}`}>
           <div className="grid gap-5 sm:grid-cols-2">
             <Field name="first_name" label={t("register.firstName")} hint={t("register.firstNameHint")} error={err("first_name")} icon={<IconUser size={18} />}>
               {(a) => <Input {...a} required autoComplete="given-name" defaultValue={v("first_name")} />}
@@ -168,7 +174,7 @@ export default function RegisterPage({ params, lgas, loadFailed }: Props) {
           </div>
         </Fieldset>
 
-        <Fieldset legend={`2. ${t("register.game")}`}>
+        <Fieldset id="part-1" legend={`2. ${t("register.game")}`}>
           <PositionPicker legend={t("register.position")} value={v("playing_position")} error={err("playing_position")} labels={positionLabels} />
           <div className="grid gap-5 sm:grid-cols-2">
             <Field name="secondary_position" label={t("register.secondPosition")} optional optionalLabel={optional} error={err("secondary_position")}>
@@ -207,7 +213,7 @@ export default function RegisterPage({ params, lgas, loadFailed }: Props) {
           </div>
         </Fieldset>
 
-        <Fieldset legend={`3. ${t("register.account")}`}>
+        <Fieldset id="part-2" legend={`3. ${t("register.account")}`}>
           <Field name="password" label={t("register.password")} hint={t("register.passwordHint")} error={err("password")} icon={<IconLock size={18} />}>
             {(a) => <Input {...a} type="password" required minLength={10} autoComplete="new-password" />}
           </Field>
