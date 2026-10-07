@@ -1,17 +1,13 @@
 import type { GetServerSideProps } from "next";
-import Head from "next/head";
-import { createTranslator } from "next-intl";
 
-import { IconArrowRight, IconInfoCircle, IconSearch, IconShieldCheck, IconShirtSport, IconUser } from "@/components/icons";
+import { PublicDocument, translator } from "@/components/PublicDocument";
+import { IconArrowRight, IconInfoCircle, IconSearch, IconShieldCheck } from "@/components/icons";
 import { EmptyNet } from "@/components/illustrations";
 import { Button } from "@/components/ui/Button";
 import { WithKuids } from "@/components/ui/Kuid";
-import { Footer, TopBar } from "@/components/ui/Navigation";
 import { PageState } from "@/components/ui/PageState";
 import { PlayerCard } from "@/components/ui/PlayerCard";
-import { DEFAULT_LOCALE } from "@/i18n/request";
 import { getProfile, isUnreachable, type PublicProfile } from "@/lib/api";
-import messages from "../../../messages/en.json";
 
 /**
  * The public profile (PUB-01): where a scanned QR lands. The only screen a
@@ -55,51 +51,19 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ params, qu
 };
 
 export default function ProfilePage({ profile, origin }: Props) {
-  const t = createTranslator({ locale: DEFAULT_LOCALE, messages });
-  const nav = {
-    homeLabel: t("brand.home"),
-    links: [
-      { href: "/find", label: t("nav.findId"), icon: <IconSearch size={20} aria-hidden="true" /> },
-      { href: "/clubs/register", label: t("nav.registerClub"), icon: <IconShirtSport size={20} aria-hidden="true" /> },
-      { href: "/me", label: t("nav.myAccount"), icon: <IconUser size={20} aria-hidden="true" /> },
-    ],
-    action: { href: "/register", label: t("nav.registerFree") },
-    menu: { label: t("nav.menu"), title: t("nav.menuTitle"), close: t("nav.close") },
-  };
-  const footer = (
-    <Footer
-      tagline={t("brand.tagline")}
-      label={t("nav.footer")}
-      links={[
-        { href: "/find", label: t("nav.findId") },
-        { href: "/register", label: t("nav.registerAthlete") },
-        { href: "/clubs/register", label: t("nav.registerClub") },
-        { href: "/privacy", label: t("nav.privacy") },
-      ]}
-    />
-  );
-
+  const t = translator();
   if (!profile) {
     return (
-      <>
-        <Head>
-          <title>{`${t("profile.notFoundTitle")} · KAFRIADA NET`}</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <meta name="robots" content="noindex" />
-        </Head>
-        <TopBar {...nav} />
-        <main id="main">
-          <PageState
+      <PublicDocument title={t("profile.notFoundTitle")} noindex>
+        <PageState
             art={<EmptyNet />}
             title={t("profile.notFoundTitle")}
             action={<Button href="/find" size="lg" block icon={<IconSearch size={20} aria-hidden="true" />}>{t("profile.notFoundAction")}</Button>}
             secondary={<a href="/">{t("profile.home")}</a>}
           >
             <WithKuids text={t("profile.notFoundText")} />
-          </PageState>
-        </main>
-        {footer}
-      </>
+        </PageState>
+      </PublicDocument>
     );
   }
 
@@ -111,11 +75,11 @@ export default function ProfilePage({ profile, origin }: Props) {
   const identity = p.is_verified ? t("profile.checked") : p.verification_withdrawn ? t("profile.withdrawn") : t("profile.notChecked");
 
   return (
-    <>
-      <Head>
-        <title>{`${title} · KAFRIADA NET`}</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="description" content={description} />
+    <PublicDocument
+      title={title}
+      description={description}
+      mainClassName="mx-auto w-full max-w-measure px-4 pb-16 pt-6 sm:px-6"
+      head={<>
         {/* The WhatsApp preview: the player card, drawn on the server. */}
         <meta property="og:type" content="profile" />
         <meta property="og:site_name" content="KAFRIADA NET" />
@@ -126,9 +90,8 @@ export default function ProfilePage({ profile, origin }: Props) {
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta name="twitter:card" content="summary_large_image" />
-      </Head>
-      <TopBar {...nav} />
-      <main id="main" className="mx-auto w-full max-w-measure px-4 pb-16 pt-6 sm:px-6">
+      </>}
+    >
         <div className="mx-auto max-w-sm">
           <PlayerCard
             size="lg"
@@ -186,8 +149,6 @@ export default function ProfilePage({ profile, origin }: Props) {
             <Button href="/register" size="lg" block iconAfter={<IconArrowRight size={20} aria-hidden="true" />}>{t("profile.cta")}</Button>
           </div>
         </section>
-      </main>
-      {footer}
-    </>
+    </PublicDocument>
   );
 }

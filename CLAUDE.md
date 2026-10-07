@@ -565,7 +565,7 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `:root`. Share image at `/og/[kuid]`. Fonts are local subsets (`scripts/design/subset_fonts.py`).
   Full no-JS registration: `CODE_CMD="api/.venv/Scripts/python.exe scripts/outbox_code.py"
   node web/scripts/e2e-register.mjs` (writes a throwaway athlete; dispatcher stopped).
-  **Open decision:** App Router pages carry ~100 KB of runtime JS, over the plan's 50 KB.
+  **Budget decided 2026-10-07 (option A):** see the Pages Router line below.
 - **Frontend redesign, Phase 4 — done and verified 2026-10-06** (Paystack gate passed). ATH-01–05 and
   VER-01–05 on `AthleteShell` (tab bar). Backend card PNG/PDF redrawn in the new design
   (`contexts/identity/card.py`, fonts and logo in `api/src/kafriada/assets/`). Paystack's
@@ -596,6 +596,15 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `/v1/admin/data-requests/…`. Erasure is anonymisation; an erased person's public profile is a 404.
   The local test database is large enough that `TestMediaFindings` and `test_notifications.py` fail
   on sampling and outbox backlog; recreate it before trusting those two.
+
+- **Public pages on the Pages Router, zero framework JS — done 2026-10-07.** `/`, `/find`,
+  `/sign-in`, `/register` (and PUB-01) are `web/src/pages/*` with `unstable_runtimeJS: false`,
+  framed by `components/PublicDocument.tsx`. Their forms post to `app/forms/[form]/route.ts`,
+  which runs the same server actions and turns their redirect into a 303; it applies Next's
+  cross-site check (`lib/same-origin.ts`). Register loads only `public/enhance.js` (phone
+  grouping + busy button; **keep it in step with `lib/phone.ts`**). A Pages page reads the
+  session cookie name from `lib/session-cookie.ts`, never `next/headers`. Budgets in
+  `check:render`: PUB-01 60 KB/no script; the rest 150 KB/50 KB script.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.

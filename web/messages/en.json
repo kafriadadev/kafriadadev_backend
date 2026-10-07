@@ -250,7 +250,6 @@
     "email": "Email",
     "emailHint": "Your account has no email yet. We will send a code to confirm it.",
     "submit": "Sign in",
-    "pending": "Signing you in…",
     "forgot": "Forgot your password?",
     "noAccount": "No account yet?",
     "register": "Register free",

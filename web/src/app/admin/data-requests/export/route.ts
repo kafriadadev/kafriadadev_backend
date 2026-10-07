@@ -1,4 +1,5 @@
 import { ApiError, exportPersonData } from "@/lib/api";
+import { crossSite } from "@/lib/same-origin";
 import { clientMeta, sessionToken } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -6,13 +7,10 @@ export const dynamic = "force-dynamic";
 /**
  * ADM-07 export, as a plain form POST that answers with a file. A route handler
  * rather than a server action because an action cannot return a download. It
- * gets no automatic cross-site check, so it refuses any POST from another origin.
+ * gets no automatic cross-site check, so it makes the one Next makes for actions.
  */
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin || new URL(origin).host !== (request.headers.get("x-forwarded-host") ?? request.headers.get("host"))) {
-    return new Response("Refused.", { status: 403 });
-  }
+  if (crossSite(request)) return new Response("Refused.", { status: 403 });
   const token = await sessionToken();
   if (!token) return Response.redirect(new URL("/sign-in", request.url), 303);
 

@@ -11,7 +11,8 @@ import type { ClientMeta } from "./api";
  * site cannot post a form with it attached. Whether it is still good is decided
  * by the API on every request, which is what makes signing out instant.
  */
-export const SESSION_COOKIE = "kaf_session";
+export { SESSION_COOKIE } from "./session-cookie";
+import { SESSION_COOKIE } from "./session-cookie";
 
 export async function sessionToken(): Promise<string | undefined> {
   return (await cookies()).get(SESSION_COOKIE)?.value;

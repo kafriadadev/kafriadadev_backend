@@ -4,8 +4,10 @@ import "@/app/globals.css";
 
 /**
  * The Pages Router exists for one reason: a page here can ship zero
- * JavaScript (`unstable_runtimeJS: false`), which the App Router cannot. Only
- * PUB-01, the public profile, lives here. Same tokens, same components.
+ * JavaScript (`unstable_runtimeJS: false`), which the App Router cannot. The
+ * public pages a stranger lands on live here: the landing page, the public
+ * profile, find, sign in and register. Their forms post to /forms/{name}, which
+ * runs the same server actions. Same tokens, same components.
  */
 export default function App({ Component, pageProps }: AppProps) {
   return (

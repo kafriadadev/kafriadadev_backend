@@ -30,6 +30,35 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-07 — Public pages on the Pages Router (budget option A)
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:** `/`, `/find`, `/sign-in` and `/register` moved from the App Router to
+`web/src/pages/*` with `unstable_runtimeJS: false`, joining PUB-01. `components/PublicDocument.tsx`
+draws the same head, skip link, top bar and footer as the App Router layout, and PUB-01 now uses
+it too. Forms post to `app/forms/[form]/route.ts`, which calls the existing `signInAction` /
+`registerAthlete` unchanged and turns the redirect they throw into a 303; cookies they set travel
+on that response. `/find` became a GET form handled in `getServerSideProps`. `lib/same-origin.ts`
+is Next's server-action cross-site check for route handlers (also used by the ADM-07 export).
+`lib/session-cookie.ts` holds the cookie name so a Pages page never imports `next/headers`.
+Registration loads one script, `public/enhance.js` (1.6 KB): phone grouping as typed (mirrors
+`lib/phone.ts`) and the busy button. `PhoneDigits` carries `data-phone` for it.
+
+**Why:** the App Router runtime alone is ~100 KB of JavaScript against the plan's 50 KB. Option A
+chosen 2026-10-07. A tiny script on register keeps the phone formatting asked for in Phase 3.
+
+**Verified:** `check:render` all passed — budgets: PUB-01 60.0 KB / no script (limit 60), landing
+61.0, find 59.2, sign-in 56.4, register 69.0 KB with 1.6 KB script (limit 150 / 50); JS-off
+registration and sign-in round trips; phone grouping with JavaScript; a signed-in JS-off sign-in
+through the route handler reaching `/me` and signing out, light and dark. `check:a11y`: no
+violations. `e2e-register.mjs` JS off and JS on: all checks pass (KA-NG-JG-BKD-2026-001657,
+001658). A cross-site POST to `/forms/sign-in` is refused (403).
+
+**Not done / open:** PUB-01 is at 60.0 KB, its limit, after gaining the skip link and theme colour;
+the next addition there has to pay for itself. Forgot-password, confirm and done remain App Router.
+
+---
+
 ## 2026-10-07 — ADM-05 LGA rollout, ADM-07 data requests (migration 0016)
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

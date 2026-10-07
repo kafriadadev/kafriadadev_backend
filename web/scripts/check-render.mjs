@@ -214,27 +214,44 @@ try {
     await ctx.close();
   }
 
-  // -- PUB-01 budget: zero JavaScript, under 60 KB first load -----------------
-  // The public profile is what a scanned card opens on one bar of signal.
-  // Counted as transferred (compressed) bytes, fresh cache, JavaScript ON, so a
-  // script that would load is caught rather than skipped.
+  // -- Public page budget ------------------------------------------------------
+  // The pages a stranger lands on, often on one bar of signal. The design plan's
+  // launch budget is 150 KB first load with at most 50 KB of JavaScript; the
+  // public profile a scanned card opens is held to 60 KB and none. All five ship
+  // no framework: registration may load one script, /enhance.js (phone grouping
+  // and the busy button), and nothing else may. Counted as transferred
+  // (compressed) bytes, fresh cache, JavaScript ON, so a script that would load
+  // is caught rather than skipped.
   {
-    const ctx = await browser.newContext({ viewport: PHONE, isMobile: true });
-    const page = await ctx.newPage();
-    console.log("\n=== PUB-01 BUDGET ===");
-    const loaded = [];
-    page.on("requestfinished", async (req) => {
-      const sizes = await req.sizes().catch(() => null);
-      loaded.push({ url: req.url(), type: req.resourceType(), bytes: sizes ? sizes.responseBodySize + sizes.responseHeadersSize : 0 });
-    });
-    await page.goto(BASE + `/a/${KUID}${SIG ? `?s=${SIG}` : ""}`, { waitUntil: "networkidle", timeout: 90_000 });
-    const scripts = await page.locator("script[src]").count();
-    const inline = await page.locator("script:not([type='application/ld+json'])").count();
-    const total = loaded.reduce((n, r) => n + r.bytes, 0);
-    for (const r of loaded) console.log(`          ${String(Math.round(r.bytes / 102.4) / 10).padStart(6)} KB  ${r.type.padEnd(10)} ${r.url.replace(BASE, "")}`);
-    check(`PUB-01 ships no JavaScript (${scripts} external, ${inline} inline scripts)`, scripts === 0 && inline === 0 && !loaded.some((r) => r.type === "script"));
-    check(`PUB-01 first load is under 60 KB (${(total / 1024).toFixed(1)} KB)`, total < 60 * 1024);
-    await ctx.close();
+    const BUDGET = [
+      ["PUB-01", `/a/${KUID}${SIG ? `?s=${SIG}` : ""}`, [], 60],
+      ["PUB-02", "/", [], 150],
+      ["PUB-03", "/find", [], 150],
+      ["AUT-04", "/sign-in", [], 150],
+      ["AUT-01", "/register", ["/enhance.js"], 150],
+    ];
+    console.log("\n=== PUBLIC PAGE BUDGET ===");
+    for (const [name, path, allowed, limitKb] of BUDGET) {
+      const ctx = await browser.newContext({ viewport: PHONE, isMobile: true });
+      const page = await ctx.newPage();
+      const loaded = [];
+      page.on("requestfinished", async (req) => {
+        const sizes = await req.sizes().catch(() => null);
+        loaded.push({ url: req.url(), type: req.resourceType(), bytes: sizes ? sizes.responseBodySize + sizes.responseHeadersSize : 0 });
+      });
+      await page.goto(BASE + path, { waitUntil: "networkidle", timeout: 90_000 });
+      const external = await page.locator("script[src]").evaluateAll((els) => els.map((e) => new URL(e.src).pathname));
+      const inline = await page.locator("script:not([src]):not([type='application/ld+json'])").count();
+      const stray = external.filter((src) => !allowed.includes(src));
+      const scriptLoads = loaded.filter((r) => r.type === "script" && !allowed.includes(new URL(r.url).pathname));
+      const total = loaded.reduce((n, r) => n + r.bytes, 0);
+      const js = loaded.filter((r) => r.type === "script").reduce((n, r) => n + r.bytes, 0);
+      console.log(`  ${name} ${path}`);
+      for (const r of loaded) console.log(`          ${String(Math.round(r.bytes / 102.4) / 10).padStart(6)} KB  ${r.type.padEnd(10)} ${r.url.replace(BASE, "")}`);
+      check(`${name} ships no framework JavaScript (${external.length} external, ${inline} inline scripts)`, stray.length === 0 && inline === 0 && scriptLoads.length === 0);
+      check(`${name} first load is under ${limitKb} KB (${(total / 1024).toFixed(1)} KB, ${(js / 1024).toFixed(1)} KB script)`, total < limitKb * 1024 && js <= 50 * 1024);
+      await ctx.close();
+    }
   }
 
   // -- Phone number grouping as you type (JavaScript ON) ----------------------

@@ -13,5 +13,5 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   // Pages only: not static files, images, the API proxies' binary routes, or Next internals.
-  matcher: ["/((?!_next/|brand/|icons/|sw\\.js|manifest|favicon|qr/|photo/|og/|card/[^/]+/card\\.|review-media/).*)"],
+  matcher: ["/((?!_next/|brand/|icons/|sw\\.js|enhance\\.js|manifest|favicon|qr/|photo/|og/|card/[^/]+/card\\.|review-media/).*)"],
 };
