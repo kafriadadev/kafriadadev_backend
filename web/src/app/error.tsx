@@ -1,6 +1,5 @@
 "use client";
 
-import { HeldCard } from "@/components/illustrations";
 import { Button } from "@/components/ui/Button";
 import { PageState } from "@/components/ui/PageState";
 import messages from "../../messages/en.json";
@@ -15,7 +14,9 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
   const reference = (error.digest ?? "").replace(/[^a-z0-9]/gi, "").slice(0, 6).toUpperCase() || undefined;
   return (
     <PageState
-      art={<HeldCard colour="red" />}
+      wideArt
+      // A prebuilt file: this is a client component, and the drawing code would ride in every page's bundle.
+      art={<img src="/figures/iso/held-red.svg" alt="" className="h-auto w-full" />}
       title={t.serverTitle}
       reference={reference}
       referenceHelp={t.refHelp}

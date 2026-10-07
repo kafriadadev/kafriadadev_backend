@@ -12,6 +12,8 @@ import { PageHead } from "@/components/ui/Page";
 import { Pill, type Tone } from "@/components/ui/Pill";
 import { Silhouette } from "@/components/ui/PlayerCard";
 import { Stepper } from "@/components/ui/Stepper";
+import { Iso } from "@/components/iso/Iso";
+import { varBooth } from "@/components/iso/scenes";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { ApiError, getMe, getVerification, type FileStatus, type Me, type Verification } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -69,6 +71,9 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
       <div className="mb-6">
         <Stepper steps={steps} current={step} label={t("eyebrow")} progressText={`${t("eyebrow")} · ${steps[step]}`} />
       </div>
+
+      {/* Card or cash, both lanes lead to the same check; the booth shows where this request stands. */}
+      <Iso fig={varBooth(v.state)} name="booth" className="mx-auto mb-6 max-w-md" />
 
       {error ? (
         <Notice signal="red" title={t("error")} className="mb-6"><p>{error}</p></Notice>

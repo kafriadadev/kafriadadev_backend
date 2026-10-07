@@ -46,8 +46,11 @@ const PAGES = [
   ["privacy", "/privacy"],
   ["profile", `/a/${KUID}${SIG ? `?s=${SIG}` : ""}`],
   ["card", `/card/${KUID}`],
+  ["offline", "/offline"],
+  ["down", "/offline/server"],
+  ["unavailable", "/unavailable"],
   // Served only when the web tier runs with STYLEGUIDE=1 (or in development).
-  ...(process.env.STYLEGUIDE ? [["styleguide", "/styleguide"], ["components", "/styleguide/components"]] : []),
+  ...(process.env.STYLEGUIDE ? [["styleguide", "/styleguide"], ["components", "/styleguide/components"], ["figures", "/styleguide/figures"]] : []),
 ];
 
 // 360 x 780 is the most common viewport among cheap Android handsets.
@@ -230,7 +233,7 @@ try {
   {
     const BUDGET = [
       ["PUB-01", `/a/${KUID}${SIG ? `?s=${SIG}` : ""}`, [], 60],
-      ["PUB-02", "/", ["/delight.js"], 150],
+      ["PUB-02", "/", ["/delight.js", "/iso.js"], 150],
       ["PUB-03", "/find", [], 150],
       ["AUT-04", "/sign-in", [], 150],
       ["AUT-01", "/register", ["/enhance.js"], 150],

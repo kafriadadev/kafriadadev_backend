@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "../styles/tokens.css";
+@import "../styles/iso.css";
 
 /*
  * Tailwind reads the tokens; it holds no values of its own. The default

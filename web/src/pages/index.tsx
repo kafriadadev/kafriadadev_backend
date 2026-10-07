@@ -2,6 +2,9 @@ import type { GetServerSideProps } from "next";
 
 import { PublicDocument, translator } from "@/components/PublicDocument";
 import { IconArrowRight, IconCash, IconCreditCard, IconMapPin, IconQrcode, IconSearch, IconShirtSport, IconUser } from "@/components/icons";
+import { Iso } from "@/components/iso/Iso";
+import { howCard, howRegister, howScan } from "@/components/iso/figures";
+import { squadBench, varBooth } from "@/components/iso/scenes";
 import { CentreCircle } from "@/components/pitch/PitchLines";
 import { Button } from "@/components/ui/Button";
 import { WithKuids } from "@/components/ui/Kuid";
@@ -18,6 +21,11 @@ import { listLgas, type Lga } from "@/lib/api";
 export const config = { runtime: "nodejs", unstable_runtimeJS: false };
 
 type Props = { open: Lga[] };
+
+// Drawn once per server process: they never change.
+const HOW = [howRegister(), howCard(), howScan()];
+const BOOTH = varBooth("under_review");
+const BENCH = squadBench(7);
 
 // Which LGAs are open changes as waves roll out; five minutes is fresh enough,
 // and it spares the busiest page a call to the API on every visit.
@@ -103,6 +111,7 @@ export default function Home({ open }: Props) {
           <ol className="mt-6 grid gap-4 md:grid-cols-3">
             {how.map((step, i) => (
               <li key={step.title} className="touchline rounded-r-card bg-surface p-5">
+                <Iso fig={HOW[i]} name={`how-${i + 1}`} className="mx-auto mb-4 max-w-[17rem]" />
                 <p className="flex items-center gap-3">
                   <span className="grid size-10 place-items-center rounded-full bg-pitch text-on-pitch" aria-hidden="true">{howIcons[i]}</span>
                   <span className="font-display text-xl font-extrabold uppercase italic">
@@ -133,6 +142,7 @@ export default function Home({ open }: Props) {
 
         <div className="grid gap-4 md:grid-cols-2">
           <section aria-labelledby="verify" className="rounded-card border border-line p-6">
+            <Iso fig={BOOTH} name="booth" className="mx-auto mb-4 max-w-xs" />
             <h2 id="verify" className="text-xl uppercase">{t("home.verifyTitle")}</h2>
             <p className="mt-3 text-muted">{t("home.verifyText")}</p>
             <p className="mt-4 flex gap-4 text-xs font-bold">
@@ -141,6 +151,7 @@ export default function Home({ open }: Props) {
             </p>
           </section>
           <section aria-labelledby="clubs" className="rounded-card border border-line p-6">
+            <Iso fig={BENCH} name="bench" className="mx-auto mb-4 max-w-xs" />
             <h2 id="clubs" className="text-xl uppercase">{t("home.clubsTitle")}</h2>
             <p className="mt-3 text-muted">{t("home.clubsText")}</p>
             <Button href="/clubs/register" variant="secondary" className="mt-4" icon={<IconShirtSport size={20} aria-hidden="true" />}>
@@ -155,6 +166,7 @@ export default function Home({ open }: Props) {
         <Button href="/register" size="lg" block>{t("home.register")}</Button>
       </div>
       <script src="/delight.js" defer />
+      <script src="/iso.js" defer />
     </PublicDocument>
   );
 }

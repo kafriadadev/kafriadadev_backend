@@ -111,6 +111,7 @@ export default async function StyleGuide() {
         <h1 className="mt-2">{t("styleguide.title")}</h1>
         <p className="mt-3 max-w-measure text-md text-muted">{t("styleguide.lede")}</p>
         <p className="mt-4"><a href="/styleguide/components" className="font-bold">Components, in every state</a></p>
+        <p className="mt-2"><a href="/styleguide/figures" className="font-bold">Isometric figures, in every state</a></p>
       </header>
 
       <Section id="brand" title="Logo">

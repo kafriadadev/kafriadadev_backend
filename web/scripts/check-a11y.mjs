@@ -15,8 +15,8 @@ const KUID = process.env.KUID ?? "KA-NG-JG-BKD-2026-000115"; // same record chec
 
 const PAGES = [
   "/", "/register", "/clubs/register", "/sign-in", "/forgot", "/find", "/privacy",
-  `/a/${KUID}`, `/card/${KUID}`,
-  ...(process.env.STYLEGUIDE ? ["/styleguide", "/styleguide/components"] : []),
+  `/a/${KUID}`, `/card/${KUID}`, "/offline", "/offline/server", "/unavailable",
+  ...(process.env.STYLEGUIDE ? ["/styleguide", "/styleguide/components", "/styleguide/figures"] : []),
 ];
 const VIEWS = [
   { width: 320, scheme: "light" }, { width: 320, scheme: "dark" },

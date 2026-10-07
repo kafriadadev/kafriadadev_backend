@@ -16,6 +16,7 @@ export function PageState({
   reference,
   referenceHelp,
   className,
+  wideArt,
 }: {
   art: React.ReactNode;
   title: React.ReactNode;
@@ -25,10 +26,12 @@ export function PageState({
   reference?: string;
   referenceHelp?: string;
   className?: string;
+  /** An isometric scene, which needs the column's width rather than an icon's. */
+  wideArt?: boolean;
 }) {
   return (
     <section className={cn("mx-auto flex max-w-measure flex-col items-center px-4 py-12 text-center", className)}>
-      <div className="w-48 text-text motion-rise">{art}</div>
+      <div className={cn("text-text motion-rise", wideArt ? "w-full max-w-sm" : "w-48")}>{art}</div>
       <h1 className="mt-6 text-2xl">{title}</h1>
       <div className="mt-3 max-w-prose text-md text-muted">{children}</div>
       {action ? <div className="mt-8 w-full max-w-xs">{action}</div> : null}
@@ -49,16 +52,18 @@ export function EmptyState({
   children,
   action,
   className,
+  wideArt,
 }: {
   art: React.ReactNode;
   title: React.ReactNode;
   children?: React.ReactNode;
   action?: React.ReactNode;
   className?: string;
+  wideArt?: boolean;
 }) {
   return (
     <div className={cn("flex flex-col items-center rounded-card border-2 border-dashed border-line-strong px-4 py-8 text-center", className)}>
-      <div className="w-32 text-muted">{art}</div>
+      <div className={cn("text-muted", wideArt ? "w-full max-w-sm" : "w-32")}>{art}</div>
       <p className="mt-4 font-display text-xl font-extrabold uppercase italic">{title}</p>
       {children ? <div className="mt-2 max-w-prose text-muted">{children}</div> : null}
       {action ? <div className="mt-5">{action}</div> : null}

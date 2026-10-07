@@ -392,6 +392,21 @@
       "coach": "Coach",
       "scout": "Scout",
       "athlete": "Athlete"
+    },
+    "ground": {
+      "title": "Your ground",
+      "text": "A floodlight comes on for each step you finish.",
+      "profile": "Profile",
+      "profileDone": "Complete",
+      "card": "ID card",
+      "cardDone": "Issued",
+      "photo": "Photo check",
+      "photoOff": "Not started",
+      "photoWait": "Being checked",
+      "photoDone": "Approved",
+      "photoWarn": "New files needed",
+      "club": "Club",
+      "clubOff": "No club yet"
     }
   },
   "details": {

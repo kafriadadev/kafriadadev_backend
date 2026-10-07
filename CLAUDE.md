@@ -627,6 +627,13 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   reserved test domain (`email_providers.reserved`). **Testing OTP without email:** register or
   ask for a reset, then `api/.venv/Scripts/python.exe scripts/outbox_code.py <email>`.
 
+- **Isometric figures — done and verified 2026-10-08.** `web/src/components/iso/` (server-drawn
+  SVG; green = lit), on the landing page, AUT-03, /me ("Your ground"), /verify, CLB-02, CRD-06,
+  ADM-05 and the error/offline pages. Every state at `/styleguide/figures`; PNG preview:
+  `node scripts/iso-preview.mjs <dir>`; after changing a figure run `node scripts/iso-export.mjs`
+  (error.tsx loads its file; print copies in `docs/design/print/`). A floodlight in a scene must be
+  framed with `towerBounds()`, or its head is clipped.
+
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
 2. ~~Registration copy promised an SMS code that is never sent.~~ Done 2026-09-11,

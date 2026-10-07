@@ -30,6 +30,55 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-08 — Isometric figures across the site
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:** a set of isometric line drawings, drawn on the server as plain SVG, built from the
+iso-glow skill's kernel (MIT, credited in `components/iso/kernel.ts`) and restyled for
+Grassroots Matchday: light first, shaded faces, green only on what is live or done, floodlight
+glow in dark mode only, the ID card on plate colours so it never inverts.
+- `web/src/components/iso/`: `kernel.ts` (projection, boxes, cylinders, frame), `kit.ts` (pitch,
+  ID card, phone, floodlight, person, seven-segment digits), `parts.ts` (VAR booth, card terminal,
+  table, cash, ball, flag, scoreboard, dugout, printer), `figures.ts` + `scenes.ts` (the scenes),
+  `Iso.tsx` (the wrapper), `preview.ts` (every scene in each state). Styles in `src/styles/iso.css`.
+- Where they appear: landing "How it works" (register, the card under floodlights, a scan coming
+  back green), the verification and clubs panels; AUT-03 (the athlete's real card stands on a
+  floodlit dais); ATH-01 "Your ground" (four floodlights for profile, card, photo check and club,
+  lit from real state; hovering an item lights its tower); VER-01 (the VAR booth, card and cash
+  lanes as equals, the booth's screen showing the request's state); CLB-02 (a dugout, one lit
+  seat per player); CRD-06 (a printer with the sheet's cards lit); ADM-05 (one plot per LGA, a
+  floodlight on each open one, linked to its table row); 404, offline, server down, unavailable,
+  and the error boundary.
+- `public/iso.js` (2 KB): replays a figure's motion when it first scrolls into view or is tapped,
+  and links list items to figure parts. Figures are complete without it. Motion runs once and
+  stops for reduced motion.
+- `scripts/iso-preview.mjs` renders every figure light and dark to PNG (development).
+  `scripts/iso-export.mjs` writes standalone SVGs: `public/figures/iso/` for `error.tsx` (a client
+  component: importing the drawing code there would put it in every page's bundle) and
+  `docs/design/print/` (light only) for posters, flyers and banners.
+- `/styleguide/figures` shows every figure in every state. `PageState`/`EmptyState` take `wideArt`.
+
+**Why:** the athlete reads outdoors on a cheap phone, Hausa first, and is wary of anything that
+asks for money. A picture that shows the mechanism (where the photo goes, that cash and card lead
+to the same check) carries what a paragraph would not. Every figure is `aria-hidden` and sits
+beside words that say the same thing. None on PUB-01 (zero script, 60 KB), on forms, or beside a
+payment button.
+
+**Verified:** `npm run typecheck` and `npm run build` clean. `check:render` with `STYLEGUIDE=1` and a
+signed-in throwaway athlete: 173 checks, all passed (contrast, overflow and split IDs at every
+width, light and dark, including /me, /offline, /offline/server, /unavailable and
+/styleguide/figures, newly added to its list); landing first load 76.6 KB with 3.4 KB of script.
+`check:a11y`: no violations, new pages included. `e2e-register.mjs` passed and its AUT-03 screenshot
+was checked by eye, as were /me and /verify at 390 and 1280 px. Each figure 0.8–3 KB gzipped.
+One run failed on API-backed steps (card lookup, LGA list, reset code) with `/readyz` at 3–6 s: the
+stale-pool case in CLAUDE.md. After restarting the API, the same run passed in full.
+
+**Not done / open:** the drawings have not been shown to athletes. Before building on them, show
+the static figures to five to eight people in Birnin Kudu and ask what each one shows. No Hausa
+review is needed (the figures carry no text). Club verification and the review queue have no figure.
+
+---
+
 ## 2026-10-07 — A refused registration names the field
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

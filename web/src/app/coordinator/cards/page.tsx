@@ -3,8 +3,10 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { IconDownload, IconPrinter, IconSearch } from "@/components/icons";
-import { KitRail, RaisedFlag } from "@/components/illustrations";
+import { RaisedFlag } from "@/components/illustrations";
 import { Button } from "@/components/ui/Button";
+import { Iso } from "@/components/iso/Iso";
+import { cardPrinter } from "@/components/iso/scenes";
 import { CoordinatorShell } from "@/components/ui/CoordinatorShell";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
@@ -98,7 +100,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
         </form>
 
         {batch && batch.total === 0 ? (
-          <EmptyState art={<KitRail />} title={t("none")} className="mt-8">{t("noneText")}</EmptyState>
+          <EmptyState wideArt art={<Iso fig={cardPrinter(0)} name="printer" />} title={t("none")} className="mt-8">{t("noneText")}</EmptyState>
         ) : null}
         {batch && batch.total > 0 ? (
           <section aria-labelledby="batch" className="mt-8 space-y-4">
@@ -106,7 +108,10 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
               {t("summary", { total: batch.total, sheets: Math.ceil(batch.total / batch.per_sheet), per: batch.per_sheet })}
             </h2>
             {batch.pages > 1 ? <p className="text-muted">{t("pageOf", { page: batch.page, pages: batch.pages, cards: onPage, sheets })}</p> : null}
-            <p className="flex gap-2 rounded-card bg-surface p-4 text-muted"><IconPrinter className="shrink-0" aria-hidden="true" />{t("howTo")}</p>
+            <div className="grid items-center gap-4 rounded-card bg-surface p-4 sm:grid-cols-[12rem_1fr]">
+              <Iso fig={cardPrinter(Math.min(onPage, batch.per_sheet))} name="printer" className="mx-auto max-w-[12rem]" />
+              <p className="flex gap-2 text-muted"><IconPrinter className="shrink-0" aria-hidden="true" />{t("howTo")}</p>
+            </div>
             <div className="flex flex-wrap gap-3">
               <Button href={`/coordinator/cards/pdf?${keep()}`} icon={<IconDownload size={20} aria-hidden="true" />}>{t("pdf")}</Button>
               <form action={markPrintedAction}>

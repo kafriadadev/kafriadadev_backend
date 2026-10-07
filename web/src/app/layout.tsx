@@ -45,6 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </Suspense>
         {/* Layer 2: hairline figures on capable devices, when the browser is idle. */}
         <Script src="/delight.js" strategy="lazyOnload" />
+        <Script src="/iso.js" strategy="afterInteractive" />
       </body>
     </html>
   );

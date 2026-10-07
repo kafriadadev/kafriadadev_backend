@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { IconRefresh } from "@/components/icons";
-import { HeldCard } from "@/components/illustrations";
+import { Iso } from "@/components/iso/Iso";
+import { serverDown } from "@/components/iso/scenes";
 import { Button } from "@/components/ui/Button";
 import { PageState } from "@/components/ui/PageState";
 
@@ -32,7 +33,8 @@ export default async function UnavailablePage({ searchParams }: { searchParams: 
   console.error(JSON.stringify({ event: "api_unreachable_page", reference, from }));
   return (
     <PageState
-      art={<HeldCard colour="red" />}
+      wideArt
+      art={<Iso fig={serverDown()} name="server-down" />}
       title={t("unreachableTitle")}
       reference={reference}
       referenceHelp={t("refHelp")}

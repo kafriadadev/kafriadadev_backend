@@ -3,7 +3,9 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { IconPosition, IconShieldCheck, IconShirtSport, IconUserPlus } from "@/components/icons";
-import { EmptyBench, KitRail, RaisedFlag } from "@/components/illustrations";
+import { KitRail, RaisedFlag } from "@/components/illustrations";
+import { Iso } from "@/components/iso/Iso";
+import { squadBench } from "@/components/iso/scenes";
 import { AthleteShell } from "@/components/ui/AthleteShell";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Notice";
@@ -126,9 +128,12 @@ export default async function ClubPage({ params, searchParams }: { params: Promi
       <div className="mt-6">
         {tab === "roster" ? (
           players.length ? (
-            <Squad t={t} rows={players} clubId={club.club_id} tab="roster" action={t("remove")} />
+            <>
+              <Iso fig={squadBench(players.length)} name="bench" className="mx-auto mb-4 max-w-md" />
+              <Squad t={t} rows={players} clubId={club.club_id} tab="roster" action={t("remove")} />
+            </>
           ) : (
-            <EmptyState art={<EmptyBench />} title={t("noPlayers")}
+            <EmptyState wideArt art={<Iso fig={squadBench(0)} name="bench" />} title={t("noPlayers")}
               action={approved ? <Button href={`${base}/invite`} icon={<IconUserPlus size={20} aria-hidden="true" />}>{t("addPlayer")}</Button> : undefined}>
               {t("noPlayersText")}
             </EmptyState>

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { IconRefresh } from "@/components/icons";
-import { HeldCard } from "@/components/illustrations";
+import { Iso } from "@/components/iso/Iso";
+import { serverDown } from "@/components/iso/scenes";
 import { Button } from "@/components/ui/Button";
 import { PageState } from "@/components/ui/PageState";
 
@@ -18,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ServerUnreachablePage() {
   const t = await getTranslations("errors");
   return (
-    <PageState art={<HeldCard colour="red" />} title={t("unreachableTitle")}
+    <PageState wideArt art={<Iso fig={serverDown()} name="server-down" />} title={t("unreachableTitle")}
       action={<Button href="/me" data-retry="" size="lg" block icon={<IconRefresh size={20} aria-hidden="true" />}>{t("retry")}</Button>}
       secondary={<a href="/">{t("home")}</a>}>
       {t("unreachableText")}

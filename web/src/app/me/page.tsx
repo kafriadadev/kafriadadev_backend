@@ -6,6 +6,9 @@ import {
   IconChevronRight, IconCreditCard, IconIdBadge2, IconLogout, IconQrcode, IconShieldCheck, IconShirtSport, IconUser,
   IconUsersGroup,
 } from "@/components/icons";
+import { Iso } from "@/components/iso/Iso";
+import { ground, type GroundState } from "@/components/iso/scenes";
+import type { Lamp } from "@/components/iso/kit";
 import { AthleteShell } from "@/components/ui/AthleteShell";
 import { Button } from "@/components/ui/Button";
 import { Notice, type Signal } from "@/components/ui/Notice";
@@ -26,6 +29,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("me"))("title") };
 }
 export const dynamic = "force-dynamic";
+
+/** How the photo check lights its floodlight on "Your ground". */
+const PHOTO_LAMP: Record<VerificationState, Lamp> = {
+  none: false, draft: false, under_review: "wait", approved: true, rejected: "warn", escalated: "wait", revoked: false,
+};
 
 const SIGNAL: Record<VerificationState, Signal> = {
   none: "whistle", draft: "whistle", under_review: "var", approved: "done", rejected: "yellow", escalated: "flag", revoked: "whistle",
@@ -111,6 +119,8 @@ export default async function MePage({ searchParams }: { searchParams: Promise<R
         </div>
       ) : null}
 
+      {profile && k ? <Ground t={t} k={k} state={state} club={clubs?.current?.club_name ?? null} /> : null}
+
       <nav aria-label={t("title")}>
         <ul className="divide-y divide-line overflow-hidden rounded-card border border-line">
           {k ? (
@@ -170,5 +180,47 @@ function Row({ href, icon, title, text, badge }: { href: string; icon: React.Rea
         <IconChevronRight size={20} className="shrink-0 text-muted" aria-hidden="true" />
       </a>
     </li>
+  );
+}
+
+/**
+ * Your ground (ATH-01): four floodlights, one per thing the athlete has. The
+ * list says it in words; hovering or focusing an item lights its tower.
+ */
+function Ground({ t, k, state, club }: { t: (key: string) => string; k: string; state: VerificationState | null; club: string | null }) {
+  const photo = PHOTO_LAMP[state ?? "none"];
+  const lamps: GroundState = { profile: true, card: true, photo, club: Boolean(club) };
+  const photoText = photo === true ? t("ground.photoDone") : photo === "wait" ? t("ground.photoWait") : photo === "warn" ? t("ground.photoWarn") : t("ground.photoOff");
+  const items: { key: keyof GroundState; href: string; label: string; text: string }[] = [
+    { key: "profile", href: "/details", label: t("ground.profile"), text: t("ground.profileDone") },
+    { key: "card", href: `/card/${k}`, label: t("ground.card"), text: t("ground.cardDone") },
+    { key: "photo", href: "/verify", label: t("ground.photo"), text: photoText },
+    { key: "club", href: "/clubs", label: t("ground.club"), text: club ?? t("ground.clubOff") },
+  ];
+  return (
+    <section aria-labelledby="ground" data-iso-scope="" className="mb-6 rounded-card border border-line p-4">
+      <h2 id="ground" className="text-lg uppercase">{t("ground.title")}</h2>
+      <p className="text-xs text-muted">{t("ground.text")}</p>
+      <div className="mt-3 grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_13rem]">
+        <Iso fig={ground(lamps)} name="ground" className="mx-auto max-w-sm" />
+        <ol className="grid grid-cols-2 gap-2 sm:grid-cols-1">
+          {items.map((it) => {
+            const lamp = lamps[it.key];
+            const dot = lamp === true ? "bg-pitch" : lamp === "wait" ? "border-2 border-check bg-check-bg" : lamp === "warn" ? "bg-warn-bg" : "border-2 border-line-strong";
+            return (
+              <li key={it.key} data-iso-key={it.key}>
+                <a href={it.href} className="flex min-h-12 items-center gap-2 rounded-input px-2 py-1 text-text no-underline hover:bg-surface">
+                  <span className={`size-3 shrink-0 rounded-full ${dot}`} aria-hidden="true" />
+                  <span className="min-w-0">
+                    <span className="block font-bold leading-tight">{it.label}</span>
+                    <span className="block text-xs text-muted">{it.text}</span>
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </section>
   );
 }

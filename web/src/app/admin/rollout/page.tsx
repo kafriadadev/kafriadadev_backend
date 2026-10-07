@@ -5,6 +5,8 @@ import { AdminShell } from "@/components/AdminNav";
 import { Flash } from "@/components/Flash";
 import { NoAccess } from "@/components/NoAccess";
 import { PageHead } from "@/components/PageHead";
+import { Iso } from "@/components/iso/Iso";
+import { rollout } from "@/components/iso/scenes";
 import { buttonClass } from "@/components/ui/Button";
 import { ApiError, getRollout, type RolloutLga } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
@@ -102,7 +104,9 @@ export default async function RolloutPage({ searchParams }: { searchParams: Prom
         </section>
       ) : null}
 
-      <div>
+      <div data-iso-scope="">
+        {/* One plot per LGA, in the table's order; a lit floodlight is an open LGA. Hover a row to find its plot. */}
+        <Iso fig={rollout(lgas.map((l) => ({ key: l.id, live: l.is_open })))} name="rollout" className="mx-auto mb-6 max-w-md" />
         <table>
           <caption className="sr-only">Every LGA, by rollout wave</caption>
           <thead>
@@ -110,7 +114,7 @@ export default async function RolloutPage({ searchParams }: { searchParams: Prom
           </thead>
           <tbody>
             {lgas.map((l) => (
-              <tr key={l.id}>
+              <tr key={l.id} data-iso-key={l.id}>
                 <td data-label="Wave"><span>{l.wave ?? "None"}</span></td>
                 <td data-label=""><strong>{l.name}</strong></td>
                 <td data-label="Code"><span className="font-mono">{l.code}</span></td>

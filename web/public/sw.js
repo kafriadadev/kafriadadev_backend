@@ -4,7 +4,7 @@
 // Try again on either goes back to the page that failed. It caches nothing
 // personal and never serves a stale account page; everything else goes straight
 // to the network as if this file did not exist.
-const CACHE = "kaf-offline-v2";
+const CACHE = "kaf-offline-v3";
 const OFFLINE = "/offline";
 const SERVER = "/offline/server";
 

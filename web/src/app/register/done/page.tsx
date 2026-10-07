@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { IconArrowRight, IconBrandWhatsapp, IconCheck, IconDownload, IconPrinter, IconShieldCheck } from "@/components/icons";
+import { Iso } from "@/components/iso/Iso";
+import { doneStage } from "@/components/iso/scenes";
 import { Button } from "@/components/ui/Button";
 import { Confetti } from "@/components/ui/Confetti";
 import { FlowSteps } from "@/components/ui/FlowSteps";
@@ -16,6 +18,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("done"))("eyebrow"), robots: { index: false } };
 }
 export const dynamic = "force-dynamic";
+
+const STAGE = doneStage();
 
 /**
  * Your ID is ready (AUT-03): the conversion moment. The free thing is handed
@@ -56,9 +60,9 @@ export default async function DonePage() {
       <h1 className="mt-3 motion-rise">{t("title", { name: first })}</h1>
       <p className="mt-2 text-md text-muted">{t("permanent")}</p>
 
-      {/* The reveal: the card lifts into place. */}
-      <div className="my-8 flex justify-center [perspective:900px]">
-        <div className="relative w-full max-w-xs animate-[kaf-reveal_var(--dur-show)_var(--ease-bounce)_both]">
+      {/* The reveal: the card lifts into place, on a podium under the floodlights. */}
+      <div className="my-8 flex flex-col items-center [perspective:900px]">
+        <div className="relative z-10 w-full max-w-xs animate-[kaf-reveal_var(--dur-show)_var(--ease-bounce)_both]">
           <span
             className="absolute -right-3 top-24 z-10 rounded-input border-4 border-kit-red bg-plate-bg px-3 py-1 font-display text-2xl font-extrabold uppercase italic text-[var(--card-red)] shadow-lift animate-[kaf-stamp_var(--dur-move)_var(--ease-bounce)_480ms_both]"
             aria-hidden="true"
@@ -79,6 +83,10 @@ export default async function DonePage() {
             }}
             labels={{ idLabel: tu("idLabel"), verified: tu("verified"), photoAlt: tu("photoAlt", { name: profile.full_name }), noPhoto: tu("noPhoto") }}
           />
+        </div>
+        <div className="w-full max-w-xl overflow-x-clip">
+          <Iso fig={STAGE} name="done" className="w-full"
+            style={{ marginTop: `-${(STAGE.lift * 100).toFixed(1)}%`, transform: `translateX(${(STAGE.shift * 100).toFixed(1)}%)` }} />
         </div>
       </div>
 
