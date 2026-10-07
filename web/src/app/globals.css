@@ -79,6 +79,13 @@
   code, kbd, samp { font-family: var(--font-mono); }
 }
 
+/* -- Signed-in screens -------------------------------------------------------
+ * The top bar reads no cookie, so cached pages stay cached. A signed-in screen
+ * marks itself with data-signed-in, and the public calls to action (Register
+ * free, Register a club) step aside: no script, no cookie.
+ */
+body:has([data-signed-in]) [data-public-only] { display: none !important; }
+
 /* -- The administrator console ---------------------------------------------
  * Admin screens use native controls and tables directly. Inside
  * [data-console] they get the design system's look; :where() keeps the

@@ -21,7 +21,7 @@ const LINKS = [
  */
 export function AdminShell({ current, children }: { current: string; children: React.ReactNode }) {
   return (
-    <div data-console="" className="mx-auto w-full max-w-wide px-4 pb-16 pt-6 sm:px-6 lg:flex lg:gap-10">
+    <div data-console="" data-signed-in="" className="mx-auto w-full max-w-wide px-4 pb-16 pt-6 sm:px-6 lg:flex lg:gap-10">
       <nav aria-label="Administrator" className="mb-6 lg:sticky lg:top-24 lg:mb-0 lg:w-64 lg:shrink-0 lg:self-start">
         <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-muted">Administrator</p>
         <ul className="flex flex-wrap gap-1 lg:flex-col">

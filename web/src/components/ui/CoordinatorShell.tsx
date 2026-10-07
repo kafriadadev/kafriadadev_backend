@@ -37,7 +37,7 @@ export async function CoordinatorShell({
   const d = await getCoordinatorDashboard(token, lga).catch(() => null);
 
   return (
-    <div className="mx-auto w-full max-w-wide px-4 pt-6 sm:px-6 md:flex md:gap-10">
+    <div data-signed-in="" className="mx-auto w-full max-w-wide px-4 pt-6 sm:px-6 md:flex md:gap-10">
       <div className="min-w-0 flex-1 pb-16">
         {d?.can_assist ? (
           <p className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-card bg-scoreboard px-4 py-3 text-scoreboard-text print:hidden">

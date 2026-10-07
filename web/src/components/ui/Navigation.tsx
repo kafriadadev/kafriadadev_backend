@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 import { buttonClass } from "./Button";
 import { Sheet } from "./Overlay";
 
-export type NavItem = { href: string; label: string; icon?: React.ReactNode };
+export type NavItem = { href: string; label: string; icon?: React.ReactNode; publicOnly?: boolean };
 
 /**
  * The top bar on every screen. Reads no cookie, so cached pages stay cached.
@@ -35,14 +35,14 @@ export function TopBar({
         {pinned ? <div className="shrink-0">{pinned}</div> : null}
         <nav aria-label={menu.title} className="hidden items-center gap-1 md:flex">
           {links.map((l) => (
-            <a key={l.href} href={l.href} className="inline-flex min-h-12 items-center gap-2 rounded-pill px-3 font-bold text-text no-underline hover:bg-surface-2">
+            <a key={l.href} href={l.href} data-public-only={l.publicOnly ? "" : undefined} className="inline-flex min-h-12 items-center gap-2 rounded-pill px-3 font-bold text-text no-underline hover:bg-surface-2">
               {l.icon}
               {l.label}
             </a>
           ))}
         </nav>
         {action ? (
-          <span className="hidden sm:inline-flex">
+          <span data-public-only="" className="hidden sm:inline-flex">
             <a href={action.href} className={buttonClass({ size: "md", className: "min-h-10 whitespace-nowrap px-4 text-base" })}>
               {action.label}
             </a>
@@ -61,7 +61,7 @@ export function TopBar({
         >
           <ul className="space-y-1">
             {links.map((l) => (
-              <li key={l.href}>
+              <li key={l.href} data-public-only={l.publicOnly ? "" : undefined}>
                 <a href={l.href} className="flex min-h-12 items-center gap-3 rounded-card px-3 text-md font-bold text-text no-underline hover:bg-surface-2">
                   {l.icon}
                   {l.label}
@@ -70,7 +70,7 @@ export function TopBar({
             ))}
           </ul>
           {action ? (
-            <a href={action.href} className={buttonClass({ size: "lg", block: true, className: "mt-4" })}>
+            <a href={action.href} data-public-only="" className={buttonClass({ size: "lg", block: true, className: "mt-4" })}>
               {action.label}
             </a>
           ) : null}

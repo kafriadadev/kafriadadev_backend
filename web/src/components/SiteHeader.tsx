@@ -11,7 +11,7 @@ export async function SiteHeader() {
       homeLabel={tb("home")}
       links={[
         { href: "/find", label: t("findId"), icon: <IconSearch size={20} aria-hidden="true" /> },
-        { href: "/clubs/register", label: t("registerClub"), icon: <IconShirtSport size={20} aria-hidden="true" /> },
+        { href: "/clubs/register", label: t("registerClub"), icon: <IconShirtSport size={20} aria-hidden="true" />, publicOnly: true },
         { href: "/me", label: t("myAccount"), icon: <IconUser size={20} aria-hidden="true" /> },
       ]}
       action={{ href: "/register", label: t("registerFree") }}

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { ServiceWorker } from "@/components/ui/ServiceWorker";
 import { fontVariables } from "./fonts";
 import "./globals.css";
 
@@ -11,13 +12,15 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { default: t("title"), template: t("titleTemplate") },
     description: t("description"),
     robots: { index: true, follow: true },
-    icons: { icon: "/brand/kafriada-net-mark.svg" },
+    icons: { icon: "/brand/kafriada-net-mark.svg", apple: "/icons/apple-touch-icon.png" },
   };
 }
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // The logo's green for the phone's address bar; tokens.css is the source.
+  themeColor: "#0EAD2C",
   // maximumScale is deliberately not set: people read a 24-character ID off a
   // small screen, and blocking zoom fails WCAG.
 };
@@ -32,6 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <SiteHeader />
         <main id="main">{children}</main>
         <SiteFooter />
+        <ServiceWorker />
       </body>
     </html>
   );

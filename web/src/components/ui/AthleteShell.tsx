@@ -11,7 +11,7 @@ export type AthleteTab = "home" | "card" | "clubs" | "verify" | "me";
  * content alone.
  */
 export async function AthleteShell({ current, kuid, children }: { current: AthleteTab; kuid: string | null; children: React.ReactNode }) {
-  if (!kuid) return <div className="mx-auto w-full max-w-measure px-4 pb-16 pt-8 sm:px-6">{children}</div>;
+  if (!kuid) return <div data-signed-in="" className="mx-auto w-full max-w-measure px-4 pb-16 pt-8 sm:px-6">{children}</div>;
   const t = await getTranslations("athleteNav");
   const icon = (I: typeof IconHome) => <I size={22} aria-hidden="true" />;
   const items = [
@@ -23,7 +23,7 @@ export async function AthleteShell({ current, kuid, children }: { current: Athle
   ];
   const currentHref = items.find((i) => i.key === current)?.href ?? "/me";
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 pt-8 sm:px-6 md:flex md:gap-10">
+    <div data-signed-in="" className="mx-auto w-full max-w-5xl px-4 pt-8 sm:px-6 md:flex md:gap-10">
       <div className="min-w-0 flex-1 pb-16 md:max-w-measure">{children}</div>
       {/* After the content in the page, so the phone spacer sits at the bottom;
           first on wide screens, as the rail. */}

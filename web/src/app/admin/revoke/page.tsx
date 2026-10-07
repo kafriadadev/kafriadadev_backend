@@ -134,6 +134,19 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
             </dl>
 
             {found.revocable ? (
+              // ADM-03: say exactly what withdrawing does, and what it does not, before it is done.
+              <div className="my-6 rounded-card border-2 border-danger border-l-[6px] bg-danger-bg p-4">
+                <p className="font-bold">This will</p>
+                <ul className="mt-2 list-disc space-y-1 pl-6">
+                  <li>Remove the photograph from the public profile</li>
+                  <li>Show &ldquo;Verification withdrawn&rdquo; on the public profile</li>
+                  <li><strong>Not</strong> refund the verification fee</li>
+                  <li><strong>Not</strong> change the KAFRIADA NET ID</li>
+                </ul>
+              </div>
+            ) : null}
+
+            {found.revocable ? (
               <form action={revokeAction}>
                 <input type="hidden" name="request_id" value={found.request_id} />
                 <input type="hidden" name="kuid" value={found.kuid} />

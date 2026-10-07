@@ -306,7 +306,9 @@
     "notFoundTitle": "This page is not here",
     "notFoundText": "The address may be mistyped, or the page has moved.",
     "unreachableTitle": "We could not reach KAFRIADA NET",
-    "unreachableText": "Nothing you entered was lost. The connection may be slow; try again in a moment."
+    "unreachableText": "Nothing you entered was lost. The connection may be slow; try again in a moment.",
+    "offlineTitle": "You are offline",
+    "offlineText": "Your phone has no connection right now. Your ID is safe. Try again when you have signal."
   },
   "cardPage": {
     "title": "Your KAFRIADA NET card",
@@ -937,12 +939,14 @@
     "colStatus": "Status",
     "colActions": "Actions",
     "profile": "Profile",
-    "pay": "Pay for athlete",
+    "pay": "Pay",
     "verified": "Verified",
     "unverified": "Unverified",
     "prev": "Previous",
     "next": "Next",
-    "page": "Page {n}"
+    "page": "Page {n}",
+    "cashCollected": "Cash collected",
+    "paying": "Taking you to Paystack…"
   },
   "assist": {
     "eyebrow": "Coordinator",

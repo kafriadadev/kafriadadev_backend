@@ -50,7 +50,9 @@ def _build_engine(url: str, settings: Settings, *, role: Role, readonly: bool) -
         # Recycle before a load balancer or PgBouncer silently drops an idle
         # connection, which otherwise surfaces as a random failure under low
         # traffic — the hardest kind of bug to reproduce.
-        pool_recycle=1800,
+        # Five minutes, not thirty: Supabase's pooler drops idle connections
+        # sooner, and a connection it dropped silently is never reused.
+        pool_recycle=300,
         pool_pre_ping=True,
         # Never log a query with its parameters. Those parameters are phone
         # numbers, password hashes and payment references.
@@ -62,6 +64,15 @@ def _build_engine(url: str, settings: Settings, *, role: Role, readonly: bool) -
             # enough for a developer on a remote managed database; production
             # connects in milliseconds and never approaches it.
             "connect_timeout": settings.db_connect_timeout_seconds,
+            # A pooled connection whose far end vanished without closing it
+            # (an idle drop by the pooler, a network blip) must fail fast, or the
+            # pre-ping waits minutes on a dead socket and every request queues
+            # behind it. Seen 2026-10-06/07: readiness probes of 40 to 97 s.
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 3,
+            "tcp_user_timeout": 10_000,
         },
     )
 

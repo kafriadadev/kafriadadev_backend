@@ -102,14 +102,14 @@ await coord.goto(`${BASE}/coordinator/find?q=KA-NG-JG-XXX-2026-000001`, { waitUn
 check("CRD-03: an ID that is not in the LGA is simply no results", (await text(coord)).includes("no results"));
 
 if (CASH_KUID) {
+  // From the search result: tick "Cash collected" (tap 1), tap Pay (tap 2).
   await coord.goto(`${BASE}/coordinator/find?q=${encodeURIComponent(CASH_KUID)}`, { waitUntil: "load" });
-  await Promise.all([coord.waitForLoadState("load"), coord.locator("a", { hasText: "Pay for athlete" }).first().click()]); // tap 1
-  check("CRD-04 opens with the athlete already chosen", (await coord.locator("main").innerText()).includes(CASH_KUID));
-  check("CRD-04 will not charge before the cash tick", (await coord.locator("#cash_collected").getAttribute("required")) !== null);
-  await coord.locator("label[for=cash_collected]").click(); // tap 2
-  await Promise.all([coord.waitForURL(/paystack\.com|assist-pay\?/, { timeout: 90_000 }), coord.locator("form button[type=submit]").last().click()]); // tap 3
+  const row = coord.locator("form").filter({ has: coord.locator(`input[name=kuid][value="${CASH_KUID}"]`) });
+  check("CRD-04 will not charge before the cash tick", (await row.locator("input[name=cash_collected]").getAttribute("required")) !== null);
+  await row.locator("label").click(); // tap 1
+  await Promise.all([coord.waitForURL(/paystack\.com|assist-pay\?/, { timeout: 120_000 }), row.locator("button[type=submit]").click()]); // tap 2
   const url = coord.url();
-  check(`CRD-04 hands off to Paystack, or says why not (${url.includes("paystack") ? "Paystack" : decodeURIComponent(new URL(url).searchParams.get("error") ?? "")})`,
+  check(`CRD-04 cash in two taps from the result: hands off to Paystack, or says why not (${url.includes("paystack") ? "Paystack" : decodeURIComponent(new URL(url).searchParams.get("error") ?? "")})`,
     url.includes("paystack.com") || url.includes("error="));
 } else {
   console.log("  skip  the cash route (set CASH_KUID)");

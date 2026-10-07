@@ -30,6 +30,33 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-07 — PWA, staff top bar, two-tap cash, withdraw summary, a stale-pool fix
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **Installable (PWA):** `app/manifest.ts` (start at /me, standalone, logo green), icons
+  rendered from the logo mark (192/512, maskable 192/512, Apple touch, favicon) in
+  `public/icons/`, and `public/sw.js`: it caches only `/offline` (a new PUB-05 page) and
+  shows it when a navigation fails; it caches nothing personal. Registered on idle by a
+  small client island; the zero-JavaScript profile carries the manifest link only.
+- **Staff top bar without a cookie:** signed-in screens carry `data-signed-in`, and
+  `body:has([data-signed-in]) [data-public-only]` hides "Register free" and "Register a
+  club". Public pages stay cacheable.
+- **CRD-04 in two taps:** each unverified result on CRD-03 carries its own form: tick
+  "Cash collected", tap Pay (the action still refuses without the tick).
+- **ADM-03 "This will…"** summary before a withdrawal.
+- **API pool fix** (`db/engine.py`): pooled connections recycle after 5 minutes, and libpq
+  keepalives plus `tcp_user_timeout=10s` make a connection the pooler dropped silently fail
+  fast instead of holding every request (readiness probes of 40–97 s, twice).
+
+**Verified:** typecheck and build clean. A coordinator's screen hides "Register free" and
+keeps My account; the landing page keeps it. The withdraw screen shows the summary. Cash
+from a search result reached Paystack's checkout in two taps. The manifest, worker, offline
+page and icons are served, and the manifest is linked. After the pool change, readiness is
+1.5 s warm.
+
+---
+
 ## 2026-10-07 — Frontend redesign, Phase 7: the administrator console
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

@@ -12,6 +12,8 @@ import { PageHead } from "@/components/ui/Page";
 import { EmptyState, PageState } from "@/components/ui/PageState";
 import { Pager } from "@/components/ui/Pager";
 import { Pill } from "@/components/ui/Pill";
+import { SubmitButton } from "@/components/ui/SubmitButton";
+import { startAssistedPaymentAction } from "@/app/assist-pay/actions";
 import { ApiError, getMe, searchAthletes, type AthleteSearch } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 
@@ -113,9 +115,18 @@ export default async function FindAthletePage({ searchParams }: { searchParams: 
                   <span className="inline-flex flex-wrap justify-end gap-2">
                     <a href={`/a/${encodeURIComponent(p.kuid)}`} className="inline-flex min-h-12 items-center font-bold">{t("profile")}</a>
                     {p.verified ? null : (
-                      <Button href={`/assist-pay?${new URLSearchParams({ lga, kuid: p.kuid })}`} variant="secondary" icon={<IconCreditCard size={20} aria-hidden="true" />}>
-                        {t("pay")}
-                      </Button>
+                      // CRD-04 from the result itself: tick that the cash is in hand, tap Pay. Two taps.
+                      <form action={startAssistedPaymentAction} className="inline-flex flex-wrap items-center justify-end gap-2">
+                        <input type="hidden" name="lga" value={lga} />
+                        <input type="hidden" name="kuid" value={p.kuid} />
+                        <label className="inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-pill border-2 border-line-strong px-3 font-bold has-[:checked]:border-pitch has-[:checked]:bg-check-bg">
+                          <input type="checkbox" name="cash_collected" value="yes" required className="size-5 accent-[var(--pitch-deep)]" />
+                          {t("cashCollected")}
+                        </label>
+                        <SubmitButton size="md" block={false} variant="secondary" pendingLabel={t("paying")} icon={<IconCreditCard size={20} aria-hidden="true" />}>
+                          {t("pay")}
+                        </SubmitButton>
+                      </form>
                     )}
                   </span>
                 ),
