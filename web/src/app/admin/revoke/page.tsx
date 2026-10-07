@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { buttonClass } from "@/components/ui/Button";
 import { redirect } from "next/navigation";
 
 import { PageHead } from "@/components/PageHead";
@@ -125,7 +126,7 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
           <div>
             <dl>
               <div><dt>Name</dt><dd>{found.full_name}</dd></div>
-              <div><dt>KAFRIADA NET ID</dt><dd><span>{found.kuid}</span></dd></div>
+              <div><dt>KAFRIADA NET ID</dt><dd><span className="whitespace-nowrap font-mono">{found.kuid}</span></dd></div>
               <div>
                 <dt>Status</dt>
                 <dd>{STATUS_LABEL[found.status] ?? found.status}</dd>
@@ -152,7 +153,7 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
                     required
                   />
                 </div>
-                <button type="submit">
+                <button type="submit" className={buttonClass({ variant: "danger" })}>
                   Withdraw this verification
                 </button>
               </form>

@@ -30,6 +30,40 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-07 — Frontend redesign, Phase 7: the administrator console
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **AdminShell**: a dense sidebar with icons on a laptop (wrapping links on a phone),
+  carrying `data-console`. Inside it, `globals.css` gives native controls, tables, `dl`s
+  and headings the design system's look at zero specificity (`:where()`): fields stacked
+  with hints on their own line, filter forms in a row, tables with a sticky header that
+  restack into labelled cards under 720px. Admin screens keep their plain markup.
+- **The old shared components are adapters** onto the new ones (Flash → Notice, Stat →
+  scoreboard tile, NoAccess → PageState, PageHead, Pager, SubmitButton with a `variant`,
+  EmptyState); SubNav, CoordinatorNav, ResendCountdown and VerificationBadge are deleted.
+- **Destructive actions are red**: withdraw a verification, withdraw a club's verification,
+  revoke a role, end all sessions, reject a club, suspend a club.
+- Screens covered: ADM-01 overview (ledger check, unresolved payments, funnel), ADM-02
+  users and a user's roles and sessions, ADM-03 withdraw a verification, ADM-04 record a
+  refund, ADM-06 audit log, club list, club reviews, withdraw a club's verification.
+
+**Verified:** typecheck and build clean. With a test super administrator's session
+(`scripts/dev_staff.py`), `check:render` over all eleven admin addresses, including a
+verification lookup and a payment lookup: 114 checks pass. `check:a11y` on the same: no
+violations. Overview, users, user detail, audit, refund and withdraw reviewed by
+screenshot at 1280px.
+- **Found:** a money figure broke mid-number in its tile; IDs split in the audit log's
+  subject column and on the withdraw screen; hints ran into their labels.
+
+**Not done / open:**
+- **ADM-05 LGA rollout control and ADM-07 data requests are not built: the API has
+  neither.** The overview's "LGAs open" figure is the only rollout view today.
+- ADM-03's "This will…" summary from the wireframe is not on the screen yet.
+- Admin pages still show the public top bar (Register free); a staff top bar is Phase 8.
+
+---
+
 ## 2026-10-07 — Sign in with a phone number or an email address
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

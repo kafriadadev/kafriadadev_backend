@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { WithKuids } from "@/components/ui/Kuid";
 import { redirect } from "next/navigation";
 
 import { NoAccess } from "@/components/NoAccess";
@@ -110,7 +111,7 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
                   </td>
                   <td data-label="Subject">
                     <span>
-                      {e.subject_type} {e.subject_id}
+                      {e.subject_type} <WithKuids text={String(e.subject_id ?? "")} />
                       {e.reference ? ` · ref ${e.reference}` : ""}
                     </span>
                   </td>

@@ -1,25 +1,9 @@
+import { Notice, type Signal } from "./ui/Notice";
+
 type Variant = "good" | "warn" | "bad" | "info";
+const SIGNAL: Record<Variant, Signal> = { good: "done", warn: "yellow", bad: "red", info: "whistle" };
 
-const PREFIX: Record<Variant, string> = { good: "Done", warn: "Check this", bad: "Problem", info: "" };
-
-/** A status message after a form or a redirect. Stays until the page changes. */
-export function Flash({
-  variant = "info",
-  title,
-  children,
-}: {
-  variant?: Variant;
-  title: string;
-  children?: React.ReactNode;
-  /** Accepted for compatibility; unused until the redesign's notices. */
-  autoDismissMs?: number;
-}) {
-  return (
-    <div role={variant === "bad" ? "alert" : "status"} data-variant={variant}>
-      <p>
-        <strong>{PREFIX[variant] ? `${PREFIX[variant]}: ` : ""}{title}</strong>
-      </p>
-      {children}
-    </div>
-  );
+/** The old Flash, drawn as a referee-scale Notice. For screens not yet rebuilt. */
+export function Flash({ variant = "info", title, children }: { variant?: Variant; title: string; children?: React.ReactNode; autoDismissMs?: number }) {
+  return <Notice signal={SIGNAL[variant]} title={title} className="mb-4">{children}</Notice>;
 }

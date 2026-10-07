@@ -1,20 +1,12 @@
-import { Flash } from "./Flash";
+import { RaisedFlag } from "./illustrations";
+import { Button } from "./ui/Button";
+import { PageState } from "./ui/PageState";
 
 /** What a signed-in person sees on a screen their roles do not reach. */
-export function NoAccess({
-  title,
-  message = "Only a super administrator can open this.",
-}: {
-  title: string;
-  message?: string;
-}) {
+export function NoAccess({ title, message = "Only a super administrator can open this." }: { title: string; message?: string }) {
   return (
-    <div>
-      <h1>{title}</h1>
-      <Flash variant="bad" title="You do not have access to this">
-        <p>{message}</p>
-      </Flash>
-      <p><a href="/me">Back to my account</a></p>
-    </div>
+    <PageState art={<RaisedFlag />} title={title} action={<Button href="/me" size="lg" block>My account</Button>}>
+      {message}
+    </PageState>
   );
 }

@@ -581,7 +581,12 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   Open: CRD-05 (no API), cash is 3 taps.
 - **Sign in with a phone number or an email — done 2026-10-07.** One field; the API's
   `_identifier_clause()` decides (an `@` means email). Sign-in, confirm, resend and reset
-  all accept either; failures still get one answer. Next: Phase 7, admin screens.
+  all accept either; failures still get one answer.
+- **Frontend redesign, Phase 7 — done 2026-10-07.** Admin console on `AdminShell`
+  (`data-console` scopes base styles for native controls and tables in `globals.css`).
+  Old shared components are adapters onto `components/ui`. ADM-05 and ADM-07 have no API.
+  Staff sessions end after 30 idle minutes: get a fresh token before admin audits.
+  Next: Phase 8, polish and ship.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.

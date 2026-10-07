@@ -1,26 +1,14 @@
-/** The top of a screen: where you are, what it is, and what you can do here. */
-export function PageHead({
-  eyebrow,
-  title,
-  lede,
-  actions,
-  back,
-}: {
-  eyebrow?: React.ReactNode;
-  title: React.ReactNode;
-  lede?: React.ReactNode;
-  actions?: React.ReactNode;
-  back?: { href: string; label: string };
-  /** Accepted for compatibility; unused until the redesign. */
-  app?: boolean;
+import { PageHead as Head } from "./ui/Page";
+
+/** The old PageHead on the new one; `actions` sit beside the heading. */
+export function PageHead({ eyebrow, title, lede, actions, back }: {
+  eyebrow?: React.ReactNode; title: React.ReactNode; lede?: React.ReactNode; actions?: React.ReactNode;
+  back?: { href: string; label: string }; app?: boolean;
 }) {
   return (
-    <header>
-      {back ? <p><a href={back.href}>{back.label}</a></p> : null}
-      {eyebrow ? <p>{eyebrow}</p> : null}
-      <h1>{title}</h1>
-      {lede ? <p>{lede}</p> : null}
-      {actions ? <div>{actions}</div> : null}
-    </header>
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <Head eyebrow={eyebrow} title={title} lede={lede} back={back} className="mb-6" />
+      {actions ? <div className="mb-6 flex flex-wrap gap-2">{actions}</div> : null}
+    </div>
   );
 }

@@ -126,7 +126,7 @@ export default async function AdminClubsPage({ searchParams }: { searchParams: P
                     <input type="hidden" name="club" value={c.club_id} />
                     <input type="hidden" name="status" value={status} />
                     <input type="hidden" name="change" value="suspend" />
-                    <SubmitButton pending="Suspending…">Suspend</SubmitButton>
+                    <SubmitButton variant="danger" pending="Suspending…">Suspend</SubmitButton>
                   </form>
                 ) : null}
                 {c.verified ? (

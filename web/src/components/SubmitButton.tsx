@@ -1,21 +1,10 @@
-/** A plain submit button. It must sit inside the form it submits. */
-export function SubmitButton({
-  children,
-  disabled,
-  name,
-  value,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  pending?: string;
-  detail?: string;
-  disabled?: boolean;
-  name?: string;
-  value?: string;
+import { SubmitButton as S } from "./ui/SubmitButton";
+
+/** The old SubmitButton on the new one. */
+export function SubmitButton({ children, pending = "Working…", disabled, name, value, variant = "primary" }: {
+  children: React.ReactNode; className?: string; pending?: string; detail?: string; disabled?: boolean; name?: string; value?: string;
+  /** "danger" for anything that takes something away: withdraw, revoke, suspend, reject. */
+  variant?: "primary" | "secondary" | "danger";
 }) {
-  return (
-    <button type="submit" disabled={disabled} name={name} value={value}>
-      {children}
-    </button>
-  );
+  return <S pendingLabel={pending} disabled={disabled} name={name} value={value} variant={variant} size="md" block={false}>{children}</S>;
 }

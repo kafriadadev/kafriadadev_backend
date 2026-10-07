@@ -104,7 +104,7 @@ export default async function RevokeClubPage({
                   required
                 />
               </div>
-              <SubmitButton pending="Withdrawing…">Withdraw this club&rsquo;s verification</SubmitButton>
+              <SubmitButton variant="danger" pending="Withdrawing…">Withdraw this club&rsquo;s verification</SubmitButton>
             </form>
           ) : (
             <p>

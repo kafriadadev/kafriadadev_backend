@@ -1,9 +1,7 @@
-/** Nothing to show yet, with the next step if there is one. */
+import { EmptyNet } from "./illustrations";
+import { EmptyState as E } from "./ui/PageState";
+
+/** The old EmptyState on the new one. */
 export function EmptyState({ title, children }: { title: string; children?: React.ReactNode }) {
-  return (
-    <section>
-      <p><strong>{title}</strong></p>
-      {children}
-    </section>
-  );
+  return <E art={<EmptyNet />} title={title}>{children}</E>;
 }

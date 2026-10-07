@@ -101,7 +101,7 @@ export default async function ClubReviewsPage({ searchParams }: { searchParams: 
                 <span>The club reads this exactly as you write it.</span>
                 <textarea id={`reason-${w.club_id}`} name="reason" maxLength={1000} required />
               </div>
-              <SubmitButton pending="Rejecting…">
+              <SubmitButton variant="danger" pending="Rejecting…">
                 Reject with reason
               </SubmitButton>
             </form>

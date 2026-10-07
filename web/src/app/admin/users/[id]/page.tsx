@@ -130,7 +130,7 @@ export default async function UserPage({
                 <label htmlFor={`pw-${r.grant_id}`}>Your password</label>
                 <input id={`pw-${r.grant_id}`} name="current_password" type="password" required autoComplete="current-password" />
               </div>
-              <SubmitButton pending="Revoking…">Revoke this role</SubmitButton>
+              <SubmitButton variant="danger" pending="Revoking…">Revoke this role</SubmitButton>
             </form>
             </details>
           </div>
@@ -145,7 +145,7 @@ export default async function UserPage({
             <label htmlFor="end-reason">Reason for ending every session</label>
             <input id="end-reason" name="reason" required maxLength={300} />
           </div>
-          <SubmitButton pending="Ending sessions…">End all sessions</SubmitButton>
+          <SubmitButton variant="danger" pending="Ending sessions…">End all sessions</SubmitButton>
         </div>
       </form>
 
