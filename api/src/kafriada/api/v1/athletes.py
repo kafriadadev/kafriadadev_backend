@@ -43,23 +43,25 @@ class RegistrationRequest(BaseModel):
     Validation here is shape only — is this a date, is this a string. Whether the
     person is old enough, whether the LGA is open, whether the phone is a real
     Nigerian number: those are business rules and they live in the service, so
-    they hold for every caller rather than only for this route.
+    they hold for every caller rather than only for this route. That includes
+    "this is empty": no minimum lengths here, or a blank field would be refused
+    before the service could name it and say what to do.
     """
 
-    first_name: str = Field(min_length=1, max_length=60)
+    first_name: str = Field(max_length=60)
     middle_name: str | None = Field(default=None, max_length=60)
-    surname: str = Field(min_length=1, max_length=60)
-    email: str = Field(min_length=3, max_length=254)
-    phone: str = Field(min_length=7, max_length=20)
-    password: str = Field(min_length=10, max_length=1024)
+    surname: str = Field(max_length=60)
+    email: str = Field(max_length=254)
+    phone: str = Field(max_length=20)
+    password: str = Field(max_length=1024)
     date_of_birth: date
     gender: str = Field(max_length=20)
     nationality: str = Field(max_length=40)
     state_of_origin: str = Field(max_length=40)
     address_line: str = Field(max_length=200)
     town: str = Field(max_length=80)
-    lga_id: str = Field(min_length=3, max_length=32)
-    sport: str = Field(min_length=2, max_length=40)
+    lga_id: str = Field(max_length=32)
+    sport: str = Field(max_length=40)
     playing_position: str = Field(max_length=40)
     secondary_position: str | None = Field(default=None, max_length=40)
     dominant_side: str = Field(max_length=10)
@@ -69,7 +71,7 @@ class RegistrationRequest(BaseModel):
     level_played: str = Field(max_length=20)
     emergency_name: str = Field(max_length=120)
     emergency_relationship: str = Field(max_length=40)
-    emergency_phone: str = Field(min_length=7, max_length=20)
+    emergency_phone: str = Field(max_length=20)
     accept_privacy_notice: bool
 
 
@@ -222,7 +224,7 @@ class UpdateAthleteDetailsRequest(BaseModel):
     town: str = Field(max_length=80)
     emergency_name: str = Field(max_length=120)
     emergency_relationship: str = Field(max_length=40)
-    emergency_phone: str = Field(min_length=7, max_length=20)
+    emergency_phone: str = Field(max_length=20)
 
 
 def _details_response(details: identity.AthleteDetails) -> AthleteDetailsResponse:

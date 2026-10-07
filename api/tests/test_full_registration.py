@@ -112,6 +112,39 @@ def test_the_route_refuses_a_missing_field_and_the_public_profile_shows_nothing_
         assert private not in profile
 
 
+@pytest.mark.parametrize(
+    ("change", "field", "says"),
+    [
+        ({"lga_id": ""}, "lga_id", "Choose your Local Government Area."),
+        ({"height_cm": 11}, "height_cm", "Height in centimetres"),
+        ({"phone": ""}, "phone", ""),
+        ({"surname": ""}, "surname", ""),
+    ],
+)
+def test_the_route_names_the_field_and_says_what_to_do(
+    client: TestClient, change: dict[str, Any], field: str, says: str
+) -> None:
+    """A blank or out-of-range field reaches the service, which names it in plain words.
+
+    Found 2026-10-07: an empty LGA was refused by the request schema's minimum length
+    with "Some of the details are not valid." and no field, so the form could not say
+    which of thirty fields to fix.
+    """
+    body = {**form(new_phone(), "Named Field"), **change}
+    got = client.post("/v1/register", json=body)
+    assert got.status_code == 422, got.text
+    message = got.json()["error"]["message"]
+    assert message["field"] == field
+    assert message["message"].startswith(says)
+    assert message["message"] != "Some of the details are not valid."
+
+
+def test_a_malformed_request_still_points_at_its_field(client: TestClient) -> None:
+    body = {**form(new_phone(), "Bad Shape"), "height_cm": "tall"}
+    message = client.post("/v1/register", json=body).json()["error"]["message"]
+    assert message["field"] == "height_cm"
+
+
 def test_the_athlete_keeps_their_details_current_but_cannot_change_who_they_are(
     client: TestClient,
 ) -> None:

@@ -30,6 +30,27 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-07 — A refused registration names the field
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:** the registration and edit-details request models no longer set minimum lengths, so
+a blank field reaches the service, which already names it and says what to do ("Choose your
+Local Government Area.", "Height in centimetres, 120 to 230."). The 422 handler for anything
+still refused on shape now carries the first problem's field, so the form highlights it.
+
+**Why:** found by the project lead. A registration with no LGA, a height of 11 and the athlete's
+own number as the emergency contact came back as "Some of the details are not valid." with no
+field: the schema's `min_length=3` on `lga_id` refused it before any of the service's checks ran.
+
+**Verified:** `tests/test_full_registration.py` (29, five new: blank LGA, height 11, blank phone,
+blank surname, a non-number height); the same submission replayed through `/forms/register` now
+returns "Height in centimetres, 120 to 230." on `height_cm`. Full suite on the local database:
+everything passes except the two `test_notifications.py` cases that fail on the local outbox
+backlog (recorded earlier); `test_email_provider.py` now sends to a non-reserved address, since
+reserved ones never reach Resend.
+
+---
+
 ## 2026-10-07 — Page-load progress bar; no mail to test addresses
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

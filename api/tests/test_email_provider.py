@@ -55,7 +55,7 @@ class TestResendAdapter:
     ) -> None:
         sent = respond(monkeypatch, ok())
         result = ResendSender(settings(email_from="alerts@badellafarmandranch.site")).send(
-            to="athlete@example.com", subject="You're verified", body="Congratulations."
+            to="athlete@kafriada.ng", subject="You're verified", body="Congratulations."
         )
 
         assert result.provider == "resend"
@@ -64,7 +64,7 @@ class TestResendAdapter:
         assert call["url"] == "https://api.resend.com/emails"
         assert call["json"] == {
             "from": "alerts@badellafarmandranch.site",
-            "to": ["athlete@example.com"],
+            "to": ["athlete@kafriada.ng"],
             "subject": "You're verified",
             "text": "Congratulations.",
         }
@@ -73,7 +73,7 @@ class TestResendAdapter:
     def test_html_is_included_only_when_given(self, monkeypatch: pytest.MonkeyPatch) -> None:
         sent = respond(monkeypatch, ok())
         ResendSender(settings()).send(
-            to="a@b.test", subject="s", body="plain text", html="<p>rich text</p>",
+            to="a@kafriada.ng", subject="s", body="plain text", html="<p>rich text</p>",
         )
         (call,) = sent
         assert call["json"]["text"] == "plain text"
@@ -82,7 +82,7 @@ class TestResendAdapter:
     def test_a_network_failure_is_transient(self, monkeypatch: pytest.MonkeyPatch) -> None:
         respond(monkeypatch, httpx.ConnectTimeout("slow"))
         with pytest.raises(EmailError) as exc:
-            ResendSender(settings()).send(to="a@b.test", subject="s", body="b")
+            ResendSender(settings()).send(to="a@kafriada.ng", subject="s", body="b")
         assert exc.value.transient
 
     @pytest.mark.parametrize("status", [500, 502, 429])
@@ -91,7 +91,7 @@ class TestResendAdapter:
     ) -> None:
         respond(monkeypatch, httpx.Response(status, json={"message": "slow down"}))
         with pytest.raises(EmailError) as exc:
-            ResendSender(settings()).send(to="a@b.test", subject="s", body="b")
+            ResendSender(settings()).send(to="a@kafriada.ng", subject="s", body="b")
         assert exc.value.transient
 
     def test_a_rejected_address_is_permanent(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -114,9 +114,9 @@ class TestSenderSelection:
     def test_console_prints_instead_of_sending(self, capsys: pytest.CaptureFixture[str]) -> None:
         sender = build_sender(build(email_provider="console"))
         assert isinstance(sender, ConsoleSender)
-        result = sender.send(to="a@b.test", subject="hi", body="there")
+        result = sender.send(to="a@kafriada.ng", subject="hi", body="there")
         assert result.provider == "console"
-        assert "a@b.test" in capsys.readouterr().out
+        assert "a@kafriada.ng" in capsys.readouterr().out
 
     def test_resend_is_selected_when_configured(self) -> None:
         assert isinstance(build_sender(settings()), ResendSender)

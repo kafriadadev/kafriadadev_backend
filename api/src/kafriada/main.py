@@ -202,11 +202,17 @@ def _install_error_handlers(app: FastAPI) -> None:
             {"field": ".".join(str(p) for p in err["loc"][1:]), "reason": err["msg"]}
             for err in exc.errors()
         ]
+        # The first problem's field travels with the message, so a form can point at
+        # it rather than show a sentence nobody can act on.
+        first = problems[0]["field"] if problems else None
         return JSONResponse(
             status_code=422,
             content={
                 "error": {
-                    "message": "Some of the details are not valid.",
+                    "message": {
+                        "message": "Check the highlighted field: it is missing or not in the expected form.",
+                        "field": first or None,
+                    },
                     "reference": short_reference(request_id),
                     "problems": problems,
                 }
