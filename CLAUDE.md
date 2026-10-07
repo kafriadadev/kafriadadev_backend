@@ -227,16 +227,13 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   marked unused). `Throttle("bucket")` on sign-in, send-code, confirm-code,
   register. Migration 0005 (`ops.rate_counters`). Sweep of closed windows is
   piggybacked on the outbox worker's loop (hourly).
-  **VERIFIED 2026-09-20 against a private local PostgreSQL 15** (not Supabase, which
-  is unreachable — see Gotchas): migrations 0001→0005 apply, all 9 rate-limit tests
-  pass three runs in a row, and the whole suite is 360 passed / 0 skipped with the
-  database attached. Running it for real found three faults that every non-database
-  test had missed: (1) `main.py`'s HTTP error handler dropped every response header,
-  so a 429 lost its `Retry-After`; (2) the tests reused the same IPs every run, so a
-  re-run inside the hour failed on its first request (now random 2001:db8::/32
-  addresses); (3) the local `bootstrap-roles.sql` lacked `GRANT CREATE ON DATABASE`
-  to `kaf_migrate`, so a local database failed its first migration. Still worth
-  repeating against Supabase once it is reachable.
+  **VERIFIED 2026-09-28 against live Supabase (via IPv4 pooler)** by M. Hassan
+  Nayaya and Claude: `alembic upgrade head` verified at `0013_card_prints (head)`,
+  all 9 rate-limit tests (`pytest tests/test_rate_limits.py`) passed twice
+  consecutively (110s and 224s), burst minting passed 100/100, permission matrix
+  passed 2/2 across both tenants, and manual live testing confirmed: 60 wrong-password
+  sign-ins returned 401, the 61st returned 429 with `Retry-After: 2504` and
+  proper plain error body message. Rate limiting is 100% verified against live production DB.
 - 2.1 payments — rules, tables and settlement done 2026-09-20 (16d02cf). No route,
   no Paystack initialise call, no screen yet. `contexts/payments/rules.py`: strict
   `charge.success` parsing, `decide()` (NGN + success + amount *exactly* equal,

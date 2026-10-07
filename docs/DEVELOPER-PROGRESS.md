@@ -10,7 +10,7 @@ they are, and nothing that wouldn't be fair to say to their face.
 
 ## Summary (for the project lead — keep this current, keep it short)
 
-**2026-09-21 (Session Close)** — Developer completed Task A DNS checks and provided verbatim answers to the three core architectural questions at the session close. Demonstrates solid grasp of presentation-tier risk/isolation, database integration testing guarantees, and data privacy through hashing.
+**2026-09-28 (Complete)** — Tasks A through G 100% completed and verified against live Supabase PostgreSQL: migrations verified at head (`0013`), rate limit unit suite passed 9/9 twice, full suite executed (667 tests passed, burst passed 100/100, permission matrix passed 2/2), and live manual 61-request throttle test proved 429 + `Retry-After: 2504` engagement.
 
 ---
 
@@ -30,6 +30,28 @@ pick whichever the evidence actually speaks to, not all four every time>
 **Compared to last time:** <getting more independent, same pattern as
 before, first time this has come up — whatever's true>
 ```
+
+---
+
+### 2026-09-28 — Tasks E, F, G: Full Suite & Live Throttle Verification
+
+**What happened:**
+Developer executed the complete test suite against live Supabase. Tuned burst test (`BURST_WORKERS=6 BURST_SIZE=100`) passing 100/100 unbroken KUIDs with zero collisions. Executed `test_permission_matrix.py` (passed 2/2 across 12 roles & 2 tenants). Executed manual live 61-request sign-in throttle: verified #01–#59 returned 401, and #60/#61 returned 429 with `Retry-After: 2504` and unrevealing error message. Updated `CLAUDE.md` Status section.
+
+**What it suggests:**
+- **Rigor:** Methodically captured the full multi-tier verification process across all 7 assignment steps.
+- **Independence:** Handled multi-terminal API server, client requests, and environment parameters cleanly.
+
+---
+
+### 2026-09-28 — Tasks B, C, D: Live Database Rate Limit Verification
+
+**What happened:**
+Developer successfully updated `.env` with the IPv4 pooler connection string, started Uvicorn, and verified `/readyz` returned 200 OK (`{"status":"ready"}`). Applied/verified migrations at `0013_card_prints (head)`. Executed `pytest tests/test_rate_limits.py` twice consecutively with `DATABASE_URL_APP` set: Run 1 passed 9/9 (110s) and Run 2 passed 9/9 (224s) against the real Supabase database.
+
+**What it suggests:**
+- **Rigor:** Accurately performed consecutive test runs to prove the fix for repeat executions within the same hour window.
+- **Independence:** Managed environment variable extraction and test commands seamlessly on Windows.
 
 ---
 
