@@ -43,6 +43,25 @@ class Sent:
     provider_message_id: str | None
 
 
+# Domains reserved by RFC 2606 and RFC 6761 for examples and testing. Nothing at
+# them can receive mail, so a provider is never asked to try: a send there only
+# spends the account's quota and its sending reputation. The test suite and the
+# end-to-end scripts register people at these addresses.
+_RESERVED_SUFFIXES = (".test", ".example", ".invalid", ".localhost")
+_RESERVED_DOMAINS = ("example.com", "example.net", "example.org", "localhost")
+
+
+def reserved(address: str) -> bool:
+    """True when the address is at a domain that can never receive mail."""
+    domain = address.rsplit("@", 1)[-1].strip().lower().rstrip(".")
+    return domain in _RESERVED_DOMAINS or domain.endswith(_RESERVED_SUFFIXES) or any(
+        domain.endswith("." + d) for d in _RESERVED_DOMAINS
+    )
+
+
+SUPPRESSED = Sent(provider="suppressed", provider_message_id=None)
+
+
 class Sender(Protocol):
     name: str
 
@@ -87,6 +106,10 @@ class ResendSender:
         self._timeout = cfg.email_timeout_seconds
 
     def send(self, *, to: str, subject: str, body: str, html: str | None = None) -> Sent:
+        if reserved(to):
+            # Never asked: see _RESERVED_DOMAINS. Recorded as delivered, provider "suppressed".
+            log.info("email_suppressed", reason="reserved_domain")
+            return SUPPRESSED
         payload: dict[str, object] = {
             "from": self._from, "to": [to], "subject": subject, "text": body,
         }

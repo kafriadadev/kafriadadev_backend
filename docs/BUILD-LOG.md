@@ -30,6 +30,36 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-07 — Page-load progress bar; no mail to test addresses
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **Page loads, done properly.** The floating spinner badge from the previous entry is gone (the
+  project lead rejected it). `NavProgress` now draws a 3 px pitch-green bar along the top edge
+  that creeps towards 85% while the next page loads, then completes and fades; and the
+  button-styled link that was pressed turns busy (`aria-busy`, its icon becomes a turning ring;
+  `Button` marks its links `data-button`). Nothing for 120 ms, so fast pages show nothing.
+  Reduced motion: the bar and ring stand still.
+- **No mail to reserved test domains.** `email_providers.reserved()` and a check inside
+  `ResendSender.send`: an address at example.com/.net/.org, `*.test`, `*.example`, `*.invalid` or
+  `localhost` is recorded as delivered with provider `suppressed` and Resend is never called.
+  `tests/test_email_suppression.py` (11, no database).
+
+**Why:** at 00:08–00:17 Nigeria time on 2026-10-07 a dispatcher run against the dev database
+drained 107 queued test emails (`@example.test`, from test-suite runs against Supabase) through
+Resend and used up the team's daily quota of 100; the project lead's password reset then could not
+be sent. Nothing at those domains can receive mail. Until the quota resets, a code is read from the
+outbox: `api/.venv/Scripts/python.exe scripts/outbox_code.py <email>` (no dispatcher running).
+
+**Verified:** in Edge, a link press to a slow page: bar present (`nav-bar--loading`), the link
+`aria-busy="true"` with its icon hidden and the ring drawn, and nothing left after arrival.
+`check:render` (style guide, every width): 121 checks, all passed; `check:a11y`: no violations.
+
+**Not done / open:** the Resend API key was printed into a session log while diagnosing this;
+rotate it in the Resend dashboard and `api/.env`.
+
+---
+
 ## 2026-10-07 — Hairline figures, a navigation spinner, an honest offline page
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

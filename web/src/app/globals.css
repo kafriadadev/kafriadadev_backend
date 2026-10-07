@@ -270,6 +270,40 @@ form:has(#part-2:valid) .run-dot[data-part="2"] {
   border-color: var(--pitch);
 }
 
+/*
+ * Page loads (NavProgress): the bar creeps towards 85% while the page is on
+ * its way, then completes and fades. The pressed button-link swaps its icon
+ * for a turning ring.
+ */
+@keyframes kaf-creep {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(.85); }
+}
+.nav-bar {
+  height: 100%;
+  transform-origin: left center;
+  background: var(--pitch);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--pitch) 60%, transparent);
+}
+.nav-bar--loading { animation: kaf-creep 8s cubic-bezier(.1, .7, .2, 1) both; }
+.nav-bar--done {
+  transform: scaleX(1);
+  opacity: 0;
+  transition: transform var(--dur-quick) var(--ease-kick), opacity var(--dur-move) ease var(--dur-quick);
+}
+a[data-button][aria-busy="true"] { cursor: progress; }
+a[data-button][aria-busy="true"] > svg:first-child { display: none; }
+a[data-button][aria-busy="true"]::before {
+  content: "";
+  width: 1.1em;
+  height: 1.1em;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: kaf-spin .7s linear infinite;
+}
+
 @utility spin-ring {
   transform-box: fill-box;
   transform-origin: center;

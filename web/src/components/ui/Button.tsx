@@ -70,7 +70,8 @@ export function Button({
   );
   if (href !== undefined) {
     return (
-      <a href={href} className={cls} {...(rest as React.AnchorHTMLAttributes<HTMLAnchorElement>)}>
+      // data-button lets NavProgress show the busy state on the pressed link.
+      <a href={href} data-button="" className={cls} {...(rest as React.AnchorHTMLAttributes<HTMLAnchorElement>)}>
         {body}
       </a>
     );

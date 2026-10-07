@@ -69,6 +69,11 @@ DB tests skip unless `DATABASE_URL_APP` is in the environment:
 Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade head`.
 
 ## Gotchas (all hit for real)
+- **Resend's free plan is 100 emails a day for the whole team.** On 2026-10-07 one dispatcher run
+  against the dev database sent 107 queued test emails and locked out real password resets.
+  Reserved test domains are now suppressed in `ResendSender`, but still: never run
+  `kafriada.outbox.dispatch` or `kafriada.jobs` against the dev database just to clear a backlog,
+  and read test codes with `scripts/outbox_code.py` instead of sending them.
 - **Port 8000 belongs to another project** (a Django app). KAFRIADA API uses 8010.
 - **Stop `next start` before `npm run build`**, or the server serves dead CSS chunks.
 - Supabase (Frankfurt, IPv6) connects in ~8s cold. `api/.env` has
@@ -614,11 +619,16 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   (`RunRail`, CSS `:has(:valid)`, zero JS), `CountUp` on dashboards, `Tilt` on the card.
   No swipe on the review queue (it would skip the checked tick); view transitions stay off.
 
-- **Hairline figures, navigation spinner, offline vs site-down — done 2026-10-07.** Figures:
+- **Hairline figures, offline vs site-down — done 2026-10-07.** Figures:
   `scripts/design/build_figures.py` → `web/public/figures/`, swapped in by `public/delight.js`
-  on capable devices only (`data-figure` on illustrations). `NavProgress` in the root layout. The
+  on capable devices only (`data-figure` on illustrations). The
   service worker shows `/offline` or `/offline/server`; bump `CACHE` in `public/sw.js` when either
   changes. Phase 8 done except the Hausa review (on hold).
+
+- **Page-load bar and test-address suppression — done 2026-10-07.** `NavProgress` is a top
+  progress bar plus a busy state on the pressed `Button` link. Resend is never called for a
+  reserved test domain (`email_providers.reserved`). **Testing OTP without email:** register or
+  ask for a reset, then `api/.venv/Scripts/python.exe scripts/outbox_code.py <email>`.
 
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
