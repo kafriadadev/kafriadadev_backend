@@ -30,6 +30,47 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-07 — ADM-05 LGA rollout, ADM-07 data requests (migration 0016)
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **ADM-05.** `contexts/admin/rollout.py`, `GET /v1/admin/lgas`, `POST /v1/admin/lgas/{id}/rollout`
+  under `admin.manage_rollout` (super administrator; seeded since 0001). Body
+  `{open, reason, current_password}`; an LGA already in that state is a 409; `went_live_at` keeps
+  the first opening; an audit row `rollout.lga_opened|closed` carries the reason. No migration:
+  `is_live` was always the switch and registration already checks it in the service.
+  `/admin/rollout`: every LGA by wave, then a confirmation that says what the change does
+  (opening prints the LGA code into every ID issued there; closing leaves existing IDs alone).
+- **ADM-07.** Migration **0016**: insert-only `ops.data_requests` (who, export|erase, how it
+  arrived, note, handled by, when; an erasure must carry a note), and `ops.users.phone_e164` /
+  `identity.athletes.date_of_birth` made nullable — the phone only on an anonymised account (CHECK).
+  `contexts/admin/data_requests.py`: `find` (ID, phone or email; an erased person by ID only),
+  `export` (account, athlete record, payments, verification and decisions, files, clubs, roles,
+  activity; never the password hash) and `erase`. Erasure clears name, phone, email, password,
+  date of birth, address, measurements and emergency contact; deletes outbox rows addressed to
+  them; ends sessions; revokes roles; releases club memberships; withdraws an approved
+  verification and closes one under review (with decision rows); deletes the stored files. Kept:
+  the ID shell, payments, ledger, decisions, audit. Refused without a note and the password, twice,
+  or on yourself. The public profile, card and photo stop answering for an erased person. A file the
+  store could not delete at the time is finished by the hourly `documents` job.
+  Routes under `admin.data_requests`: `GET /v1/admin/data-requests/person`,
+  `POST .../{user_id}/export|erase`. `/admin/data-requests`: find, history, "Download a copy" (a
+  route handler, since an action cannot return a file; it refuses a POST from another origin), and
+  erasure behind a "This will" summary.
+
+**Verified:** `tests/test_rollout.py` (5) and `tests/test_data_requests.py` (7) on the local
+PostgreSQL; removing the public-profile filter turns the erasure test red. Migration 0016 applies,
+reverses and re-applies locally, `check_migration_safety.py` clean, then applied to the dev Supabase
+database. Live there: 27 LGAs listed (Birnin Kudu open), a person found by phone, an export downloaded
+through the web route (200, JSON), a cross-site POST refused (403). Full suite: everything else passes;
+7 failures in `test_integrity.py::TestMediaFindings` and `test_notifications.py` come from the size
+of the local database (a random 50-file media sample; a 3,500-row outbox backlog), not this change.
+
+**Not done / open:** no live erasure on Supabase (only the tests erase). Club documents are not
+part of an athlete's erasure. The export is the API's view, not a byte copy of the stored photo.
+
+---
+
 ## 2026-10-07 — CRD-05, cash settlement
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

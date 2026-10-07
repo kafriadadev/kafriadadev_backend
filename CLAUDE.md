@@ -591,6 +591,12 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   (+ `.csv`, `payment.read_scoped`), `/coordinator/settlement` ("Cash" tab): collected vs
   confirmed vs outstanding, own collections by default. 6 tests.
 
+- **ADM-05 LGA rollout and ADM-07 data requests — done and verified 2026-10-07** (migration 0016,
+  applied to dev Supabase). `/admin/rollout`, `/admin/data-requests`; `GET/POST /v1/admin/lgas…`,
+  `/v1/admin/data-requests/…`. Erasure is anonymisation; an erased person's public profile is a 404.
+  The local test database is large enough that `TestMediaFindings` and `test_notifications.py` fail
+  on sampling and outbox backlog; recreate it before trusting those two.
+
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
 2. ~~Registration copy promised an SMS code that is never sent.~~ Done 2026-09-11,

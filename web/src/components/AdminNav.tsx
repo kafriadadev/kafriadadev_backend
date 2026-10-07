@@ -1,5 +1,5 @@
 import {
-  IconCash, IconFileText, IconHome, IconRefresh, IconShieldCheck, IconShirtSport, IconUsersGroup,
+  IconCash, IconFileText, IconHome, IconLock, IconMapPin, IconRefresh, IconShieldCheck, IconShirtSport, IconUsersGroup,
 } from "./icons";
 import { cn } from "@/lib/cn";
 
@@ -11,6 +11,8 @@ const LINKS = [
   { href: "/admin/audit", label: "Audit log", Icon: IconFileText },
   { href: "/admin/revoke", label: "Withdraw a verification", Icon: IconRefresh },
   { href: "/admin/reversal", label: "Record a refund", Icon: IconCash },
+  { href: "/admin/rollout", label: "LGA rollout", Icon: IconMapPin },
+  { href: "/admin/data-requests", label: "Data requests", Icon: IconLock },
 ] as const;
 
 /**

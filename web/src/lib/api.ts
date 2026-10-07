@@ -1080,6 +1080,85 @@ export function findVerificationByKuid(
   );
 }
 
+export type RolloutLga = {
+  id: string;
+  code: string;
+  name: string;
+  wave: number | null;
+  is_open: boolean;
+  went_live_at: string | null;
+  registered: number;
+};
+
+/** ADM-05: every LGA in the state and whether it accepts registrations. */
+export function getRollout(token: string): Promise<RolloutLga[]> {
+  return call<RolloutLga[]>("/v1/admin/lgas", { token });
+}
+
+export function setRollout(
+  token: string,
+  lga: string,
+  open: boolean,
+  reason: string,
+  currentPassword: string,
+  meta: ClientMeta,
+): Promise<RolloutLga> {
+  return call<RolloutLga>(`/v1/admin/lgas/${encodeURIComponent(lga)}/rollout`, {
+    method: "POST",
+    body: JSON.stringify({ open, reason, current_password: currentPassword }),
+    token,
+    meta,
+  });
+}
+
+export type DataRequestChannel = "in_person" | "phone" | "email" | "letter";
+
+export type DataRequestPerson = {
+  user_id: string;
+  full_name: string;
+  kuid: string | null;
+  roles: string[];
+  registered_on: string;
+  anonymised: boolean;
+  requests: { kind: "export" | "erase"; received_via: DataRequestChannel; note: string | null; handled_by: string; handled_at: string }[];
+};
+
+/** ADM-07: the person a data request is about, by ID, phone or email. */
+export function findDataRequestPerson(token: string, q: string): Promise<DataRequestPerson> {
+  return call<DataRequestPerson>(`/v1/admin/data-requests/person?${new URLSearchParams({ q })}`, { token });
+}
+
+export function exportPersonData(
+  token: string,
+  userId: string,
+  receivedVia: string,
+  note: string,
+  meta: ClientMeta,
+): Promise<Record<string, unknown>> {
+  return call<Record<string, unknown>>(`/v1/admin/data-requests/${encodeURIComponent(userId)}/export`, {
+    method: "POST",
+    body: JSON.stringify({ received_via: receivedVia, note: note || null }),
+    token,
+    meta,
+  });
+}
+
+export function erasePerson(
+  token: string,
+  userId: string,
+  receivedVia: string,
+  note: string,
+  currentPassword: string,
+  meta: ClientMeta,
+): Promise<void> {
+  return call<void>(`/v1/admin/data-requests/${encodeURIComponent(userId)}/erase`, {
+    method: "POST",
+    body: JSON.stringify({ received_via: receivedVia, note, current_password: currentPassword }),
+    token,
+    meta,
+  });
+}
+
 export function revokeVerification(
   token: string,
   requestId: string,

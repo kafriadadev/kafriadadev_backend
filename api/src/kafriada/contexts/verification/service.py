@@ -703,7 +703,8 @@ def public_photo(kuid: str, *, store: ObjectStore | None = None) -> bytes | None
                 SELECT v.photo_media_id
                   FROM identity.verification_requests v
                   JOIN identity.athletes a ON a.id = v.athlete_id
-                 WHERE a.kuid = :k AND v.status = 'approved'
+                  JOIN ops.users u ON u.id = a.user_id
+                 WHERE a.kuid = :k AND v.status = 'approved' AND u.anonymised_at IS NULL
                 """
             ),
             {"k": kuid},

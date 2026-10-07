@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from kafriada.api.client import client_ip, request_id
 from kafriada.api.security import Requires, current_principal
 from kafriada.contexts.access import service as access
+from kafriada.contexts.admin import data_requests, rollout
 from kafriada.contexts.admin import service as directory
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -284,3 +285,144 @@ def audit(
     return AuditResponse(
         entries=[AuditOut(**_fields(AuditOut, e)) for e in found.entries], page=found.page, has_more=found.has_more
     )
+
+
+# ---------------------------------------------------------------------------
+# ADM-05: LGA rollout
+# ---------------------------------------------------------------------------
+class LgaOut(BaseModel):
+    id: str
+    code: str
+    name: str
+    wave: int | None
+    is_open: bool
+    went_live_at: datetime | None
+    registered: int
+
+
+class SetOpenRequest(BaseModel):
+    open: bool
+    reason: str = Field(min_length=1, max_length=rollout.MAX_REASON_CHARS)
+    current_password: str = Field(min_length=1, max_length=1024)
+
+
+@router.get(
+    "/lgas",
+    response_model=list[LgaOut],
+    dependencies=[Requires("admin.manage_rollout")],
+    summary="Every LGA in the state, its wave and whether it accepts registrations",
+)
+def lgas() -> list[LgaOut]:
+    return [LgaOut(**_fields(LgaOut, x)) for x in rollout.list_lgas()]
+
+
+@router.post(
+    "/lgas/{lga_id}/rollout",
+    response_model=LgaOut,
+    dependencies=[Requires("admin.manage_rollout")],
+    summary="Open or close one LGA for registration (reason and password required)",
+)
+def set_rollout(lga_id: str, body: SetOpenRequest, request: Request) -> LgaOut:
+    try:
+        found = rollout.set_open(
+            current_principal(request), lga_id, open_=body.open, reason=body.reason,
+            current_password=body.current_password,
+            request_id=request_id(request), ip_address=client_ip(request),
+        )
+    except rollout.NotFound:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="No such LGA.") from None
+    except rollout.Refused as exc:
+        code = status.HTTP_409_CONFLICT if exc.code == "unchanged" else status.HTTP_422_UNPROCESSABLE_CONTENT
+        field = "current_password" if exc.code == "password" else exc.code
+        raise HTTPException(code, detail={"message": exc.message, "field": field}) from None
+    return LgaOut(**_fields(LgaOut, found))
+
+
+# ---------------------------------------------------------------------------
+# ADM-07: data requests
+# ---------------------------------------------------------------------------
+class HandledOut(BaseModel):
+    kind: str
+    received_via: str
+    note: str | None
+    handled_by: str
+    handled_at: datetime
+
+
+class PersonOut(BaseModel):
+    user_id: UUID
+    full_name: str
+    kuid: str | None
+    roles: list[str]
+    registered_on: date
+    anonymised: bool
+    requests: list[HandledOut]
+
+
+class ExportRequest(BaseModel):
+    received_via: str = Field(max_length=20)
+    note: str | None = Field(default=None, max_length=data_requests.MAX_NOTE_CHARS)
+
+
+class EraseRequest(BaseModel):
+    received_via: str = Field(max_length=20)
+    note: str = Field(min_length=1, max_length=data_requests.MAX_NOTE_CHARS)
+    current_password: str = Field(min_length=1, max_length=1024)
+
+
+def _data_refused(exc: data_requests.Refused) -> HTTPException:
+    code = status.HTTP_409_CONFLICT if exc.code in ("already", "self") else status.HTTP_422_UNPROCESSABLE_CONTENT
+    return HTTPException(code, detail={"message": exc.message, "field": exc.code})
+
+
+@router.get(
+    "/data-requests/person",
+    response_model=PersonOut,
+    dependencies=[Requires("admin.data_requests")],
+    summary="Find the person a data request is about, with the requests already handled",
+)
+def data_request_person(q: str = "") -> PersonOut:
+    found = data_requests.find(q[:254])
+    if found is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nobody matches that ID, phone number or email.")
+    return PersonOut(
+        **{f: getattr(found, f) for f in PersonOut.model_fields if f not in ("roles", "requests")},
+        roles=list(found.roles),
+        requests=[HandledOut(**_fields(HandledOut, r)) for r in found.requests],
+    )
+
+
+@router.post(
+    "/data-requests/{user_id}/export",
+    dependencies=[Requires("admin.data_requests")],
+    summary="Everything held about one person, as JSON; the hand-over is recorded",
+)
+def data_request_export(user_id: UUID, body: ExportRequest, request: Request) -> dict[str, object]:
+    try:
+        return data_requests.export(
+            current_principal(request), user_id, received_via=body.received_via, note=body.note,
+            request_id=request_id(request), ip_address=client_ip(request),
+        )
+    except data_requests.NotFound:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="No such person.") from None
+    except data_requests.Refused as exc:
+        raise _data_refused(exc) from None
+
+
+@router.post(
+    "/data-requests/{user_id}/erase",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Requires("admin.data_requests")],
+    summary="Anonymise one person (note and password required; cannot be undone)",
+)
+def data_request_erase(user_id: UUID, body: EraseRequest, request: Request) -> None:
+    try:
+        data_requests.erase(
+            current_principal(request), user_id, received_via=body.received_via, note=body.note,
+            current_password=body.current_password,
+            request_id=request_id(request), ip_address=client_ip(request),
+        )
+    except data_requests.NotFound:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="No such person.") from None
+    except data_requests.Refused as exc:
+        raise _data_refused(exc) from None

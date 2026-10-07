@@ -317,7 +317,8 @@ def purge_expired_documents(days: int = 30, *, store: ObjectStore | None = None)
 
     "Your document is used only to check your identity and age, and is deleted 30
     days after a decision." A rejected request is not included: its document may
-    still be needed for the next attempt. The row stays and records when.
+    still be needed for the next attempt. The row stays and records when. Also
+    finishes any erasure that could not reach the store at the time.
     """
     store = store or build_store()
     with transaction() as session:
@@ -330,6 +331,13 @@ def purge_expired_documents(days: int = 30, *, store: ObjectStore | None = None)
                  WHERE m.kind = 'document' AND m.deleted_at IS NULL
                    AND v.status IN ('approved', 'revoked', 'escalated')
                    AND v.decided_at < now() - make_interval(days => :days)
+                UNION
+                -- Anything left behind by an erasure whose store was unreachable at the time.
+                SELECT m.id, m.original_key, m.derivative_key
+                  FROM identity.media_files m
+                  JOIN identity.athletes a ON a.id = m.athlete_id
+                  JOIN ops.users u ON u.id = a.user_id
+                 WHERE m.deleted_at IS NULL AND u.anonymised_at IS NOT NULL
                 """
             ),
             {"days": days},

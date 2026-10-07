@@ -513,7 +513,7 @@ class PublicProfile:
 
 
 def get_public_profile(kuid_text: str) -> PublicProfile | None:
-    """Read a public profile by KUID. Returns None when there is no such athlete."""
+    """Read a public profile by KUID. None when there is no such athlete, or they were erased."""
     try:
         parsed = kuid_mod.Kuid.parse(kuid_text)
     except kuid_mod.InvalidKuidError:
@@ -539,7 +539,7 @@ def get_public_profile(kuid_text: str) -> PublicProfile | None:
                   JOIN ops.users u       ON u.id = a.user_id
                   JOIN ops.locations lga ON lga.id = a.current_lga_id
                   JOIN ops.locations st  ON st.id = lga.parent_id
-                 WHERE a.kuid = :kuid
+                 WHERE a.kuid = :kuid AND u.anonymised_at IS NULL
                 """
             ),
             {"kuid": str(parsed)},
