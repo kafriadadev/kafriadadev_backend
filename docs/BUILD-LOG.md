@@ -30,6 +30,22 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-08 — Next.js 15.5.27 and React 19.2.8 (CVE-2025-66478)
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:** `next` 15.5.4 → 15.5.27 and `react`/`react-dom` 19.2.0 → 19.2.8, pinned exactly. Vercel's
+first build flagged 15.5.4 as vulnerable (CVE-2025-66478, the React Server Components flaw); this is
+the latest patch in the same minor line, so no breaking changes.
+
+**Still reported by `npm audit --omit=dev`, deliberately left for a planned Next 16 upgrade:** `postcss`
+bundled inside Next (high; it processes only our own stylesheets at build time, never visitor input),
+a moderate `next` advisory fixed only in 16, and `sharp` (high), which only Next's image optimiser loads
+and this site never uses (`next/image` appears nowhere).
+
+**Verified:** typecheck and build clean on 15.5.27; `check:render` 129 checks, all passed (PUB-01 59.6 KB).
+
+---
+
 ## 2026-10-08 — Deploying safely: the web tier's key, real visitor addresses, Paystack's door
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 
