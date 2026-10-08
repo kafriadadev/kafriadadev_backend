@@ -42,19 +42,22 @@ WORKDIR /app
 USER kafriada
 
 # 8010 rather than 8000, matching every other environment: a port that differs
-# between local and deployed is a support call waiting to happen.
+# between local and deployed is a support call waiting to happen. A platform that
+# assigns the port (Render, Railway, Fly) sets $PORT, and that wins.
+ENV PORT=8010
 EXPOSE 8010
 
 # Readiness, not liveness: the orchestrator should not send traffic to a process
 # that cannot reach its database. Liveness is /healthz and is checked by the
 # platform's own restart policy.
 HEALTHCHECK --interval=15s --timeout=10s --start-period=20s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:8010/readyz || exit 1
+  CMD curl -fsS "http://127.0.0.1:${PORT}/readyz" || exit 1
 
 # One worker per container; scale by running more containers. Argon2 is CPU work
 # with its own concurrency cap inside the process, and two workers on one small
 # instance would fight over the same cores.
-CMD ["uvicorn", "kafriada.main:app", \
-     "--host", "0.0.0.0", "--port", "8010", \
-     "--proxy-headers", "--forwarded-allow-ips", "*", \
-     "--no-server-header", "--timeout-keep-alive", "20"]
+# Shell form, so $PORT is read when the container starts.
+CMD exec uvicorn kafriada.main:app \
+     --host 0.0.0.0 --port "${PORT}" \
+     --proxy-headers --forwarded-allow-ips "*" \
+     --no-server-header --timeout-keep-alive 20

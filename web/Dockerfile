@@ -34,8 +34,10 @@ RUN apk add --no-cache curl \
 
 COPY --from=build --chown=kafriada:kafriada /app/.next/standalone ./
 COPY --from=build --chown=kafriada:kafriada /app/.next/static ./.next/static
-# No public/ directory exists yet. Add the COPY when one does — a missing source
-# path fails the build, which is better than a silently absent favicon.
+# The logo, icons, service worker, enhance.js and the figures. The standalone
+# output does not include public/; without this the site has no images and no
+# offline page.
+COPY --from=build --chown=kafriada:kafriada /app/public ./public
 
 USER kafriada
 EXPOSE 3000
@@ -44,6 +46,6 @@ EXPOSE 3000
 # while the domain tier is restarting — which is the honest thing for a
 # presentation tier to report about itself.
 HEALTHCHECK --interval=15s --timeout=10s --start-period=15s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:3000/ -o /dev/null || exit 1
+  CMD curl -fsS "http://127.0.0.1:${PORT}/find" -o /dev/null || exit 1
 
 CMD ["node", "server.js"]
