@@ -639,6 +639,12 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   `quietDanger` are the console's controls. The console's CSS lives in `app/admin/console.css`
   (admin-only) — put console styling there, not in `globals.css`, to keep public pages in budget.
 
+- **Deployment: web tier key, visitor addresses, Paystack webhook, Render Blueprint — done
+  2026-10-08.** API `INTERNAL_API_KEY` = web `KAFRIADA_INTERNAL_KEY` (required in production);
+  web `CLIENT_IP_HEADER` (`x-forwarded-for` on Render, `cf-connecting-ip` behind Cloudflare);
+  Paystack webhook URL `https://<site>/webhooks/paystack`. `render.yaml` defines all three services.
+  Code lives on `decobwebs/kafriadanet_backend` (remote `decobwebs`) as well as `origin`.
+
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
 2. ~~Registration copy promised an SMS code that is never sent.~~ Done 2026-09-11,

@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 
 import type { ClientMeta } from "./api";
+import { clientAddress } from "./client-ip";
 
 /**
  * The session cookie. Server-side only.
@@ -87,9 +88,9 @@ export async function endPending(): Promise<void> {
 /** The visitor's address and browser, for the audit trail. */
 export async function clientMeta(): Promise<ClientMeta> {
   const h = await headers();
-  // Only the edge's own header. x-forwarded-for is whatever the client typed.
+  // Only the header this site's own edge sets: see lib/client-ip.ts.
   return {
-    ip: h.get("cf-connecting-ip") ?? undefined,
+    ip: clientAddress((name) => h.get(name)),
     userAgent: h.get("user-agent") ?? undefined,
   };
 }

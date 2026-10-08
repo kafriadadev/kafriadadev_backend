@@ -1,0 +1,161 @@
+# Render Blueprint for KAFRIADA NET: three services from this one repository.
+# In Render: New → Blueprint → pick this repository. Render reads this file, builds
+# each service from its own folder, links them, and asks you for every value marked
+# `sync: false` (copy those from api/.env).
+#
+#   kafriada-api   private: no public address; only the website can reach it
+#   kafriada-web   the public website; calls the API server-side
+#   kafriada-jobs  sends queued codes and receipts, reconciles payments, nightly checks
+#
+# The website and the API share INTERNAL_API_KEY, generated here, so even a request
+# that found its way to the API is refused unless it came from the website.
+
+services:
+  - type: pserv
+    name: kafriada-api
+    runtime: docker
+    region: frankfurt
+    plan: starter
+    rootDir: api
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: ENVIRONMENT
+        value: staging
+      - key: PORT
+        value: "8010"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ENABLE_DOCS
+        value: "false"
+      - key: INTERNAL_API_KEY
+        generateValue: true
+      - key: TRUSTED_HOSTS
+        value: '["*"]'
+      - key: CORS_ALLOW_ORIGINS
+        value: "[]"
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: DATABASE_URL_APP
+        sync: false
+      - key: DATABASE_URL_MONEY
+        sync: false
+      - key: DATABASE_URL_READER
+        sync: false
+      - key: DATABASE_URL_MIGRATE
+        sync: false
+      - key: DB_CONNECT_TIMEOUT_SECONDS
+        value: "30"
+      - key: SECRET_KEY
+        sync: false
+      - key: QR_SECRET
+        sync: false
+      - key: QR_KEY_VERSION
+        value: "1"
+      - key: PAYMENT_PROVIDER
+        value: paystack
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: SMS_PROVIDER
+        value: none
+      # No SMS sender yet (Twilio's Nigerian sender ID), so codes go by email.
+      # Allowed in staging, refused in production.
+      - key: OTP_CHANNEL
+        value: email
+      # none until Cloudflare R2 keys exist; then r2 and the R2_* settings.
+      - key: MEDIA_STORE
+        value: none
+      - key: SENTRY_DSN
+        sync: false
+
+  - type: web
+    name: kafriada-web
+    runtime: docker
+    region: frankfurt
+    plan: starter
+    rootDir: web
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /find
+    envVars:
+      - key: KAFRIADA_API_URL
+        fromService:
+          type: pserv
+          name: kafriada-api
+          property: hostport
+      - key: KAFRIADA_INTERNAL_KEY
+        fromService:
+          type: pserv
+          name: kafriada-api
+          envVarKey: INTERNAL_API_KEY
+      # Render's proxy appends the visitor's address to x-forwarded-for. With
+      # Cloudflare in front, change this to cf-connecting-ip.
+      - key: CLIENT_IP_HEADER
+        value: x-forwarded-for
+
+  - type: worker
+    name: kafriada-jobs
+    runtime: docker
+    region: frankfurt
+    plan: starter
+    rootDir: api
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: python -m kafriada.jobs
+    envVars:
+      - fromGroup: kafriada-jobs-shared
+      - key: INTERNAL_API_KEY
+        fromService:
+          type: pserv
+          name: kafriada-api
+          envVarKey: INTERNAL_API_KEY
+      - key: DATABASE_URL_APP
+        fromService: { type: pserv, name: kafriada-api, envVarKey: DATABASE_URL_APP }
+      - key: DATABASE_URL_MONEY
+        fromService: { type: pserv, name: kafriada-api, envVarKey: DATABASE_URL_MONEY }
+      - key: DATABASE_URL_READER
+        fromService: { type: pserv, name: kafriada-api, envVarKey: DATABASE_URL_READER }
+      - key: DATABASE_URL_MIGRATE
+        fromService: { type: pserv, name: kafriada-api, envVarKey: DATABASE_URL_MIGRATE }
+      - key: SECRET_KEY
+        fromService: { type: pserv, name: kafriada-api, envVarKey: SECRET_KEY }
+      - key: QR_SECRET
+        fromService: { type: pserv, name: kafriada-api, envVarKey: QR_SECRET }
+      - key: PAYSTACK_SECRET_KEY
+        fromService: { type: pserv, name: kafriada-api, envVarKey: PAYSTACK_SECRET_KEY }
+      - key: RESEND_API_KEY
+        fromService: { type: pserv, name: kafriada-api, envVarKey: RESEND_API_KEY }
+      - key: EMAIL_FROM
+        fromService: { type: pserv, name: kafriada-api, envVarKey: EMAIL_FROM }
+      - key: PUBLIC_BASE_URL
+        fromService: { type: pserv, name: kafriada-api, envVarKey: PUBLIC_BASE_URL }
+
+envVarGroups:
+  - name: kafriada-jobs-shared
+    envVars:
+      - key: ENVIRONMENT
+        value: staging
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DB_CONNECT_TIMEOUT_SECONDS
+        value: "30"
+      - key: QR_KEY_VERSION
+        value: "1"
+      - key: PAYMENT_PROVIDER
+        value: paystack
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: SMS_PROVIDER
+        value: none
+      # No SMS sender yet (Twilio's Nigerian sender ID), so codes go by email.
+      # Allowed in staging, refused in production.
+      - key: OTP_CHANNEL
+        value: email
+      - key: MEDIA_STORE
+        value: none

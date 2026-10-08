@@ -14,7 +14,17 @@ import type { ClubProfile } from "@/lib/clubProfile";
 
 // 8010, not the usual 8000: another project on this machine already holds
 // 8000, and a port clash presents as a baffling 404 from the wrong server.
-const API_BASE = process.env.KAFRIADA_API_URL ?? "http://127.0.0.1:8010";
+const RAW_API_URL = process.env.KAFRIADA_API_URL ?? "http://127.0.0.1:8010";
+// A platform that links services by host and port (Render's private network)
+// gives "kafriada-api:10000" with no scheme; inside a private network that is http.
+const API_BASE = /^https?:\/\//.test(RAW_API_URL) ? RAW_API_URL.replace(/\/+$/, "") : `http://${RAW_API_URL}`;
+/**
+ * The shared secret that proves a request came from this server (the API's
+ * INTERNAL_API_KEY). Server-side only: never prefixed NEXT_PUBLIC_, never sent to
+ * a browser. Unset on a developer's machine, where the API checks nothing.
+ */
+export const INTERNAL_KEY = process.env.KAFRIADA_INTERNAL_KEY;
+export const INTERNAL_KEY_HEADER = "x-kafriada-internal";
 
 /** Every request gets a deadline. A hung upstream must not hold a render open. */
 const TIMEOUT_MS = 10_000;
@@ -226,6 +236,7 @@ async function call<T>(
   // The session travels server to server as a bearer token. The browser holds
   // it only in an httpOnly cookie that no script can read.
   if (token) extra.authorization = `Bearer ${token}`;
+  if (INTERNAL_KEY) extra[INTERNAL_KEY_HEADER] = INTERNAL_KEY;
   if (meta?.ip) extra["x-real-ip"] = meta.ip;
   if (meta?.userAgent) extra["user-agent"] = meta.userAgent;
 
@@ -318,10 +329,11 @@ export type RegistrationInput = {
   accept_privacy_notice: boolean;
 };
 
-export function register(input: RegistrationInput): Promise<RegistrationResult> {
+export function register(input: RegistrationInput, meta: ClientMeta): Promise<RegistrationResult> {
   return call<RegistrationResult>("/v1/register", {
     method: "POST",
     body: JSON.stringify(input),
+    meta,
   });
 }
 
@@ -1241,7 +1253,10 @@ export async function getImage(
     const response = await fetch(`${API_BASE}${path}`, {
       signal: controller.signal,
       cache: "no-store",
-      headers: token ? { authorization: `Bearer ${token}` } : {},
+      headers: {
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+        ...(INTERNAL_KEY ? { [INTERNAL_KEY_HEADER]: INTERNAL_KEY } : {}),
+      },
     });
     return response.ok ? response : null;
   } catch {

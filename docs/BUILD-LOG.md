@@ -30,6 +30,44 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-08 — Deploying safely: the web tier's key, real visitor addresses, Paystack's door
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **Only the web tier may use the API.** `INTERNAL_API_KEY` (API) and `KAFRIADA_INTERNAL_KEY`
+  (web) hold one shared secret; `lib/api.ts` sends it as `x-kafriada-internal` on every call and
+  `InternalKeyMiddleware` refuses anything without it with a plain 404, before any route runs.
+  `/healthz`, `/readyz` and the Paystack webhook stay open. Production refuses to start without
+  it; unset (a developer's machine) nothing is checked.
+- **Each visitor's own address reaches the rate limits.** `lib/client-ip.ts` reads only the
+  header this site's edge sets, chosen by `CLIENT_IP_HEADER`: `cf-connecting-ip` (Cloudflare,
+  default) or `x-forwarded-for` (Render and most platforms: the rightmost public entry, since
+  anything to its left the visitor could type). Before, without Cloudflare every visitor reached
+  the API as the web server, sharing one sign-in allowance. Registration did not pass the
+  visitor's details at all; it does now.
+- **Paystack's door.** `app/webhooks/paystack/route.ts` passes the webhook to the API byte for
+  byte (the API checks the HMAC over the exact bytes) and returns the API's status, so a failure
+  makes Paystack deliver again. Paystack's webhook URL is `https://<site>/webhooks/paystack`.
+- **`render.yaml`**, a Render Blueprint: `kafriada-api` (private service), `kafriada-web` (public)
+  and `kafriada-jobs` (worker), each built from its own folder, linked by host and port, sharing a
+  generated `INTERNAL_API_KEY`. `KAFRIADA_API_URL` may now be `host:port` with no scheme.
+- Both Dockerfiles honour `$PORT`, and the web image now includes `public/` (`0dc6462`).
+
+**Why:** the project lead asked how the frontend calls the backend securely once deployed; reading
+the code against a real deployment found the shared allowance, the missing registration details,
+no way in for Paystack to a private API, and nothing stopping a caller who reached the API directly.
+
+**Verified:** `tests/test_internal_key.py` (5) and `test_settings_refuses_insecure_config.py`
+(production now needs the key), route manifest: all pass. `lib/client-ip.ts` against six cases,
+including a typed address before the real one. End to end on spare ports (API 8011 with a key,
+website 3001 with the same key and `CLIENT_IP_HEADER=x-forwarded-for`, API given as `host:port`):
+the API alone answered 404 with no key and with a wrong one, `/healthz` 200; the register page loaded
+through the website; a wrong-password sign-in sent with `x-forwarded-for: 6.6.6.6, 102.89.1.2` was
+counted against 102.89.1.2 and not 6.6.6.6; an unsigned webhook through the website returned the
+API's 400. Docker images not built here (no Docker on this machine); Render builds them.
+
+---
+
 ## 2026-10-08 — The administrator console, redesigned as an application
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

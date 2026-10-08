@@ -235,6 +235,12 @@ class Settings(BaseSettings):
     termii_api_key: SecretStr | None = None
     termii_sender_id: str = "KAFRIADA"
 
+    # -- The web tier ----------------------------------------------------------
+    # A shared secret the web tier sends on every request (x-kafriada-internal).
+    # When set, a request without it is refused, so only the web tier can use the
+    # API even if the API is reachable from the internet. Required in production.
+    internal_api_key: SecretStr | None = None
+
     # -- Email --------------------------------------------------------------
     email_provider: EmailProvider = EmailProvider.NONE
     resend_api_key: SecretStr | None = None
@@ -318,9 +324,11 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     # Validators
     # ------------------------------------------------------------------
-    @field_validator("secret_key", "qr_secret")
+    @field_validator("secret_key", "qr_secret", "internal_api_key")
     @classmethod
-    def _secret_must_be_strong(cls, value: SecretStr) -> SecretStr:
+    def _secret_must_be_strong(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is None:
+            return value
         raw = value.get_secret_value()
         if raw.strip().lower() in _PLACEHOLDER_SECRETS:
             raise ValueError(
@@ -397,6 +405,11 @@ class Settings(BaseSettings):
             problems.append("enable_docs must be false in production")
         if self.log_level == "DEBUG":
             problems.append("log_level must not be DEBUG in production")
+        if self.internal_api_key is None:
+            problems.append(
+                "internal_api_key must be set in production, and the same value given to "
+                "the web tier as KAFRIADA_INTERNAL_KEY"
+            )
         if "*" in self.trusted_hosts:
             problems.append("trusted_hosts must name real hosts in production, not '*'")
         if self.cors_allow_origins:

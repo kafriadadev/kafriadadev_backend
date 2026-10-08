@@ -1,4 +1,4 @@
-"""HTTP middleware: request identity and security headers."""
+"""HTTP middleware: request identity, the web tier's key, and security headers."""
 
 from __future__ import annotations
 
@@ -143,3 +143,48 @@ class SecurityHeadersMiddleware:
             await send(message)
 
         await self.app(scope, receive, send_wrapper)
+
+
+INTERNAL_KEY_HEADER = "x-kafriada-internal"
+
+# What may be reached without the web tier's key: the platform's probes, and the
+# Paystack webhook, which Paystack calls itself and which proves itself with its
+# own HMAC signature.
+_OPEN_PATHS = frozenset({"/healthz", "/readyz", "/v1/payments/webhook/paystack"})
+
+
+class InternalKeyMiddleware:
+    """Only the web tier may use the API.
+
+    The browser never talks to this service; the web tier calls it server-side and
+    sends a shared secret with every request. With ``internal_api_key`` set, a
+    request without the right key is refused before any route runs, so a caller who
+    finds the API's address can neither use it nor forge the visitor-address header
+    the web tier passes on (which the rate limits trust). Unset, as on a developer's
+    machine, nothing is checked.
+    """
+
+    def __init__(self, app: ASGIApp, settings: Settings) -> None:
+        self.app = app
+        key = settings.internal_api_key
+        self._key = key.get_secret_value().encode() if key is not None else None
+
+    async def __call__(self, scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+        if self._key is None or scope["type"] != "http" or scope.get("path") in _OPEN_PATHS:
+            await self.app(scope, receive, send)
+            return
+        presented = b""
+        for name, value in scope.get("headers", []):
+            if name == INTERNAL_KEY_HEADER.encode():
+                presented = value
+                break
+        if secrets.compare_digest(presented, self._key):
+            await self.app(scope, receive, send)
+            return
+        _log.warning("internal_key_refused", path=scope.get("path"))
+        response = Response(
+            content=b'{"error":{"message":"Not found."}}',
+            status_code=404,
+            media_type="application/json",
+        )
+        await response(scope, receive, send)

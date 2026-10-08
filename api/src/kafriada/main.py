@@ -23,6 +23,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from kafriada.middleware import (
+    InternalKeyMiddleware,
     RequestContextMiddleware,
     SecurityHeadersMiddleware,
     short_reference,
@@ -117,6 +118,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # on the way out. Request context is outermost so that every log line and
     # every error response carries an id, including ones raised by middleware
     # below it.
+    app.add_middleware(InternalKeyMiddleware, settings=cfg)
     app.add_middleware(SecurityHeadersMiddleware, settings=cfg)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=cfg.trusted_hosts)
     app.add_middleware(RequestContextMiddleware)

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { ApiError, register } from "@/lib/api";
-import { startPending } from "@/lib/session";
+import { clientMeta, startPending } from "@/lib/session";
 
 /** The fields bounced back to the form after a refusal. Never the password. */
 const KEPT = [
@@ -68,7 +68,7 @@ export async function registerAthlete(formData: FormData): Promise<void> {
       years_experience: years,
       password: String(formData.get("password") ?? ""),
       accept_privacy_notice: true,
-    });
+    }, await clientMeta());
   } catch (error) {
     if (error instanceof ApiError) bounceBack(error.message, error.field);
     throw error;

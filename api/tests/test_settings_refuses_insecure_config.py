@@ -37,6 +37,7 @@ def production(**overrides: object) -> Settings:
         "enable_docs": False,
         "trusted_hosts": ["api.kafriada.ng"],
         "cors_allow_origins": [],
+        "internal_api_key": "i" * 40,
         "paystack_secret_key": "sk_live_" + "z" * 30,
         "payment_provider": "paystack",
         "media_store": "r2",
@@ -78,6 +79,12 @@ class TestSecretStrength:
 class TestProductionLockdown:
     def test_a_correct_production_config_is_accepted(self) -> None:
         assert production().environment.is_production
+
+    def test_no_key_for_the_web_tier_is_refused(self) -> None:
+        # Without it, anyone who finds the API's address can use it and forge the
+        # visitor-address header the rate limits trust.
+        with pytest.raises(ValidationError, match="internal_api_key must be set in production"):
+            production(internal_api_key=None)
 
     def test_interactive_docs_are_refused(self) -> None:
         with pytest.raises(ValidationError, match="enable_docs must be false"):
