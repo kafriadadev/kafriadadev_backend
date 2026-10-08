@@ -1,7 +1,8 @@
 import { cn } from "@/lib/cn";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
-export type ButtonSize = "md" | "lg";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "quietDanger";
+/** md and lg are the brand's kit buttons; sm is the administrator console's compact control. */
+export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANT: Record<ButtonVariant, string> = {
   // Logo green with boot text (6.48:1): reads like a kit.
@@ -9,9 +10,12 @@ const VARIANT: Record<ButtonVariant, string> = {
   secondary: "border-2 border-line-strong bg-bg text-text hover:bg-surface active:bg-surface-2",
   ghost: "text-link underline-offset-4 hover:underline active:opacity-80",
   danger: "bg-[var(--card-red)] text-chalk hover:opacity-90 active:opacity-80",
+  // For a destructive action that sits among others: outlined, filled only on hover.
+  quietDanger: "border border-danger text-danger hover:bg-danger-bg active:opacity-80",
 };
 
 const SIZE: Record<ButtonSize, string> = {
+  sm: "min-h-9 px-3.5 text-sm",
   md: "min-h-12 px-5 text-base",
   // 56px tall: the one primary action on a phone screen.
   lg: "min-h-14 px-7 text-md",
@@ -24,11 +28,17 @@ export function buttonClass({
   className,
 }: { variant?: ButtonVariant; size?: ButtonSize; block?: boolean; className?: string } = {}) {
   return cn(
-    "inline-flex select-none items-center justify-center gap-2 rounded-pill font-display font-extrabold uppercase italic tracking-wide no-underline",
+    "inline-flex select-none items-center justify-center gap-2 no-underline",
+    // The console's compact control reads as a tool; the kit buttons read as the brand.
+    size === "sm" && variant !== "ghost"
+      ? "rounded-[var(--radius-control,0.625rem)] font-body font-bold"
+      : "rounded-pill font-display font-extrabold uppercase italic tracking-wide",
     "transition-[transform,background-color,opacity] duration-[var(--dur-tap)] ease-kick active:scale-[.98]",
     "disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100",
     VARIANT[variant],
-    variant === "ghost" ? "min-h-12 px-2 normal-case not-italic font-body font-bold tracking-normal" : SIZE[size],
+    variant === "ghost"
+      ? cn(size === "sm" ? "min-h-9 px-1 text-sm" : "min-h-12 px-2", "normal-case not-italic font-body font-bold tracking-normal")
+      : SIZE[size],
     block && "w-full",
     className,
   );

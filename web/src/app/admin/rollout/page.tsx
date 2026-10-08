@@ -11,6 +11,7 @@ import { buttonClass } from "@/components/ui/Button";
 import { ApiError, getRollout, type RolloutLga } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 import { rolloutAction } from "./actions";
+import { Badge } from "@/components/console";
 
 export const metadata: Metadata = { title: "LGA rollout" };
 export const dynamic = "force-dynamic";
@@ -70,7 +71,7 @@ export default async function RolloutPage({ searchParams }: { searchParams: Prom
       {chosen ? (
         <section aria-labelledby="confirm" className="mb-8">
           <h2 id="confirm">{chosen.is_open ? `Close ${chosen.name}` : `Open ${chosen.name}`}</h2>
-          <div className="my-4 rounded-card border-2 border-l-[6px] border-[var(--boot)] bg-warn-bg p-4 text-on-warn">
+          <div className="kc-alert-box kc-alert-warn kc-round my-4 p-4 text-sm">
             <p className="font-bold">This will</p>
             {chosen.is_open ? (
               <ul className="mt-2 list-disc space-y-1 pl-6">
@@ -96,7 +97,7 @@ export default async function RolloutPage({ searchParams }: { searchParams: Prom
               <label htmlFor="current_password">Your password</label>
               <input id="current_password" name="current_password" type="password" autoComplete="current-password" required />
             </div>
-            <button type="submit" className={buttonClass({ variant: chosen.is_open ? "danger" : "primary" })}>
+            <button type="submit" className={buttonClass({ variant: chosen.is_open ? "danger" : "primary", size: "sm" })}>
               {chosen.is_open ? `Close ${chosen.name}` : `Open ${chosen.name}`}
             </button>{" "}
             <a href="/admin/rollout">Cancel</a>
@@ -120,10 +121,17 @@ export default async function RolloutPage({ searchParams }: { searchParams: Prom
                 <td data-label="Code"><span className="font-mono">{l.code}</span></td>
                 <td data-label="Registered"><span>{l.registered.toLocaleString("en-GB")}</span></td>
                 <td data-label="Status">
-                  <span>{l.is_open ? `Open${l.went_live_at ? ` since ${onDate(l.went_live_at)}` : ""}` : "Closed"}</span>
+                  {l.is_open ? (
+                    <span className="inline-flex flex-wrap items-center gap-2">
+                      <Badge tone="good">Open</Badge>
+                      {l.went_live_at ? <span className="text-xs text-muted">since {onDate(l.went_live_at)}</span> : null}
+                    </span>
+                  ) : (
+                    <Badge>Closed</Badge>
+                  )}
                 </td>
                 <td data-label="">
-                  <a href={`/admin/rollout?${new URLSearchParams({ lga: l.id })}#confirm`}>
+                  <a href={`/admin/rollout?${new URLSearchParams({ lga: l.id })}#confirm`} className={buttonClass({ variant: l.is_open ? "quietDanger" : "secondary", size: "sm", className: "float-right" })}>
                     {l.is_open ? "Close" : "Open"}<span className="sr-only"> {l.name}</span>
                   </a>
                 </td>

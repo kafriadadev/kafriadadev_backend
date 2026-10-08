@@ -30,6 +30,40 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-08 — The administrator console, redesigned as an application
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **A permanent sidebar.** `AdminShell` is now an application frame: on a laptop a fixed sidebar
+  down the left edge (logo, sections grouped as People and clubs / Verification and money /
+  Programme, then My account and Sign out) that stays put while the page scrolls; on a phone a
+  fixed top bar whose Menu (a `<details>`, no script) opens the same sections. The public header
+  and footer step aside on console pages (`data-site-chrome`, hidden by `body:has([data-console])`).
+- **A console design.** `components/console/`: `ConsoleHeader`, `Card`, `Segmented` (filter tabs),
+  `Badge`, `Metric`/`MetricGrid`, `ConsoleEmpty`, `Details`. The console speaks in the body face at
+  15 px (`--text-sm`), with compact controls: `Button` gained `size="sm"` (rounded, sentence case)
+  and a `quietDanger` variant for a destructive action offered among others. The old adapters
+  (`PageHead`, `Flash`, `SubmitButton`, `Stat`, `EmptyState`, `Pager`), used only by the console,
+  now draw these. Base styles for native controls, tables and details were redone: 40 px inputs
+  with a focus ring, quiet table headers, compact rows, badges instead of bare words; any form or
+  section placed straight in the page is a panel.
+- **Clubs** is a table with a segmented filter, status badges and small row actions (it was loose
+  text with two full-width bars per club). **Club reviews** is a card per club, the document beside
+  the decision. **LGA rollout** and **Users** show statuses and roles as badges.
+- **The console's stylesheet is its own** (`app/admin/console.css`, loaded by `app/admin/layout.tsx`),
+  so public pages no longer download it: the shared stylesheet went from 16.0 to 14.5 KB compressed,
+  which brought PUB-01 back under its 60 KB budget after it had crept over.
+
+**Why:** the project lead: "The UI of this frontend is very poor … do something better, something
+modern and clean", then "we need a permanent nav bar". The console had been bare HTML on a few base
+styles since Phase 0.
+
+**Verified:** screenshots of Clubs, Overview, Users, LGA rollout and Club reviews at 1440 px in light
+and dark and at 390 px. `check:render` with every admin page in `EXTRA_SESSIONS`: 223 checks, all
+passed (PUB-01 59.6 KB). `check:a11y` including the admin pages: no violations.
+
+---
+
 ## 2026-10-08 — Isometric figures across the site
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

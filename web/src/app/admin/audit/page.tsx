@@ -65,7 +65,7 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
 
   return (
     <AdminShell current="/admin/audit">
-      <PageHead eyebrow="Administrator" title="Audit log" app />
+      <PageHead title="Audit log" lede="Every change of consequence, who made it and when. It cannot be edited." />
 
       <form method="get" role="search">
         <div>

@@ -87,6 +87,7 @@
   --font-mono: var(--font-mono-face), ui-monospace, monospace;
   /* Mobile first; the large steps grow toward desktop. Body never below 16. */
   --text-xs: 0.875rem;                               /* 14 */
+  --text-sm: 0.9375rem;                              /* 15: the administrator console's dense text */
   --text-base: 1rem;                                 /* 16 */
   --text-md: 1.125rem;                               /* 18 */
   --text-lg: clamp(1.25rem, 1.15rem + 0.5vw, 1.375rem); /* 20 → 22 */
@@ -98,6 +99,7 @@
   --radius-card: 12px;    /* a card in the hand */
   --radius-pill: 999px;   /* a ball */
   --radius-input: 4px;
+  --radius-control: 10px; /* the administrator console's buttons, inputs and panels */
   --shadow-lift: 0 1px 2px rgb(10 15 11 / 0.08), 0 4px 12px rgb(10 15 11 / 0.08);
   --shadow-float: 0 8px 28px rgb(10 15 11 / 0.18);
   --ease-kick: cubic-bezier(.2, .8, .2, 1);      /* fast out, soft landing; default */

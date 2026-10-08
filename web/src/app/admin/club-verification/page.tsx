@@ -10,6 +10,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { ApiError, type ClubVerificationWaiting, getClubVerificationQueue } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 import { decideAction } from "./actions";
+import { Badge, Card } from "@/components/console";
 
 export const metadata: Metadata = { title: "Club reviews" };
 export const dynamic = "force-dynamic";
@@ -52,7 +53,7 @@ export default async function ClubReviewsPage({ searchParams }: { searchParams: 
 
   return (
     <AdminShell current="/admin/club-verification">
-      <PageHead eyebrow="Administrator" title="Club reviews" app />
+      <PageHead title="Club reviews" lede="Clubs that have paid for verification and are waiting for a decision." />
 
       {done ? (
         <Flash variant="good" title={done === "approved" ? "Club verified" : "Rejected"}>
@@ -68,47 +69,39 @@ export default async function ClubReviewsPage({ searchParams }: { searchParams: 
       {waiting.length === 0 ? <EmptyState title="No club is waiting for a decision" /> : null}
 
       {waiting.map((w) => (
-        <section key={w.club_id} aria-label={w.club_name}>
-          <div>
-            <h2>{w.club_name}</h2>
-            <p>{w.lga_name} &middot; submitted {stamp(w.submitted_at)}</p>
-            <div>
-            <figure>
-              <figcaption>Registration document or LGA letter</figcaption>
+        <Card key={w.club_id} title={w.club_name} description={`${w.lga_name} · submitted ${stamp(w.submitted_at)}`} actions={<Badge tone="warn">Waiting for a decision</Badge>}>
+          <div className="grid gap-6 md:grid-cols-[18rem_1fr]">
+            <figure className="m-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`/admin/club-verification/${w.club_id}/document`}
                 alt="The document the club submitted"
                 width={320}
                 loading="lazy"
+                className="w-full rounded-[var(--radius-control)] border border-line bg-surface object-contain"
               />
+              <figcaption className="mt-2 text-xs text-muted">Registration document or LGA letter</figcaption>
             </figure>
-
-            <div>
-            <form action={decideAction}>
-              <input type="hidden" name="club" value={w.club_id} />
-              <input type="hidden" name="decision" value="approve" />
-              <SubmitButton pending="Verifying…">
-                Approve
-              </SubmitButton>
-            </form>
-
-            <form action={decideAction}>
-              <input type="hidden" name="club" value={w.club_id} />
-              <input type="hidden" name="decision" value="reject" />
-              <div>
-                <label htmlFor={`reason-${w.club_id}`}>Reject with a reason</label>
-                <span>The club reads this exactly as you write it.</span>
-                <textarea id={`reason-${w.club_id}`} name="reason" maxLength={1000} required />
-              </div>
-              <SubmitButton variant="danger" pending="Rejecting…">
-                Reject with reason
-              </SubmitButton>
-            </form>
-            </div>
+            <div className="space-y-5">
+              <form action={decideAction}>
+                <input type="hidden" name="club" value={w.club_id} />
+                <input type="hidden" name="decision" value="approve" />
+                <p className="text-sm text-muted">Approve if the document names this club and its LGA.</p>
+                <SubmitButton pending="Verifying…">Approve and verify</SubmitButton>
+              </form>
+              <form action={decideAction} className="border-t border-line pt-5">
+                <input type="hidden" name="club" value={w.club_id} />
+                <input type="hidden" name="decision" value="reject" />
+                <div>
+                  <label htmlFor={`reason-${w.club_id}`}>Or reject, with a reason</label>
+                  <span>The club reads this exactly as you write it.</span>
+                  <textarea id={`reason-${w.club_id}`} name="reason" maxLength={1000} required />
+                </div>
+                <SubmitButton variant="quietDanger" pending="Rejecting…">Reject</SubmitButton>
+              </form>
             </div>
           </div>
-        </section>
+        </Card>
       ))}
     </AdminShell>
   );

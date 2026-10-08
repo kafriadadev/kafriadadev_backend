@@ -135,7 +135,7 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
 
             {found.revocable ? (
               // ADM-03: say exactly what withdrawing does, and what it does not, before it is done.
-              <div className="my-6 rounded-card border-2 border-danger border-l-[6px] bg-danger-bg p-4">
+              <div className="kc-alert-box kc-alert-bad kc-round my-4 p-4 text-sm">
                 <p className="font-bold">This will</p>
                 <ul className="mt-2 list-disc space-y-1 pl-6">
                   <li>Remove the photograph from the public profile</li>
@@ -166,7 +166,7 @@ export default async function RevokePage({ searchParams }: { searchParams: Promi
                     required
                   />
                 </div>
-                <button type="submit" className={buttonClass({ variant: "danger" })}>
+                <button type="submit" className={buttonClass({ variant: "danger", size: "sm" })}>
                   Withdraw this verification
                 </button>
               </form>

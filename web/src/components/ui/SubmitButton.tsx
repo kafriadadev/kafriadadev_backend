@@ -47,7 +47,7 @@ export function SubmitButton({
       className={buttonClass({ variant, size, block, className })}
     >
       {/* On a green button the arc takes the text colour, or it would vanish. */}
-      {pending ? <Spinner size={26} className="-my-1 [--spinner-arc:currentColor]" /> : icon}
+      {pending ? <Spinner size={size === "sm" ? 18 : 26} className="-my-1 [--spinner-arc:currentColor]" /> : icon}
       <span aria-live="polite">{pending ? pendingLabel : children}</span>
     </button>
   );

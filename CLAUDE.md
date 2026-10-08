@@ -634,6 +634,11 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   (error.tsx loads its file; print copies in `docs/design/print/`). A floodlight in a scene must be
   framed with `towerBounds()`, or its head is clipped.
 
+- **Administrator console redesign — done 2026-10-08.** `AdminShell` is an app frame with a
+  permanent sidebar; components in `web/src/components/console/`; `Button size="sm"` and
+  `quietDanger` are the console's controls. The console's CSS lives in `app/admin/console.css`
+  (admin-only) — put console styling there, not in `globals.css`, to keep public pages in budget.
+
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
 2. ~~Registration copy promised an SMS code that is never sent.~~ Done 2026-09-11,

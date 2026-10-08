@@ -157,7 +157,7 @@ export default async function DataRequestsPage({ searchParams }: { searchParams:
           {person.anonymised ? null : (
             <section aria-labelledby="erase">
               <h2 id="erase">Erase this person</h2>
-              <div className="my-4 rounded-card border-2 border-l-[6px] border-danger bg-danger-bg p-4">
+              <div className="kc-alert-box kc-alert-bad kc-round my-4 p-4 text-sm">
                 <p className="font-bold">This will</p>
                 <ul className="mt-2 list-disc space-y-1 pl-6">
                   <li>Remove their name, phone number, email, password, date of birth, address and emergency contact</li>
@@ -181,7 +181,7 @@ export default async function DataRequestsPage({ searchParams }: { searchParams:
                   <label htmlFor="current_password">Your password</label>
                   <input id="current_password" name="current_password" type="password" autoComplete="current-password" required />
                 </div>
-                <button type="submit" className={buttonClass({ variant: "danger" })}>Erase this person</button>
+                <button type="submit" className={buttonClass({ variant: "danger", size: "sm" })}>Erase this person</button>
               </form>
             </section>
           )}

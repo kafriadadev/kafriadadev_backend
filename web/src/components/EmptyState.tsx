@@ -1,7 +1,6 @@
-import { EmptyNet } from "./illustrations";
-import { EmptyState as E } from "./ui/PageState";
+import { ConsoleEmpty } from "./console";
 
-/** The old EmptyState on the new one. */
+/** Nothing to list on a console page. */
 export function EmptyState({ title, children }: { title: string; children?: React.ReactNode }) {
-  return <E art={<EmptyNet />} title={title}>{children}</E>;
+  return <ConsoleEmpty title={title}>{children}</ConsoleEmpty>;
 }

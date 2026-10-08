@@ -8,6 +8,7 @@ import { PageHead } from "@/components/PageHead";
 import { Pager } from "@/components/Pager";
 import { type AdminUsers, ApiError, findAdminUsers, getRoleKinds } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
+import { Badge } from "@/components/console";
 
 export const metadata: Metadata = { title: "Users and roles" };
 export const dynamic = "force-dynamic";
@@ -53,7 +54,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
 
   return (
     <AdminShell current="/admin/users">
-      <PageHead eyebrow="Administrator" title="Users and roles" app />
+      <PageHead title="Users and roles" lede="Find a person and see exactly which roles they hold, and where." />
 
       <form method="get" role="search">
         <div>
@@ -89,10 +90,10 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                   <td data-label="Phone"><span>{u.phone_masked}</span></td>
                   <td data-label="ID">{u.kuid ? <span>{u.kuid}</span> : <span>None</span>}</td>
                   <td data-label="Roles">
-                    <span>
+                    <span className="inline-flex flex-wrap gap-1.5">
                       {u.roles.length
-                        ? u.roles.map((r) => `${r.role}${r.scope_name ? ` — ${r.scope_name}` : ""}`).join(", ")
-                        : "No roles"}
+                        ? u.roles.map((r) => <Badge key={`${r.role}-${r.scope_name ?? ""}`} tone={r.role === "super_admin" ? "info" : "neutral"}>{r.role.replace(/_/g, " ")}{r.scope_name ? ` · ${r.scope_name}` : ""}</Badge>)
+                        : <span className="text-muted">No roles</span>}
                     </span>
                   </td>
                   <td data-label="Last seen"><span>{seen(u.last_seen)}</span></td>

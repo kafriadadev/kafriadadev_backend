@@ -1,0 +1,120 @@
+/*
+ * The administrator console's stylesheet, loaded only under /admin (app/admin/layout.tsx),
+ * so no public page downloads it. Tokens come from tokens.css as everywhere else.
+ */
+
+/* -- The administrator console ---------------------------------------------
+ * Admin screens use native controls and tables directly. Inside
+ * [data-console] they get the design system's look; :where() keeps the
+ * specificity at zero so any component's own classes still win.
+ */
+@layer components {
+  /* The console speaks in the body face: no condensed italic capitals in a work tool. */
+  :where([data-console]) :where(h1, h2, h3) { font-family: var(--font-body); font-style: normal; text-transform: none; letter-spacing: normal; }
+  :where([data-console]) :where(h2) { font-size: var(--text-base); font-weight: 700; }
+  /* A form that does something: fields stacked, a readable width, in a panel of its own. */
+  :where([data-console]) :where(form:not([role="search"], [method="get"])) { display: grid; gap: var(--space-4); max-width: 40rem; }
+  :where([data-console]) :where(section) + :where(section) { margin-top: var(--space-6); }
+  /* A form or section placed straight in the page is a panel of its own. */
+  :where([data-console-main]) > :where(form, section:not([data-card])) {
+    border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--bg);
+    padding: var(--space-6); max-width: none;
+  }
+  :where([data-console-main]) > :where(form[method="get"], form[role="search"]) { background: var(--surface); padding: var(--space-4); }
+  :where([data-console]) :where(form[role="search"], form[method="get"]) {
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3);
+  }
+  :where([data-console]) :where(form) :where(div:has(> label):has(> :is(input, select, textarea))) {
+    display: grid; gap: 0.375rem; min-width: 12rem; flex: 1 1 12rem;
+  }
+  /* A hint between a label and its control sits on its own, quieter line. */
+  :where([data-console]) :where(div:has(> label) > span) { display: block; font-size: var(--text-xs); color: var(--text-muted); }
+  :where([data-console]) :where(label) { font-size: var(--text-sm); font-weight: 700; }
+  :where([data-console]) :where(input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="file"]), select, textarea) {
+    min-height: 2.5rem; width: 100%; border: 1px solid var(--line-strong); border-radius: var(--radius-control);
+    background: var(--bg); color: var(--text); padding: 0 var(--space-3); font: inherit; font-size: var(--text-sm);
+    transition: border-color var(--dur-quick) ease, box-shadow var(--dur-quick) ease;
+  }
+  :where([data-console]) :where(input, select, textarea):hover { border-color: var(--text-muted); }
+  :where([data-console]) :where(textarea) { min-height: 6rem; padding: var(--space-2) var(--space-3); }
+  :where([data-console]) :where(input, select, textarea):focus-visible {
+    outline: none; border-color: var(--pitch); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pitch) 30%, transparent);
+  }
+  :where([data-console]) :where(input[type="checkbox"], input[type="radio"]) { width: 1.125rem; height: 1.125rem; accent-color: var(--pitch-deep); }
+  :where([data-console]) :where(button:not([class])) {
+    min-height: 2.5rem; padding: 0 var(--space-4); border-radius: var(--radius-control);
+    background: var(--pitch); color: var(--on-pitch); font-family: var(--font-body); font-weight: 700;
+    font-size: var(--text-sm); cursor: pointer; justify-self: start;
+  }
+  /* A form's buttons and links are as wide as their words, not the form. */
+  :where([data-console]) :where(form) > :where(button, a) { justify-self: start; }
+  :where([data-console]) :where(button:not([class])):hover { background: color-mix(in srgb, var(--pitch) 88%, var(--boot)); }
+  :where([data-console]) :where(div:has(> .kaf-stat)) {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: var(--space-3);
+  }
+  :where([data-console]) :where(section) > :where(h2) { margin-bottom: var(--space-3); }
+  /* Tables: a panel with a quiet header row and compact rows. */
+  :where([data-console]) :where(table) {
+    width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line);
+    border-radius: var(--radius-control); overflow: clip; background: var(--bg); font-size: var(--text-sm);
+  }
+  :where([data-console]) :where(thead) { position: sticky; top: 0; background: var(--surface); }
+  :where([data-console]) :where(th) {
+    padding: 0.625rem var(--space-4); text-align: left; font-size: var(--text-xs); font-weight: 700;
+    color: var(--text-muted); border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  :where([data-console]) :where(td) { padding: 0.75rem var(--space-4); border-top: 1px solid var(--line); vertical-align: middle; }
+  :where([data-console]) :where(tbody tr:first-child td) { border-top: 0; }
+  /* A link in a table cell stands alone, so it needs no underline until pointed at. */
+  :where([data-console]) :where(td a:not([class*="rounded"])) { text-decoration: none; font-weight: 700; }
+  :where([data-console]) :where(td a:not([class*="rounded"])):hover { text-decoration: underline; }
+  :where([data-console]) :where(tbody tr:hover) { background: color-mix(in srgb, var(--surface) 70%, var(--bg)); }
+  :where([data-console]) :where(dl) { display: grid; gap: var(--space-4) var(--space-6); grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+  :where([data-console]) :where(dt) { font-size: var(--text-xs); font-weight: 700; color: var(--text-muted); }
+  :where([data-console]) :where(dd) { margin-top: 0.125rem; font-size: var(--text-sm); font-weight: 700; }
+  :where([data-console]) :where(blockquote) { border-left: 3px solid var(--line-strong); padding-left: var(--space-3); }
+  /* Under 720px a table becomes cards: each cell names its column. */
+  @media (max-width: 719px) {
+    :where([data-console]) :where(thead) { display: none; }
+    :where([data-console]) :where(table, tbody, tr, td) { display: block; }
+    :where([data-console]) :where(tr) { border-top: 1px solid var(--line); padding: var(--space-3) var(--space-4); }
+    :where([data-console]) :where(tbody tr:first-child) { border-top: 0; }
+    :where([data-console]) :where(td) { border: 0; padding: var(--space-1) 0; }
+    :where([data-console]) :where(td[data-label]:not([data-label=""]))::before {
+      content: attr(data-label); display: block; font-size: var(--text-xs); font-weight: 700; color: var(--text-muted);
+    }
+  }
+}
+
+
+/* -- Console components (components/console, AdminNav, Flash) ------------- */
+@layer components {
+  .kc-round { border-radius: var(--radius-control); }
+  .kc-round-inner { border-radius: calc(var(--radius-control) - 3px); }
+  .kc-shadow { box-shadow: 0 1px 2px color-mix(in srgb, var(--boot) 6%, transparent); }
+  .kc-shadow-on { box-shadow: 0 1px 2px color-mix(in srgb, var(--boot) 14%, transparent); }
+  .kc-title { font-size: 1.625rem; }
+  .kc-figure { font-size: 1.75rem; }
+  .kc-group { letter-spacing: 0.08em; }
+  .kc-grid-metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: var(--space-3); }
+  .kc-grid-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--space-4) var(--space-6); }
+  .kc-tint-good { background: color-mix(in srgb, var(--pitch) 16%, var(--bg)); }
+  .kc-tint-warn { background: color-mix(in srgb, var(--yellow-card) 20%, var(--bg)); }
+  .kc-tint-bad { background: color-mix(in srgb, var(--card-red) 14%, var(--bg)); }
+  .kc-tint-info { background: color-mix(in srgb, var(--link) 14%, var(--bg)); }
+  .kc-dot-warn { background: var(--yellow-card); }
+  .kc-dot-bad { background: var(--card-red); }
+  .kc-dot-info { background: var(--link); }
+  .kc-alert-box { border: 1px solid var(--line); border-left-width: 4px; }
+  .kc-alert-good { border-left-color: var(--pitch); background: color-mix(in srgb, var(--pitch) 10%, var(--bg)); }
+  .kc-alert-warn { border-left-color: var(--yellow-card); background: color-mix(in srgb, var(--yellow-card) 14%, var(--bg)); }
+  .kc-alert-bad { border-left-color: var(--card-red); background: color-mix(in srgb, var(--card-red) 10%, var(--bg)); }
+  .kc-alert-info { border-left-color: var(--line-strong); background: var(--surface); }
+  .kc-alert a { font-weight: 700; }
+  .kc-nav-on { background: color-mix(in srgb, var(--pitch) 14%, var(--bg)); color: var(--text); }
+  .kc-nav-on::before {
+    content: ""; position: absolute; inset-block: 0.5rem; left: 0; width: 3px; border-radius: 9999px; background: var(--pitch);
+  }
+  .kc-topbar { background: color-mix(in srgb, var(--surface) 94%, transparent); }
+  .kc-summary::-webkit-details-marker { display: none; }
+}

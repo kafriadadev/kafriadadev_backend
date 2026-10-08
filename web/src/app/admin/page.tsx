@@ -46,7 +46,7 @@ export default async function AdminHome() {
 
   return (
     <AdminShell current="/admin">
-      <PageHead eyebrow="Administrator" title="Overview" app />
+      <PageHead title="Overview" lede="Money, the registration funnel and anything waiting for a person." />
 
       {o.ledger_ok === false ? (
         <Flash variant="bad" title="The ledger check failed">
