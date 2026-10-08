@@ -19,6 +19,7 @@ import time
 from types import FrameType
 
 import structlog
+from sqlalchemy.exc import OperationalError
 
 from kafriada.contexts.access import ratelimit
 from kafriada.main import configure_logging
@@ -69,10 +70,21 @@ def main(argv: list[str] | None = None) -> int:
     # this loop already runs continuously, and the sweep is one indexed DELETE.
     # An hour between sweeps is plenty for rows whose shortest window is an hour.
     last_pruned = 0.0
+    DB_RETRY_SECONDS = 15
     PRUNE_EVERY = 3_600.0
 
     while not _stopping:
-        result = service.drain(limit=args.batch, sender=sender, email_sender=email_sender)
+        try:
+            result = service.drain(limit=args.batch, sender=sender, email_sender=email_sender)
+        except OperationalError:
+            # The database could not be reached (a dropped link, a DNS blip). Nothing was
+            # sent or marked, so waiting and trying again loses nothing; a run with --once
+            # reports the failure instead.
+            if args.once:
+                raise
+            log.warning("outbox_database_unreachable", retry_in_seconds=DB_RETRY_SECONDS, exc_info=True)
+            time.sleep(DB_RETRY_SECONDS)
+            continue
         if result.sent or result.retried or result.failed:
             log.info("outbox_pass", sent=result.sent, retried=result.retried,
                      failed=result.failed)
