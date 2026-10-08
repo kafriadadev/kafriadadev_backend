@@ -84,7 +84,7 @@ export function cardFlat(K: Kernel, x: number, y: number, z: number, w = 40, h =
   return K.box(x, y, z, w, h, t, 0, "iso-paper") + `<g transform="${K.TOP(x, y, z + t)}">${cardFace(w, h, opts)}</g>`;
 }
 
-export type Screen = "form" | "check" | "scan" | "off" | "wait" | "pay" | "nosignal";
+export type Screen = "form" | "check" | "scan" | "off" | "wait" | "pay" | "nosignal" | "inbox";
 
 /** What a phone or booth screen shows, in a local w × h frame. */
 export function screen(w: number, h: number, kind: Screen) {
@@ -111,6 +111,13 @@ export function screen(w: number, h: number, kind: Screen) {
       let s = "";
       for (let i = 0; i < 3; i++) s += `<circle class="iso-on-f" cx="${w / 2 + (i - 1) * w * 0.18}" cy="${h / 2}" r="${w * 0.055}" opacity="${0.4 + i * 0.3}"/>`;
       return s;
+    }
+    case "inbox": {
+      // An empty envelope: nothing has arrived yet.
+      const ew = w * 0.6, eh = ew * 0.66, ex = (w - ew) / 2, ey = h * 0.36;
+      return `<rect class="iso-ln" x="${ex}" y="${ey}" width="${ew}" height="${eh}" rx="1.2"/>` +
+        `<path class="iso-ln" d="M${ex} ${ey + 0.5}L${w / 2} ${ey + eh * 0.58}L${ex + ew} ${ey + 0.5}"/>` +
+        `<rect class="iso-on-f" x="${ex}" y="${ey + eh + h * 0.08}" width="${ew}" height="${h * 0.05}" rx="1" opacity=".45"/>`;
     }
     case "pay": {
       return `<rect class="iso-ln" x="${m}" y="${h * 0.2}" width="${w - 2 * m}" height="${h * 0.3}" rx="2"/>` +
@@ -200,9 +207,10 @@ export function floodlight(K: Kernel, x: number, y: number, z: number, H: number
  * A person facing the viewer: tube limbs (an outlined stroke), a rounded torso,
  * a round head. `kit` lights the shirt green (the athlete); otherwise the shirt
  * is neutral (a scout, an official). `arms`: "down", "up" (the logo's
- * celebration) or "reach" (the near arm toward something at its side).
+ * celebration), "reach" (the near arm toward something at its side) or
+ * "raise" (the near arm up, holding something out; see handRaised).
  */
-export function person(K: Kernel, x: number, y: number, z: number, { kit = false, scale = 1, arms = "down" }: { kit?: boolean; scale?: number; arms?: "down" | "up" | "reach" } = {}) {
+export function person(K: Kernel, x: number, y: number, z: number, { kit = false, scale = 1, arms = "down" }: { kit?: boolean; scale?: number; arms?: "down" | "up" | "reach" | "raise" } = {}) {
   const u = scale;
   const bw = 10 * u, bd = 6 * u, legH = 15 * u, shortsH = 5 * u, bodyH = 13 * u;
   const bx = x - bw / 2, by = y - bd / 2;
@@ -221,12 +229,12 @@ export function person(K: Kernel, x: number, y: number, z: number, { kit = false
     const elbow: V3 = [s0[0] + (hand[0] - s0[0]) * 0.36, s0[1] + (hand[1] - s0[1]) * 0.36, s0[2] + (hand[2] - s0[2]) * 0.36];
     return tube(s0, hand, 3 * u, "skin") + tube(s0, elbow, 3.6 * u, shirt);
   };
-  const near = arms === "reach" ? "reach" : arms;
+  const near = arms === "raise" ? "up" : arms;
   let s = shadow(K, bx, by, z, bw, bd, 2.5 * u);
   s += tube([x - 2.3 * u, y, hip], [x - 2.6 * u, y + 0.4 * u, z + 1.2 * u], 3.2 * u, "skin");
   s += tube([x + 2.3 * u, y, hip], [x + 2.6 * u, y + 0.4 * u, z + 1.2 * u], 3.2 * u, "skin");
   s += K.box(bx + 0.4 * u, by + 0.3 * u, hip - 1 * u, bw - 0.8 * u, bd - 0.6 * u, shortsH, 1.6 * u, "iso-ink");
-  s += arm(-1, arms === "reach" ? "down" : arms);
+  s += arm(-1, arms === "reach" || arms === "raise" ? "down" : arms);
   s += K.box(bx, by, waist, bw, bd, bodyH, 2.6 * u, kit ? "iso-on" : "");
   s += K.cylinder(x, y, shoulder, 1.8 * u, 2.2 * u, "iso-skin");
   s += K.sphere(x, y, shoulder + 2.2 * u + 4.6 * u, 4.8 * u, "iso-t iso-skin");
@@ -255,3 +263,6 @@ export const defs = () =>
   `<defs><filter id="iso-bloom" filterUnits="userSpaceOnUse" x="-2000" y="-2000" width="6000" height="6000"><feGaussianBlur stdDeviation="9"/></filter></defs>`;
 
 export type { V3 };
+
+/** Where person(..., { arms: "raise" }) holds its near hand: x, y, z of the fist. */
+export const handRaised = (x: number, y: number, z: number, scale = 1): V3 => [x + scale * 12, y, z + scale * 41];

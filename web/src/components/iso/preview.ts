@@ -1,6 +1,6 @@
 /* Every figure in its typical states, for the style guide and scripts/iso-preview.mjs. */
 import { howCard, howRegister, howScan, type Figure } from "./figures.ts";
-import { cardPrinter, doneStage, ground, heldCard, noSignal, outOfPlay, rollout, serverDown, squadBench, varBooth } from "./scenes.ts";
+import { cardPrinter, doneStage, ground, heldCard, noClub, noInvitations, noSignal, outOfPlay, rollout, serverDown, squadBench, varBooth } from "./scenes.ts";
 
 export const PREVIEW: Record<string, Figure> = {
   "how-register": howRegister(),
@@ -20,6 +20,8 @@ export const PREVIEW: Record<string, Figure> = {
   "held-yellow": heldCard("yellow"),
   "held-red": heldCard("red"),
   "bench-4": squadBench(4),
+  "no-club": noClub(),
+  "no-invitations": noInvitations(),
   "printer-5": cardPrinter(5),
   "rollout": rollout(Array.from({ length: 27 }, (_, i) => ({ key: `l${i}`, live: [0, 3, 4, 9, 14].includes(i) }))),
 };

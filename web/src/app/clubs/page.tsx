@@ -3,7 +3,8 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { IconMapPin, IconShieldCheck, IconShirtSport } from "@/components/icons";
-import { EmptyBench, KitRail } from "@/components/illustrations";
+import { Iso } from "@/components/iso/Iso";
+import { noClub, noInvitations } from "@/components/iso/scenes";
 import { AthleteShell } from "@/components/ui/AthleteShell";
 import { Notice } from "@/components/ui/Notice";
 import { PageHead } from "@/components/ui/Page";
@@ -86,7 +87,7 @@ export default async function MyClubsPage({ searchParams }: { searchParams: Prom
           {mine.current ? (
             <ClubCard t={t} m={mine.current} />
           ) : (
-            <EmptyState art={<EmptyBench />} title={t("noClub")}>{t("noClubText")}</EmptyState>
+            <EmptyState wideArt art={<Iso fig={noClub()} name="no-club" />} title={t("noClub")}>{t("noClubText")}</EmptyState>
           )}
         </div>
       </section>
@@ -94,7 +95,7 @@ export default async function MyClubsPage({ searchParams }: { searchParams: Prom
       {!mine.invitations.length ? (
         <section aria-labelledby="none" className="mt-10">
           <h2 id="none" className="text-lg uppercase">{t("invitations")}</h2>
-          <div className="mt-3"><EmptyState art={<KitRail />} title={t("noInvitations")}>{t("noInvitationsText")}</EmptyState></div>
+          <div className="mt-3"><EmptyState wideArt art={<Iso fig={noInvitations()} name="no-invitations" />} title={t("noInvitations")}>{t("noInvitationsText")}</EmptyState></div>
         </section>
       ) : null}
     </AthleteShell>

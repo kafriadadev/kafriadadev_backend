@@ -214,3 +214,7 @@
   :root:not([data-theme="light"]) .iso-s.iso-out { fill: #191914; }
 }
 .iso-ball { fill: #FFFFFF; stroke: var(--iso-line); stroke-width: var(--iso-w); }
+
+/* The seat waiting for you: outlined in green, not yet filled. */
+.iso-t.iso-open, .iso-f.iso-open, .iso-s.iso-open { fill: var(--iso-glass-on); stroke: var(--iso-on); stroke-width: 1.6px; }
+.iso-wire.iso-on { stroke-width: 2px; }

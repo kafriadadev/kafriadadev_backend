@@ -64,6 +64,26 @@ passed (PUB-01 59.6 KB). `check:a11y` including the admin pages: no violations.
 
 ---
 
+## 2026-10-08 — My clubs: isometric empty states
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:** `/clubs` (ATH-05) no longer shows the flat bench and kit rail. "You are not in a club"
+is now `noClub()`: the athlete holds up his ID card and a lit path runs across the pitch to the one
+open seat in a club's dugout, which is what the words under it say. "No invitations" is
+`noInvitations()`: his phone with an empty inbox. New parts: a raised-arm pose (`arms: "raise"`,
+`handRaised()`), an `inbox` phone screen, an `open` dugout seat, chair-shaped seats.
+
+**Why:** the project lead rejected the old illustration on this page.
+
+**Verified:** typecheck and build clean; `/clubs` checked by eye signed in, at 1280 px dark and 390 px
+light, no horizontal overflow; `check:render` signed in, 173 checks, all passed (`/clubs` included);
+`check:a11y` no violations.
+
+**Not done / open:** other empty states still use the flat illustrations (coordinator find and
+settlement, club invitations tab, payments).
+
+---
+
 ## 2026-10-08 — Isometric figures across the site
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

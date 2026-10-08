@@ -128,16 +128,20 @@ export function scoreboard(K: Kernel, x: number, y: number, z: number, text: str
   return s;
 }
 
-/** A dugout: back wall, side panels and a roof over a row of seats; the first `filled` are lit. */
-export function dugout(K: Kernel, x: number, y: number, z: number, seats: number, filled: number) {
+/**
+ * A dugout: back wall, side panels and a roof over a row of seats; the first
+ * `filled` are lit, and seat `open` (if given) is drawn as the one waiting.
+ */
+export function dugout(K: Kernel, x: number, y: number, z: number, seats: number, filled: number, open = -1) {
   const sw = 7, gap = 1.6, w = seats * (sw + gap) + gap + 5, d = 17, h = 24;
   let s = shadow(K, x, y, z, w, d, 3);
   s += K.box(x, y, z, w, 3, h);
   s += K.box(x, y, z, 2.5, d, h);
   for (let i = 0; i < seats; i++) {
     const sx = x + 2.5 + gap + i * (sw + gap);
-    const cls = i < filled ? "iso-on" : "";
-    s += g(K.box(sx, y + 3.4, z + 0.5, sw, 1.8, 13, 0, cls) + K.box(sx, y + 5.2, z, sw, 7, 6.5, 0, cls), i < filled ? { "data-a": "light", style: `--d:${150 + i * 90}ms` } : {});
+    const cls = i < filled ? "iso-on" : i === open ? "iso-open" : "";
+    const lit = i < filled || i === open;
+    s += g(K.box(sx, y + 3.4, z + 0.5, sw, 1.6, 14, 0, cls) + K.box(sx + 0.8, y + 6.5, z, 1.2, 1.2, 4, 0) + K.box(sx + sw - 2, y + 6.5, z, 1.2, 1.2, 4, 0) + K.box(sx, y + 5, z + 4, sw, 5.5, 2, 0, cls), lit ? { "data-a": i === open ? "flicker" : "light", style: `--d:${150 + i * 90}ms` } : {});
   }
   s += K.box(x + w - 2.5, y, z, 2.5, d, h);
   s += K.box(x - 1.5, y - 1.5, z + h, w + 3, d + 4, 2.2, 0, "iso-roof");

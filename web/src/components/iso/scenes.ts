@@ -3,7 +3,7 @@
  * staff figures. Each takes the real state it shows; nothing here is invented.
  */
 import { frame, g, type V3 } from "./kernel.ts";
-import { cardStanding, defs, floodlight, person, phoneStanding, pitch, towerBounds, type Lamp } from "./kit.ts";
+import { cardFace, cardStanding, defs, floodlight, handRaised, person, phoneStanding, pitch, towerBounds, type Lamp } from "./kit.ts";
 import { ball, booth, cash, dugout, plinth, printer, scoreboard, table, terminal, unplugged, wire, type BoothShows } from "./parts.ts";
 import type { Figure } from "./figures.ts";
 
@@ -135,6 +135,39 @@ export function heldCard(colour: "yellow" | "red"): Figure {
   const u = 1.1, hx = x + u * 5 + u * 7 + 0.6, hz = 5 + u * 30 + u * 11 + 1;
   const cls = colour === "yellow" ? "iso-warn-f" : "iso-bad-f";
   s += g(`<g transform="${K.FRONT(hx - 4, y + 0.5, hz + 13)}"><rect class="${cls}" width="9" height="13" rx="1"/><rect class="iso-ln" width="9" height="13" rx="1"/></g>`, { "data-a": "rise", style: "--d:300ms" });
+  return { viewBox: K.viewBox, body: s };
+}
+
+/* -- ATH-05: not in a club yet. Hold up your ID; a seat is waiting. -------- */
+
+/**
+ * The athlete holds up his ID card; a lit path runs from him to the one open
+ * seat in a club's dugout. What the words under it say: a club adds you by
+ * your ID.
+ */
+export function noClub(): Figure {
+  const W = 100, D = 76, seats = 6, open = 3;
+  const dx = 34, dy = 6;
+  const seatX = dx + 2.5 + 1.6 + open * (7 + 1.6) + 3.5;
+  const px = 18, py = 58, sc = 1.15;
+  const K = frame([[0, 0, 0], [W, 0, 0], [0, D, 0], [W, D, 0], [dx - 1.5, dy - 1.5, 31], [dx + 60, dy - 1.5, 31], [px, py, 5 + 41 * sc + 16]], { margin: 0.04, aspect: 16 / 10 });
+  let s = defs();
+  s += pitch(K, 0, 0, W, D, 5, "edge");
+  s += dugout(K, dx, dy, 5, seats, 0, open);
+  // The path: from where he stands, across the pitch, to the open seat.
+  s += wire(K, [[px + 7, py, 5.2], [seatX, py, 5.2], [seatX, dy + 18, 5.2]], true, 700);
+  s += g(person(K, px, py, 5, { kit: true, arms: "raise", scale: sc }), { "data-a": "rise", style: "--d:100ms" });
+  const [hx, hy, hz] = handRaised(px, py, 5, sc);
+  const cw = 12, ch = 17.4;
+  s += g(`<g transform="${K.FRONT(hx - cw / 2, hy + 0.8, hz + ch - 3)}"><rect class="iso-paper-f" width="${cw}" height="${ch}" rx=".8"/>${cardFace(cw, ch, { lit: true })}<rect class="iso-ln" width="${cw}" height="${ch}" rx=".8"/></g>`, { "data-a": "rise", style: "--d:350ms" });
+  return { viewBox: K.viewBox, body: s };
+}
+
+/** No invitations yet: the athlete's phone, its inbox empty and waiting. */
+export function noInvitations(): Figure {
+  const K = frame([[0, 0, 0], [80, 0, 0], [0, 56, 0], [80, 56, 0], [30, 24, 60]], { margin: 0.05, aspect: 16 / 10 });
+  let s = pitch(K, 0, 0, 80, 56, 5, "edge");
+  s += phoneStanding(K, 26, 24, 5, "inbox", true, 30, 54);
   return { viewBox: K.viewBox, body: s };
 }
 
