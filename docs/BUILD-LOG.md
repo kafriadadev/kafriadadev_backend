@@ -30,6 +30,23 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-09 — The dispatcher survives any database failure
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:** the outbox loop now catches `DBAPIError`, not only `OperationalError`. It had stopped on
+`IdleInTransactionSessionTimeout`: `_send_one` holds the row's transaction open while it calls the
+provider, and on this machine's slow link the call plus the round trips passed the database's 30-second
+idle-in-transaction limit, so the "sent" update failed and the error escaped the loop.
+
+**Verified:** `tests/test_dispatch_survives_outage.py` (3, one new for this case).
+
+**Not done / open:** the cause. A send outliving that limit leaves the message delivered but unmarked,
+so it can go out twice (outbox row 1239 on the dev database). The proper fix is to claim the row and
+commit, send outside any transaction, then mark it in a second transaction. It needs care with the
+"sent exactly once" tests and is not done here.
+
+---
+
 ## 2026-10-08 — Next.js 15.5.27 and React 19.2.8 (CVE-2025-66478)
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

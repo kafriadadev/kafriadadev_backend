@@ -9,7 +9,7 @@ A run with --once still reports the failure.
 from __future__ import annotations
 
 import pytest
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import InternalError, OperationalError
 
 from kafriada.outbox import dispatch, email_providers, service
 from kafriada.settings import EmailProvider, SmsProvider, get_settings
@@ -46,6 +46,22 @@ def test_the_loop_waits_and_tries_again(monkeypatch: pytest.MonkeyPatch, quiet: 
     assert dispatch.main([]) == 0
     assert calls["n"] == 2, "the second pass ran after the outage"
     assert quiet and quiet[0] == 15
+
+
+def test_a_connection_closed_mid_pass_does_not_stop_it(monkeypatch: pytest.MonkeyPatch, quiet: list[float]) -> None:
+    """Found 2026-10-09: a slow send outlived the database's idle-transaction timeout."""
+    calls = {"n": 0}
+
+    def drain(**_kw: object) -> service.DrainResult:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise InternalError("UPDATE ops.outbox", {}, Exception("idle-in-transaction timeout"))
+        monkeypatch.setattr(dispatch, "_stopping", True)
+        return service.DrainResult(sent=0, retried=0, failed=0)
+
+    monkeypatch.setattr(service, "drain", drain)
+    assert dispatch.main([]) == 0
+    assert calls["n"] == 2
 
 
 def test_a_single_pass_still_reports_it(monkeypatch: pytest.MonkeyPatch, quiet: list[float]) -> None:

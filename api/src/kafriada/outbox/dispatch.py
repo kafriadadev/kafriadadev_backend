@@ -19,7 +19,7 @@ import time
 from types import FrameType
 
 import structlog
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import DBAPIError
 
 from kafriada.contexts.access import ratelimit
 from kafriada.main import configure_logging
@@ -76,10 +76,11 @@ def main(argv: list[str] | None = None) -> int:
     while not _stopping:
         try:
             result = service.drain(limit=args.batch, sender=sender, email_sender=email_sender)
-        except OperationalError:
-            # The database could not be reached (a dropped link, a DNS blip). Nothing was
-            # sent or marked, so waiting and trying again loses nothing; a run with --once
-            # reports the failure instead.
+        except DBAPIError:
+            # Any database failure: unreachable (a dropped link, a DNS blip), or the
+            # connection closed under a slow pass (the database ends a transaction left
+            # idle for 30 seconds). Whatever was not committed rolls back, so waiting and
+            # trying again loses nothing; a run with --once reports the failure instead.
             if args.once:
                 raise
             log.warning("outbox_database_unreachable", retry_in_seconds=DB_RETRY_SECONDS, exc_info=True)
