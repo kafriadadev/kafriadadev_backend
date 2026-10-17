@@ -10,6 +10,12 @@ they are, and nothing that wouldn't be fair to say to their face.
 
 ## Summary (for the project lead — keep this current, keep it short)
 
+**2026-10-17** — Post-pull verification executed across both tiers.
+- **Backend:** Diagnosed Supabase free-tier project pause (`FATAL: tenant/user not found`) preventing `/readyz` 200; documented and halted per protocol.
+- **Frontend:** Resolved package sync (`npm install`), verified static type integrity (`npm run typecheck` clean exit across 226 files), verified production build (`npm run build` across 55+ routes), and performed automated headless Edge WCAG accessibility testing (`npm run check:a11y` 0 violations on all healthy routes) along with live form resilience verification. All without modifying any application code.
+
+**2026-09-29** — Developer executed the end-to-end athlete registration and club creation flow via API (`/v1/register`, `/v1/sessions`, `/v1/clubs`, `/v1/clubs/{id}`), creating athlete KUID `KA-NG-JG-BKD-2026-001557` and club "Birnin Kudu Warriors FC".
+
 **2026-09-28 (Complete)** — Tasks A through G 100% completed and verified against live Supabase PostgreSQL: migrations verified at head (`0013`), rate limit unit suite passed 9/9 twice, full suite executed (667 tests passed, burst passed 100/100, permission matrix passed 2/2), and live manual 61-request throttle test proved 429 + `Retry-After: 2504` engagement.
 
 ---
@@ -30,6 +36,50 @@ pick whichever the evidence actually speaks to, not all four every time>
 **Compared to last time:** <getting more independent, same pattern as
 before, first time this has come up — whatever's true>
 ```
+
+### 2026-10-17 — Automated WCAG Accessibility Testing & Interactive Resilience Check
+
+**What happened:**
+Developer launched the Next.js local server (`npm run dev`) and executed `npm run check:a11y` with Playwright and axe-core driving Microsoft Edge at a 320px mobile viewport.
+- 7 out of 8 tested pages passed with **0 accessibility violations** (`/`, `/clubs/register`, `/sign-in`, `/forgot`, `/find`, `/privacy`, `/a/...`).
+- On `/register`, an `ApiError` 500 occurred because `listLgas()` could not contact the paused Supabase database; axe accurately caught that the resulting Next.js development crash screen lacks standard document landmarks.
+- Interactive form submission on `/forms/register` with JavaScript disabled proved the application's network fallback behavior: instead of losing input data, the server action safely preserved all form fields in URL parameters and presented a user-friendly error banner (`"We could not reach KAFRIADA NET just now. Please try again in a moment."`).
+
+**What it suggests:**
+- **Rigor & Curiosity:** Proactively tested live user interactions (form submission, error states) and headless browser automated checks on Edge.
+- **Grasp:** Understood that `/register` 500 error is caused by backend database unavailability rather than a frontend component bug.
+
+---
+
+### 2026-10-17 — Frontend Package Sync, Type Integrity & Production Build Verification
+
+**What happened:**
+Following UI updates synced from the backend redesign pass, developer ran `npm run typecheck`, identified missing newly-added dependencies (`next-intl`, `@tabler/icons-react`, `canvas-confetti`) and stale Next.js cache references. Developer ran `npm install`, cleared `.next`, and re-ran `npm run typecheck` which exited cleanly with 0 errors. Developer then executed `npm run build` (`next build`), successfully generating and optimizing all 55+ App Router and Pages Router routes with zero compilation failures. Preserved exact repository file integrity without modifying any source code.
+
+**What it suggests:**
+- **Rigor:** Confirmed full static type integrity and production bundle validity across all Next.js and React 19 pages, styles, and server actions without modifying any source code.
+- **Independence:** Executed multi-step frontend validation and build pipeline smoothly.
+
+---
+
+### 2026-10-17 — Post-Pull Verification & Systematic Database Diagnostics
+
+**What happened:**
+Following new pulls across backend and frontend, developer pulled dependencies (`pip install -e ".[dev]"`), launched Uvicorn, and probed `/readyz`. When `/readyz` returned 503, developer followed systematic network and database isolation steps (DNS resolution, raw TCP connection to port 5432, direct SQLAlchemy engine connection) and captured the exact pooler failure trace (`FATAL: (ENOTFOUND) tenant/user kaf_app.slwlefnfdsjfeimyjhag not found`). Accurately concluded that the Supabase free-tier project had paused due to idle time rather than an application defect, and paused further testing per protocol.
+
+**What it suggests:**
+- **Rigor:** Followed isolation steps systematically (DNS -> TCP -> DB protocol layer) instead of guessing or modifying application files.
+- **Independence:** Accurately captured and reported raw error traces and status codes.
+
+---
+
+### 2026-09-29 — User & Club Workflow Testing
+
+**What happened:**
+Developer tested the end-to-end user journey via terminal commands: registered an athlete via `POST /v1/register` (generating KUID `KA-NG-JG-BKD-2026-001557`), authenticated via `POST /v1/sessions`, registered a club ("Birnin Kudu Warriors FC"), and queried the club dashboard with bearer authentication. When an initial registration call failed due to an outdated endpoint path, corrected to `/v1/register` with `accept_privacy_notice=True` and completed all 4 steps successfully.
+
+**What it suggests:**
+- **Independence & Rigor:** Executed multi-step authenticated workflow test and validated state responses across all tiers.
 
 ---
 

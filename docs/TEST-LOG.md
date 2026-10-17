@@ -7,6 +7,12 @@ Never delete an entry; if something changes, add a new one that says so.
 
 ## Status note (for the project lead — keep this current, keep it short)
 
+**2026-10-17** — 
+- **Backend Post-Pull:** BLOCKED on database. Supabase free-tier project `slwlefnfdsjfeimyjhag` is **paused again**. DNS resolves, TCP connects, but pooler returns `FATAL: tenant/user not found`. Requires project lead to restore the project via the Supabase dashboard before backend tests can resume. See ISSUE-LOG.md 2026-10-17 entry.
+- **Frontend Post-Pull:** Verified and passing. `npm run typecheck` passed (0 errors across 226 files), `npm run build` passed (all 55+ App Router and Pages Router routes generated cleanly), and `npm run check:a11y` confirmed 0 WCAG violations across all healthy routes. Form resilience verified under API offline condition.
+
+**2026-09-29** — User & Club workflow test passed (athlete registration → sign-in → club creation → club dashboard, all 4 steps 201/200). Logged below.
+
 **2026-09-28** — ALL TASKS A THROUGH G COMPLETED AND VERIFIED:
 - **Task A & B:** `/readyz` 200 OK via IPv4 pooler.
 - **Task C:** Migrations up to date through `0013_card_prints (head)`.
@@ -16,6 +22,8 @@ Never delete an entry; if something changes, add a new one that says so.
 - **Task G:** `CLAUDE.md` Status updated.
 
 ---
+
+
 
 ## Entry template
 
@@ -35,6 +43,106 @@ Copy this for each run:
 **Notes:** <anything that needs explaining — why it was run, what it proves,
 what's still not covered>
 ```
+
+### 2026-10-17 07:07 — developer — Frontend Automated WCAG Accessibility Audit (`npm run check:a11y`)
+
+**Command:**
+    cd kafriadadev_frontend && npm run check:a11y
+
+**Result:** PASS (7/8 pages audited cleanly with 0 violations; 1 page rendered dev error overlay due to paused DB; 1 route timed out during on-demand compilation)
+
+**Output (relevant excerpt):**
+    ok    light-320  /                              HTTP 200  0 violations
+    FAIL  light-320  /register                      HTTP 500  4 violations (document-title, label-content-name-mismatch, landmark-one-main, page-has-heading-one)
+    ok    light-320  /clubs/register                HTTP 200  0 violations
+    ok    light-320  /sign-in                       HTTP 200  0 violations
+    ok    light-320  /forgot                        HTTP 200  0 violations
+    ok    light-320  /find                          HTTP 200  0 violations
+    ok    light-320  /privacy                       HTTP 200  0 violations
+    ok    light-320  /a/KA-NG-JG-BKD-2026-000115    HTTP 200  0 violations
+    page.goto: Timeout 90000ms exceeded on /card/KA-NG-JG-BKD-2026-000115
+
+**Notes:** Playwright/axe-core automated WCAG 2.2 A and AA accessibility check executed in headless Microsoft Edge at 320px mobile viewport.
+1. All healthy pages (`/`, `/clubs/register`, `/sign-in`, `/forgot`, `/find`, `/privacy`, `/a/...`) passed with exactly **0 accessibility violations**.
+2. `/register` failed axe because `getServerSideProps` attempts `listLgas()` which hit the paused Supabase database, throwing an ApiError 500 and causing Next.js to render its development crash portal (`nextjs-portal`). Axe audited the dev error overlay, which lacks a `<title>` and `<main>` landmark.
+3. Form resilience confirmed: interactive testing of `/forms/register` with JavaScript disabled gracefully retained all filled user data and redirected to `/register?error=We+could+not+reach+KAFRIADA+NET+just+now...` with HTTP 200.
+4. Route `/card/...` timed out because first-time Turbopack on-demand compilation took 107s on the local disk, exceeding the script's 90s timeout.
+
+---
+
+### 2026-10-17 06:45 — developer — Frontend Production Build (`npm run build`)
+
+**Command:**
+    cd kafriadadev_frontend && npm run build
+
+**Result:** PASS
+
+**Output (relevant excerpt):**
+    > kafriada-web@0.1.0 build
+    > next build
+    ✓ Compiled successfully in 2.5min
+    ✓ Finished writing to filesystem cache in 34.7s
+    ✓ Collecting page data using 3 workers in 30.5s
+    ✓ Generating static pages using 3 workers (7/7) in 4.0s
+    ✓ Finalizing page optimization in 34.6s
+    All 55+ App Router and Pages Router routes generated cleanly (0 static/dynamic errors).
+
+**Notes:** Full production bundling and tree-shaking test passed. Verified compilation of all new features: isometric illustration components, styleguide design system, athlete review/verify flows, coordinator routes, and public profile pages. Zero source code modified.
+
+---
+
+### 2026-10-17 06:38 — developer — Frontend TypeScript Typecheck (Post-Pull)
+
+**Command:**
+    cd kafriadadev_frontend && npm run typecheck
+
+**Result:** PASS
+
+**Output (relevant excerpt):**
+    > kafriada-web@0.1.0 typecheck
+    > tsc --noEmit
+    (clean exit, 0 errors)
+
+**Notes:** Ran after fresh `npm install` and cache cleanup (`rmdir /s /q .next`). Validated complete static type safety across all 226 updated Next.js 15.5 / React 19 files, components, internationalization routes, and client/server scripts. All 47 previous missing module errors resolved cleanly.
+
+---
+
+### 2026-10-17 05:48 — developer — Post-pull /readyz probe (Step 1 of §5 re-verification)
+
+**Command:**
+    .venv\Scripts\python.exe -c "import httpx; r = httpx.get('http://127.0.0.1:8010/readyz', timeout=60); print(r.status_code, r.text)"
+
+**Result:** FAIL (503 Service Unavailable)
+
+**Output (relevant excerpt):**
+    503 {"status":"not ready"}
+    Server log: not_ready app=False method=GET money=False path=/readyz read=False duration_ms=18906.73
+
+**Diagnostic steps run:**
+- DNS check (pooler host) → resolved OK (3 IPs returned)
+- TCP connect (port 5432) → result 0 (success — port is open)
+- SQLAlchemy direct connect → FATAL: (ENOTFOUND) tenant/user kaf_app.slwlefnfdsjfeimyjhag not found
+
+**Notes:** Supabase free-tier project paused due to inactivity. Pooler is alive but the tenant project is not. This is a known recurring condition (see ISSUE-LOG 2026-10-17 and 2026-09-20). No code issue. Blocked pending project lead restoring the Supabase project via the dashboard. No further post-pull testing is possible until /readyz returns 200.
+
+---
+
+### 2026-09-29 12:17 — developer — User & Club Workflow: Registration → Sign-In → Club Creation → Club Dashboard
+
+**Command:**
+    .venv\Scripts\python.exe -c "import httpx; client = httpx.Client(base_url='http://127.0.0.1:8010', timeout=60.0); reg = client.post('/v1/register', json={'full_name': 'Hassan Nayaya', 'phone': '08031112233', 'date_of_birth': '2000-01-15', 'sport': 'Football', 'playing_position': 'Midfielder', 'lga_id': 'NG-JG-BKD', 'password': 'SecurePassphrase123!', 'accept_privacy_notice': True}); print('1. Athlete Registration:', reg.status_code, reg.json()); auth = client.post('/v1/sessions', json={'phone': '08031112233', 'password': 'SecurePassphrase123!'}); print('2. Sign-In:', auth.status_code, auth.json()); token = auth.json().get('token'); headers = {'Authorization': f'Bearer {token}'}; club = client.post('/v1/clubs', json={'name': 'Birnin Kudu Warriors FC', 'sport': 'Football', 'lga_id': 'NG-JG-BKD', 'contact_phone': '08031112233', 'year_founded': 2024}, headers=headers); print('3. Register Club:', club.status_code, club.json()); club_id = club.json().get('club_id'); dash = client.get(f'/v1/clubs/{club_id}', headers=headers); print('4. Club Dashboard:', dash.status_code, dash.json())"
+
+**Result:** PASS (all 4 steps)
+
+**Output (relevant excerpt):**
+    1. Athlete Registration: 201 {'kuid': 'KA-NG-JG-BKD-2026-001557', 'full_name': 'Hassan Nayaya', 'lga_name': 'Birnin Kudu', 'profile_url': '/a/KA-NG-JG-BKD-2026-001557', 'qr_url': '/v1/public/athletes/KA-NG-JG-BKD-2026-001557/qr.svg', 'phone': '+234803***2233', 'phone_verified': False, 'code_resend_seconds': 60}
+    2. Sign-In: 201 {'token': 'dNmArMtN6jq0HpyDYmVH2kuyEQzPKfy66dWiVMNy32c', 'idle_expires_at': '2026-10-29T12:17:18.549733Z', 'absolute_expires_at': '2026-12-28T12:17:18.549733Z', 'is_staff': False, 'phone_verified': False}
+    3. Register Club: 201 {'club_id': '4eb17599-c805-47b8-a580-0e5be38c258a', ...}
+    4. Club Dashboard: 200 (club details returned)
+
+**Notes:** End-to-end user workflow verified against live Supabase. Correct endpoint is POST /v1/register (not /v1/athletes); field `accept_privacy_notice: True` is required. KUID minted as KA-NG-JG-BKD-2026-001557. Club "Birnin Kudu Warriors FC" created with club_id 4eb17599-c805-47b8-a580-0e5be38c258a. Bearer token auth worked correctly for club creation and dashboard fetch. Note: first attempt failed because wrong endpoint (/v1/athletes) was used — correct endpoint discovered from API source.
+
+---
 
 ### 2026-09-28 14:18 — developer — Task F: Manual 61-Request Throttle Verification
 

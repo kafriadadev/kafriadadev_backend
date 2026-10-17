@@ -43,6 +43,38 @@ instead of guessing>
 
 ---
 
+### 2026-10-17 — Database unreachable: Supabase free-tier project paused again (ENOTFOUND tenant)
+
+**Reported by:** developer / agent
+**Where:** `/readyz` probe, `aws-1-eu-west-1.pooler.supabase.com:5432`, user `kaf_app.slwlefnfdsjfeimyjhag`
+
+**What was expected:**
+`/readyz` returns 200 `{"status":"ready"}` — same result as 2026-09-28 when all tasks A–G passed.
+
+**What actually happened:**
+`/readyz` returned 503 `{"status":"not ready"}` with `app=False money=False read=False` after ~19 seconds.
+
+**What was tried, in order:**
+1. `GET /readyz` via httpx → `503 {"status":"not ready"}` (app=False, money=False, read=False, duration_ms=18906)
+2. DNS check: `socket.getaddrinfo('aws-1-eu-west-1.pooler.supabase.com', 5432)` → **resolved fine** to 3 IPs: `54.247.26.119`, `54.229.189.117`, `18.202.64.2` — DNS is not the problem.
+3. TCP connect: `socket.connect_ex(('54.247.26.119', 5432))` → **result 0 (success)** — port 5432 is reachable and accepting TCP connections.
+4. Full SQLAlchemy connection attempt with `DATABASE_URL_APP` from `.env` → **FATAL error from pooler:**
+   ```
+   psycopg.OperationalError: connection failed: FATAL: (ENOTFOUND) tenant/user kaf_app.slwlefnfdsjfeimyjhag not found
+   ```
+   All three pooler IPs returned the same FATAL response.
+
+**Root cause:**
+The Supabase free-tier project `slwlefnfdsjfeimyjhag` has been **paused by Supabase due to inactivity** (free tier pauses after ~1 week idle). The PgBouncer pooler itself is alive and accepting TCP connections, but it cannot route to the paused project tenant — hence FATAL ENOTFOUND at the PostgreSQL protocol layer, not at the network layer. This is not a code defect, not a configuration error, and not a network routing issue.
+
+**Fix (or: still open, handed off because ___):**
+Handed off to project lead. Resuming a paused Supabase project requires logging into the Supabase dashboard at https://supabase.com/dashboard and clicking "Restore project" on the `slwlefnfdsjfeimyjhag` project. No code changes are needed or appropriate. Testing cannot continue until the project lead restores the database.
+
+**Where this is covered going forward:**
+Known recurring infrastructure condition documented in TEAM-AGENT-BRIEF.md §8 and prior ISSUE-LOG entry (2026-09-20). No code fix exists for a paused free-tier project — this is an operational concern for the project lead.
+
+---
+
 ### 2026-09-20 — Database unreachable: Supabase project is paused (Host Not Found)
 
 **Reported by:** developer / agent
