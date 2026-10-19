@@ -73,6 +73,7 @@ class Overview:
     price_kobo: int
     paid: bool
     reason: str | None  # the reviewer's words on the latest rejection
+    details_complete: bool  # category, levels and age groups are on file
 
 
 def overview(club_id: UUID) -> Overview | None:
@@ -81,6 +82,8 @@ def overview(club_id: UUID) -> Overview | None:
             text(
                 """
                 SELECT o.id, o.name, o.status, o.stage,
+                       (o.category IS NOT NULL AND o.levels IS NOT NULL
+                        AND o.age_groups IS NOT NULL) AS details_complete,
                        v.id AS request_id, v.status AS request_status, v.payment_id,
                        dm.status AS document,
                        EXISTS (SELECT 1 FROM money.payments p
@@ -115,6 +118,7 @@ def overview(club_id: UUID) -> Overview | None:
         price_kobo=expected_amount_kobo(Purpose.STAGE2_ORG, get_settings()),
         paid=row["paid"],
         reason=reason,
+        details_complete=row["details_complete"],
     )
 
 
@@ -244,6 +248,19 @@ def resubmit(club_id: UUID, user_id: UUID) -> None:
             subject_type="club",
             subject_id=str(club_id),
         )
+
+
+def details_complete(session: Session, club_id: UUID) -> bool:
+    """Are the stage-two details on file? (Read by payment start.)"""
+    return bool(
+        session.execute(
+            text(
+                "SELECT category IS NOT NULL AND levels IS NOT NULL AND age_groups IS NOT NULL "
+                "FROM identity.organizations WHERE id = :c"
+            ),
+            {"c": club_id},
+        ).scalar_one_or_none()
+    )
 
 
 def ready_for_payment(session: Session, club_id: UUID) -> bool:

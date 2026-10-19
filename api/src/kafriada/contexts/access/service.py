@@ -859,9 +859,9 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def mask_email(email: str) -> str:
-    """a***@example.com: enough for the owner to recognise, not enough to harvest."""
+    """abcd***@example.com: four letters, enough for the owner to recognise at a glance."""
     local, _, domain = email.partition("@")
-    return f"{local[:1]}***@{domain}"
+    return f"{local[:4]}***@{domain}"
 
 
 def _spend_code(user_id: UUID, purpose: str, code: str) -> None:

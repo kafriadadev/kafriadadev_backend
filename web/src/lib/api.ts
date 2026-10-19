@@ -624,6 +624,8 @@ export type ClubVerification = {
   price_kobo: number;
   paid: boolean;
   reason: string | null;
+  /** Category, levels and age groups are on file: needed before paying. */
+  details_complete: boolean;
 };
 
 /** CLB-04: where the club's verification stands. */

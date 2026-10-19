@@ -5,9 +5,11 @@
 
 Give an email address or a phone number. Codes go by email or by SMS depending on
 OTP_CHANNEL, so both are looked at: the account's email and its phone. Used by
-web/scripts/e2e-register.mjs (CODE_CMD). Reads DATABASE_URL_APP from api/.env.
-Stop the outbox dispatcher first: a delivered row is scrubbed of its code.
+web/scripts/e2e-register.mjs (CODE_CMD). Reads DATABASE_URL_APP from the environment,
+else from api/.env. Stop the outbox dispatcher first: a delivered row is scrubbed of
+its code.
 """
+import os
 import re
 import sys
 from pathlib import Path
@@ -26,8 +28,11 @@ def as_e164(raw: str) -> str | None:
     return None
 
 
-env = Path(r"C:\Users\HP\KAFRIADA\api\.env").read_text(encoding="utf-8")
-url = re.search(r"^DATABASE_URL_APP=(.+)$", env, re.M).group(1).strip().strip('"')
+url = os.environ.get("DATABASE_URL_APP") or re.search(
+    r"^DATABASE_URL_APP=(.+)$",
+    Path(r"C:\Users\HP\KAFRIADA\api\.env").read_text(encoding="utf-8"),
+    re.M,
+).group(1).strip().strip('"')
 url = url.replace("postgresql+psycopg://", "postgresql://")
 who = sys.argv[1].strip()
 email = who.lower() if "@" in who else None

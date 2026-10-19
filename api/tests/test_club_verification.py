@@ -149,6 +149,19 @@ def test_paying_before_a_document_is_refused_and_writes_no_payment(
     assert sql("SELECT 1 FROM money.payments WHERE org_id = :c", c=club) == []
 
 
+def test_paying_before_the_stage_two_details_is_refused_and_writes_no_payment(
+    client: TestClient, root: dict[str, str], fake: FakeProvider
+) -> None:
+    admin, club = new_club(client, root)
+    sql("UPDATE identity.organizations SET levels = NULL WHERE id = :c", c=club)
+    assert upload(client, admin, club).status_code == 204
+    assert overview(client, admin, club)["details_complete"] is False
+    refused = client.post(f"/v1/clubs/{club}/verification/payment", headers=admin.headers)
+    assert refused.status_code == 409
+    assert "level" in refused.json()["error"]["message"]["message"]
+    assert sql("SELECT 1 FROM money.payments WHERE org_id = :c", c=club) == []
+
+
 def test_a_document_that_is_not_an_image_is_refused_while_still_on_the_form(
     client: TestClient, root: dict[str, str]
 ) -> None:

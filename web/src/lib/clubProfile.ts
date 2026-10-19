@@ -15,15 +15,18 @@ export const CLUB_LEVELS: Record<string, string> = {
   semi_pro: "Semi-professional", professional: "Professional",
 };
 export const OFFICIAL_ROLES = [
-  "Chairman", "Secretary", "Manager", "Head coach", "Owner", "Treasurer",
+  "Chairman", "Secretary", "Manager", "Head coach", "Owner", "Treasurer", "Other",
 ] as const;
+/** A club may play at one or two levels. */
+export const MAX_LEVELS = 2;
 
 export type ClubProfile = {
   short_name: string;
   type: string;
-  category: string;
+  /** Category, age groups and levels are stage-two details: empty at sign-up. */
+  category: string | null;
   age_groups: string[];
-  level: string;
+  levels: string[];
   year_founded: number;
   ground_name: string;
   ground_address: string;
@@ -40,7 +43,7 @@ export type ClubProfile = {
 
 /** Text fields of the club form, in the order they are kept on a bounce-back. */
 export const CLUB_TEXT_FIELDS = [
-  "name", "short_name", "type", "sport", "category", "level", "year_founded", "lga_id",
+  "name", "short_name", "type", "sport", "category", "year_founded", "lga_id",
   "ground_name", "ground_address", "town", "contact_phone", "club_email", "cac_number",
   "affiliation", "colours", "website", "official2_name", "official2_role", "official2_phone",
 ] as const;
@@ -52,9 +55,9 @@ export function readClub(formData: FormData) {
   const profile: ClubProfile = {
     short_name: text("short_name"),
     type: text("type"),
-    category: text("category"),
+    category: text("category") || null,
     age_groups: formData.getAll("age_groups").map(String),
-    level: text("level"),
+    levels: formData.getAll("levels").map(String),
     year_founded: Number.isInteger(year) && text("year_founded") ? year : Number.NaN,
     ground_name: text("ground_name"),
     ground_address: text("ground_address"),
@@ -71,6 +74,7 @@ export function readClub(formData: FormData) {
   const kept = new URLSearchParams();
   for (const k of CLUB_TEXT_FIELDS) if (text(k)) kept.set(k, text(k));
   for (const g of profile.age_groups) kept.append("age_groups", g);
+  for (const l of profile.levels) kept.append("levels", l);
   return {
     name: text("name"),
     sport: text("sport"),

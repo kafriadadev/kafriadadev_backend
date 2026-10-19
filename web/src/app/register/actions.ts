@@ -80,5 +80,5 @@ export async function registerAthlete(formData: FormData): Promise<void> {
 
 function maskEmail(email: string): string {
   const [local, domain] = email.toLowerCase().split("@");
-  return `${(local ?? "").slice(0, 1)}***@${domain ?? ""}`;
+  return `${(local ?? "").slice(0, 4)}***@${domain ?? ""}`;
 }

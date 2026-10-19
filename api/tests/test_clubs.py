@@ -227,7 +227,7 @@ def test_an_administrator_can_edit_the_details_and_the_history_says_what_changed
 @pytest.mark.parametrize(
     ("over", "field"),
     [({"name": "x"}, "name"), ({"contact_phone": "12"}, "contact_phone"), ({"year_founded": 1800}, "year_founded"),
-     ({"age_groups": []}, "age_groups"), ({"category": "kids"}, "category"),
+     ({"age_groups": ["u99"]}, "age_groups"), ({"levels": ["galactic"]}, "levels"), ({"category": "kids"}, "category"),
      ({"club_email": "nope"}, "club_email"), ({"official2_role": "Mascot"}, "official2_role")],
 )
 def test_a_bad_edit_is_refused_on_its_field_and_changes_nothing(

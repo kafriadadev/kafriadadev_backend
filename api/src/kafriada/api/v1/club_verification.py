@@ -72,6 +72,7 @@ class OverviewResponse(BaseModel):
     price_kobo: int
     paid: bool
     reason: str | None
+    details_complete: bool
 
 
 class UploadRequest(BaseModel):

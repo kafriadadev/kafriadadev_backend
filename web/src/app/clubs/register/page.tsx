@@ -7,7 +7,7 @@ import { Checkbox, ErrorSummary, Field, Fieldset, Input, PhoneInput, Select } fr
 import { Notice } from "@/components/ui/Notice";
 import { Page, PageHead } from "@/components/ui/Page";
 import { SubmitButton } from "@/components/ui/SubmitButton";
-import { listLgas } from "@/lib/api";
+import { listLgas, type Lga } from "@/lib/api";
 import { OFFICIAL_ROLES } from "@/lib/clubProfile";
 import { signUpClubAction } from "./actions";
 
@@ -39,10 +39,10 @@ export default async function ClubSignUpPage({ searchParams }: { searchParams: P
   const duplicate = get("duplicate") === "1";
   const err = (name: string) => (badField === name ? error : null);
 
-  let open: { id: string; name: string }[] = [];
+  let lgas: Lga[] = [];
   let loadFailed = false;
   try {
-    open = (await listLgas()).filter((l) => l.is_open);
+    lgas = await listLgas();
   } catch {
     loadFailed = true;
   }
@@ -77,7 +77,7 @@ export default async function ClubSignUpPage({ searchParams }: { searchParams: P
       </div>
 
       <form action={signUpClubAction} noValidate className="space-y-12">
-        <ClubFields values={{ get, all }} badField={badField} error={error} lgas={open} />
+        <ClubFields values={{ get, all }} badField={badField} error={error} lgas={lgas} />
 
         <Fieldset legend={t("you")}>
           <p className="-mt-2 text-xs text-muted">{t("youHint")}</p>
@@ -92,7 +92,7 @@ export default async function ClubSignUpPage({ searchParams }: { searchParams: P
           <Field name="rep_role" label={t("role")} error={err("rep_role")}>
             {(a) => (
               <Select {...a} required defaultValue={get("rep_role")}>
-                <option value="">—</option>
+                <option value="">{t("chooseRole")}</option>
                 {OFFICIAL_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
               </Select>
             )}

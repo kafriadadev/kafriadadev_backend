@@ -30,6 +30,34 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-10-19 — Club sign-up: stage-two details moved out, two levels, every LGA listed
+**Commit(s):** see the commit that adds this entry, on branch `redesign`.
+
+**Built:** from the tester's club walk-through. Category, level, age groups, CAC number,
+colours and website are no longer asked at sign-up. They are stage-two details, entered on
+the club's edit page ("Sporting details"), and the stage-two payment is refused (409) until
+category, levels and age groups are on file; the verify page says so and links there.
+A club may play at one or two levels: **migration 0017** adds `organizations.levels` (1–2 of
+the four, CHECK) and copies `level` across. `level` is kept, unread, so the upgrade loses
+nothing. "Other" added to the official roles. The club form now lists all 27 LGAs, open ones
+first, like the athlete form. It used to list only open ones, and with none open on the
+deployed database the list was empty. A closed LGA is refused by name. State is shown as a
+fixed "Jigawa". Masked emails show four letters (`abcd***@gmail.com`), API and web.
+`scripts/outbox_code.py` reads `DATABASE_URL_APP` from the environment first.
+
+**Verified:** local PostgreSQL. 0017 applies, reverses and re-applies; `check_migration_safety`
+clean. `test_club_signup.py`, `test_club_verification.py`, `test_clubs.py`,
+`test_club_roster.py`, `test_permission_matrix.py`, `test_route_manifest.py` pass (new: sign-up
+without stage-two fields and with "Other", two levels stored, three refused, payment refused
+without details). `typecheck`, `build`, `e2e-club.mjs` (JS off, sign-up round trip 0.5 s), and
+`check:render` including the signed-in club edit and dashboard pages.
+
+**Not done / open:** apply 0017 to the deployed database **before** deploying this API (the
+dashboard query reads `levels`). Three-stage club pricing, missing emails on the deployed site
+and slow registration there are in `docs/TODO.md`.
+
+---
+
 ## 2026-10-09 — The dispatcher survives any database failure
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

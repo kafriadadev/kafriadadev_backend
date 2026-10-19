@@ -201,7 +201,7 @@ function Details({ t, club, base }: { t: T; club: ClubDashboard; base: string })
     [t("fields.sport"), club.sport],
     [t("fields.category"), label(CATEGORIES, p.category)],
     [t("fields.ages"), groups],
-    [t("fields.level"), label(CLUB_LEVELS, p.level)],
+    [t("fields.level"), Array.isArray(p.levels) ? (p.levels as string[]).map((l) => CLUB_LEVELS[l] ?? l).join(", ") : null],
     [t("fields.founded"), club.year_founded ? String(club.year_founded) : null],
     [t("fields.ground"), [s(p.ground_name), s(p.ground_address), s(p.town)].filter(Boolean).join(", ") || null],
     [t("fields.area"), club.lga_name],

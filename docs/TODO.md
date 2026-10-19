@@ -311,6 +311,20 @@ start and VER-03 (f7269e9).
   `api/`, with the database credentials in `.env`). Only `super_admin`, only to a registered
   person whose number is confirmed, once, with an audit row; every later grant goes
   through the console.
+- [ ] **Club verification in three stages** (GDOC §5.10, raised in testing 2026-10-19).
+  Stage 1 free (sign-up, done); stage 2 ₦5,000 during the pilot, ₦15,000 after
+  deployment (today: one stage at ₦15,000, CLB-04); stage 3 ₦100,000 (upload links,
+  media, subdomain ₦50,000). Stage 2 also lists team formation style, trophies, stadium
+  name and address. Category, levels, age groups, registration number, colours and
+  website already moved to stage 2 (2026-10-19). Needs a price decision per stage and
+  the benefits table turned into rules (player limits 50/50/70).
+- [ ] **Codes not reaching inboxes on the deployed site** (2026-10-19, two testers, athlete
+  and club). Check, in order: the `kafriada-jobs` worker is running, its log for
+  `email_suppressed` or Resend errors, the Resend dashboard (100 a day on the free plan,
+  sender domain verified).
+- [ ] **Slow registration on the deployed site** (2026-10-19). The same request takes
+  0.5 s locally. Put the web tier, the API and the database in one region (Supabase is
+  Frankfurt/eu-west-1; Vercel functions default to Washington).
 
 ### Stage 2 exit criteria — do not soften any of these
 

@@ -2,7 +2,9 @@
 
 Public sign-up, a coordinator registering a club, and a club editing its details all
 validate through :func:`clean`, so a club is held to the same standard however it
-was created.
+was created. Category, levels, age groups, registration number, colours and website
+are stage-two details: optional at sign-up, and the first three are required before
+the club pays for verification (:data:`STAGE2_REQUIRED`).
 """
 
 from __future__ import annotations
@@ -19,7 +21,10 @@ AGE_GROUPS = {"senior": "Senior", "u20": "Under 20", "u17": "Under 17", "u15": "
               "u13": "Under 13"}
 LEVELS = {"grassroots": "Grassroots", "amateur": "Amateur league",
           "semi_pro": "Semi-professional", "professional": "Professional"}
-OFFICIAL_ROLES = ("Chairman", "Secretary", "Manager", "Head coach", "Owner", "Treasurer")
+OFFICIAL_ROLES = ("Chairman", "Secretary", "Manager", "Head coach", "Owner", "Treasurer",
+                  "Other")
+MAX_LEVELS = 2
+STAGE2_REQUIRED = ("category", "levels", "age_groups")
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -37,9 +42,6 @@ class ClubProfile:
 
     short_name: str
     type: str
-    category: str
-    age_groups: tuple[str, ...]
-    level: str
     year_founded: int
     ground_name: str
     ground_address: str
@@ -48,6 +50,9 @@ class ClubProfile:
     official2_name: str
     official2_role: str
     official2_phone: str
+    category: str | None = None
+    age_groups: tuple[str, ...] = ()
+    levels: tuple[str, ...] = ()
     cac_number: str | None = None
     affiliation: str | None = None
     colours: str | None = None
@@ -73,13 +78,17 @@ def clean(p: ClubProfile) -> dict[str, object]:
 
     if p.type not in TYPES:
         raise ProfileError("Choose what kind of club this is.", field="type")
-    if p.category not in CATEGORIES:
+    category = p.category or None
+    if category is not None and category not in CATEGORIES:
         raise ProfileError("Choose men, women or mixed.", field="category")
     groups = tuple(dict.fromkeys(p.age_groups))
-    if not groups or any(g not in AGE_GROUPS for g in groups):
-        raise ProfileError("Tick at least one age group.", field="age_groups")
-    if p.level not in LEVELS:
-        raise ProfileError("Choose the level the club plays at.", field="level")
+    if any(g not in AGE_GROUPS for g in groups):
+        raise ProfileError("Tick the age groups the club fields a team in.", field="age_groups")
+    levels = tuple(dict.fromkeys(p.levels))
+    if any(lv not in LEVELS for lv in levels):
+        raise ProfileError("Choose the level the club plays at.", field="levels")
+    if len(levels) > MAX_LEVELS:
+        raise ProfileError("Tick one or two levels.", field="levels")
     if not 1900 <= p.year_founded <= today_in_nigeria().year:
         raise ProfileError("Enter the year the club was founded.", field="year_founded")
     email = (p.club_email or "").strip().lower()
@@ -95,9 +104,9 @@ def clean(p: ClubProfile) -> dict[str, object]:
     return {
         "short_name": need(p.short_name, "short_name", "Enter a short name, for example JFC.", 20),
         "type": p.type,
-        "category": p.category,
-        "age_groups": list(groups),
-        "level": p.level,
+        "category": category,
+        "age_groups": list(groups) or None,
+        "levels": list(levels) or None,
         "year_founded": p.year_founded,
         "ground_name": need(p.ground_name, "ground_name", "Enter where the club trains or plays.", 120),
         "ground_address": need(p.ground_address, "ground_address", "Enter the ground's address.", 200),
@@ -115,7 +124,7 @@ def clean(p: ClubProfile) -> dict[str, object]:
 
 
 COLUMNS = (
-    "short_name", "type", "category", "age_groups", "level", "year_founded", "ground_name",
+    "short_name", "type", "category", "age_groups", "levels", "year_founded", "ground_name",
     "ground_address", "town", "club_email", "official2_name", "official2_role",
     "official2_phone", "cac_number", "affiliation", "colours", "website",
 )

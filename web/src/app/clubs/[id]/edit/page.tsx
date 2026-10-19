@@ -75,7 +75,7 @@ export default async function EditClubPage({ params, searchParams }: { params: P
       </div>
       <form action={updateClubAction} noValidate className="space-y-8">
         <input type="hidden" name="club" value={id} />
-        <ClubFields values={{ get, all }} badField={badField} error={error} fixed={{ sport: club.sport, lga_name: club.lga_name }} />
+        <ClubFields values={{ get, all }} badField={badField} error={error} fixed={{ sport: club.sport, lga_name: club.lga_name }} stage2 />
         <SubmitButton pendingLabel={t("pending")}>{t("submit")}</SubmitButton>
       </form>
     </AthleteShell>

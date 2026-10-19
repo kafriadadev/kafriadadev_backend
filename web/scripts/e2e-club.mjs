@@ -38,11 +38,13 @@ const fill = {
   rep_first_name: "Club", rep_surname: "Rep", rep_phone: `0805${n}`, rep_email: email, password: "a long club phrase 42",
 };
 for (const [id, value] of Object.entries(fill)) await page.fill(`#${id}`, value);
-for (const id of ["type", "category", "level", "official2_role", "rep_role"]) await page.selectOption(`#${id}`, { index: 1 });
+for (const id of ["type", "official2_role", "rep_role"]) await page.selectOption(`#${id}`, { index: 1 });
 await page.selectOption("#lga_id", { index: 1 });
-await page.locator("input[name=age_groups]").first().check();
+check("CLB-01 leaves the stage-two details for later", (await page.locator("input[name=levels], #category, #cac_number").count()) === 0);
 await page.locator("label[for='accept_privacy_notice']").click();
+const submitted = Date.now();
 await Promise.all([page.waitForLoadState("load"), page.click("form button[type=submit]")]);
+console.log(`  sign-up round trip: ${((Date.now() - submitted) / 1000).toFixed(1)} s`);
 check(`CLB-01 submits with JavaScript off and asks for the email code (${new URL(page.url()).pathname})`, page.url().includes("/register/confirm"));
 
 const code = execFileSync(CODE_CMD[0], [...CODE_CMD.slice(1), email], { encoding: "utf8" }).trim();

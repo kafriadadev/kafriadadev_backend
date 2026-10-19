@@ -37,9 +37,9 @@ class ClubProfileIn(BaseModel):
 
     short_name: str = Field(max_length=40)
     type: str = Field(max_length=20)
-    category: str = Field(max_length=10)
-    age_groups: list[str] = Field(max_length=5)
-    level: str = Field(max_length=20)
+    category: str | None = Field(default=None, max_length=10)
+    age_groups: list[str] = Field(default_factory=list, max_length=5)
+    levels: list[str] = Field(default_factory=list, max_length=4)
     year_founded: StrictInt
     ground_name: str = Field(max_length=200)
     ground_address: str = Field(max_length=300)
@@ -56,6 +56,7 @@ class ClubProfileIn(BaseModel):
     def to_profile(self) -> ClubProfile:
         data = self.model_dump(include=set(ClubProfileIn.model_fields))
         data["age_groups"] = tuple(data["age_groups"])
+        data["levels"] = tuple(data["levels"])
         return ClubProfile(**data)
 
 

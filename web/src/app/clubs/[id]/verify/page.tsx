@@ -108,6 +108,13 @@ export default async function VerifyClubPage({ params, searchParams }: { params:
             </p>
           </section>
 
+          {v.details_complete ? null : (
+            <Notice signal="yellow" title={t("details")} className="mt-6"
+              action={<Button href={`${base}/edit`} variant="secondary">{t("addDetails")}</Button>}>
+              <p>{t("detailsText")}</p>
+            </Notice>
+          )}
+
           {v.state === "rejected" && v.reason ? (
             <Notice signal="yellow" title={t("rejected")} className="mt-6">
               <blockquote className="border-l-4 border-boot pl-3">{v.reason}</blockquote>
@@ -144,8 +151,8 @@ export default async function VerifyClubPage({ params, searchParams }: { params:
             ) : (
               <form action={startClubPaymentAction} className="space-y-2">
                 <input type="hidden" name="club" value={id} />
-                <SubmitButton disabled={!ready} pendingLabel={t("paying")} icon={<IconLock size={20} aria-hidden="true" />}>{t("pay", { price })}</SubmitButton>
-                <p className="text-xs text-muted">{ready ? t("leave") : t("needDocument")}</p>
+                <SubmitButton disabled={!ready || !v.details_complete} pendingLabel={t("paying")} icon={<IconLock size={20} aria-hidden="true" />}>{t("pay", { price })}</SubmitButton>
+                <p className="text-xs text-muted">{!v.details_complete ? t("needDetails") : ready ? t("leave") : t("needDocument")}</p>
               </form>
             )}
           </div>

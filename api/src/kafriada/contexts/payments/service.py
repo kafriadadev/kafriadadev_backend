@@ -256,6 +256,11 @@ def start_club_payment(
                 {"c": club_id, "s": status.value},
             ).scalar_one():
                 raise Refused(message, code=code)
+        if not club_verification.details_complete(session, club_id):
+            raise Refused(
+                "Add the club's category, level and age groups first.",
+                code="no_details",
+            )
         if not club_verification.ready_for_payment(session, club_id):
             raise Refused(
                 "Add your club's registration document or LGA letter first. "

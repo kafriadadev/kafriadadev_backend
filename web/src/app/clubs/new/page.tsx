@@ -7,7 +7,7 @@ import { Checkbox, ErrorSummary } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
 import { Page, PageHead } from "@/components/ui/Page";
 import { SubmitButton } from "@/components/ui/SubmitButton";
-import { ApiError, getMe, listLgas } from "@/lib/api";
+import { ApiError, getMe, listLgas, type Lga } from "@/lib/api";
 import { sessionToken } from "@/lib/session";
 import { registerClubAction } from "./actions";
 
@@ -48,9 +48,9 @@ export default async function NewClubPage({ searchParams }: { searchParams: Prom
   const error = get("error");
   const badField = get("field");
   const duplicate = get("duplicate") === "1";
-  let open: { id: string; name: string }[] = [];
+  let open: Lga[] = [];
   try {
-    open = (await listLgas()).filter((l) => l.is_open);
+    open = await listLgas();
   } catch {
     // The selector is empty; the API still refuses an area that is not open.
   }

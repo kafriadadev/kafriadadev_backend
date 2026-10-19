@@ -22,7 +22,7 @@ def profile_body(**overrides: Any) -> dict[str, Any]:
         "type": "club",
         "category": "men",
         "age_groups": ["senior", "u17"],
-        "level": "amateur",
+        "levels": ["amateur"],
         "year_founded": 2015,
         "ground_name": "Township Stadium",
         "ground_address": "Stadium Road",

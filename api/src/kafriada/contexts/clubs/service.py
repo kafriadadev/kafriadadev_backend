@@ -142,11 +142,18 @@ def create_club(
     """Insert the club, its default team and its administrator's grant, in the caller's
     transaction. ``checked`` comes from :func:`check_club`."""
     lga = session.execute(
-        text("SELECT parent_id FROM ops.locations WHERE id = :id AND kind = 'lga' AND is_live"),
+        text("SELECT parent_id, name, is_live FROM ops.locations WHERE id = :id AND kind = 'lga'"),
         {"id": lga_id},
     ).mappings().one_or_none()
     if lga is None:
-        raise Refused("Choose a local government area that is open.", code="invalid", field="lga_id")
+        raise Refused("Choose the club's local government area.", code="invalid", field="lga_id")
+    if not lga["is_live"]:
+        raise Refused(
+            f"Registration has not opened in {lga['name']} yet. Clubs there can register "
+            "once it opens.",
+            code="invalid",
+            field="lga_id",
+        )
 
     # Two clubs can honestly share a name, so this is a question, not a refusal.
     if not confirm_duplicate:
@@ -214,7 +221,7 @@ def dashboard(club_id: UUID) -> Dashboard | None:
                 """
                 SELECT o.id, o.name, o.sport, o.type, o.year_founded, o.contact_phone,
                        o.status, o.stage, o.created_at, lga.name AS lga_name,
-                       o.short_name, o.category, o.age_groups, o.level, o.ground_name,
+                       o.short_name, o.category, o.age_groups, o.levels, o.ground_name,
                        o.ground_address, o.town, o.club_email, o.cac_number, o.affiliation,
                        o.colours, o.website, o.rep_role, o.official2_name, o.official2_role,
                        o.official2_phone

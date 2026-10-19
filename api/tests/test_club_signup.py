@@ -86,6 +86,28 @@ def test_a_sign_up_waits_unseen_until_the_email_is_confirmed(
     assert "club.registered" in audit_actions(club)
 
 
+def test_the_stage_two_details_are_not_needed_at_sign_up(client: TestClient) -> None:
+    body = signup_body(rep_role="Other")
+    for later in ("category", "age_groups", "levels", "cac_number", "colours", "website"):
+        body.pop(later, None)
+    made = client.post("/v1/clubs/register", json=body)
+    assert made.status_code == 201, made.text
+    assert sql(
+        "SELECT rep_role, category, age_groups, levels FROM identity.organizations WHERE id = :c",
+        c=str(made.json()["club_id"]),
+    ) == [{"rep_role": "Other", "category": None, "age_groups": None, "levels": None}]
+    local = body["rep_email"].split("@")[0]
+    assert made.json()["email"].startswith(local[:4] + "***@")
+
+
+def test_a_club_may_play_at_two_levels(client: TestClient) -> None:
+    made = client.post("/v1/clubs/register", json=signup_body(levels=["grassroots", "amateur"]))
+    assert made.status_code == 201, made.text
+    assert sql(
+        "SELECT levels FROM identity.organizations WHERE id = :c", c=str(made.json()["club_id"])
+    ) == [{"levels": ["grassroots", "amateur"]}]
+
+
 @pytest.mark.parametrize(
     ("change", "field"),
     [
@@ -95,7 +117,8 @@ def test_a_sign_up_waits_unseen_until_the_email_is_confirmed(
         ({"password": "short"}, "password"),
         ({"short_name": ""}, "short_name"),
         ({"age_groups": ["u99"]}, "age_groups"),
-        ({"level": "galactic"}, "level"),
+        ({"levels": ["galactic"]}, "levels"),
+        ({"levels": ["grassroots", "amateur", "professional"]}, "levels"),
         ({"ground_address": ""}, "ground_address"),
         ({"official2_name": ""}, "official2_name"),
         ({"year_founded": 1850}, "year_founded"),
