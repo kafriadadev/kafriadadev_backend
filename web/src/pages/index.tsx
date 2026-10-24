@@ -84,7 +84,7 @@ export default function Home({ open }: Props) {
               nameAs="p"
               data={{
                 kuid: "KA-NG-JG-BKD-2026-000123",
-                fullName: "Aisha Musa",
+                fullName: "Ahmed Musa",
                 position: "Striker",
                 lgaName: "Birnin Kudu",
                 stateName: "Jigawa",

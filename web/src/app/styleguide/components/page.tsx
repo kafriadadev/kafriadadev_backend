@@ -32,7 +32,7 @@ export const dynamic = "force-dynamic";
 
 const SAMPLE: PlayerCardData = {
   kuid: "KA-NG-JG-BKD-2026-000123",
-  fullName: "Aisha Musa",
+  fullName: "Ahmed Musa",
   position: "Central midfielder",
   lgaName: "Birnin Kudu",
   stateName: "Jigawa",
@@ -96,7 +96,7 @@ export default async function Components() {
         <div className="grid gap-8 md:grid-cols-2">
           <Fieldset legend="You">
             <Field name="sg_name" label="Full name" hint="As your family and coach know you." icon={<IconUser size={18} />}>
-              {(a) => <Input {...a} defaultValue="Aisha Musa" autoComplete="name" />}
+              {(a) => <Input {...a} defaultValue="Ahmed Musa" autoComplete="name" />}
             </Field>
             <Field name="sg_phone" label="Phone number" icon={<IconPhone size={18} />}>
               {(a) => <PhoneInput {...a} defaultValue="0803 000 0000" />}
@@ -329,7 +329,7 @@ export default async function Components() {
             { key: "since", label: "Joined", align: "end" },
           ]}
           rows={[
-            { id: "1", name: "Aisha Musa", kuid: SAMPLE.kuid, status: <VerifiedBadge verified labels={{ verified: t("ui.verified"), unverified: t("ui.unverified") }} />, since: "Mar 2026" },
+            { id: "1", name: "Ahmed Musa", kuid: SAMPLE.kuid, status: <VerifiedBadge verified labels={{ verified: t("ui.verified"), unverified: t("ui.unverified") }} />, since: "Mar 2026" },
             { id: "2", name: "Ɗanjuma Ƙasimu", kuid: UNVERIFIED.kuid, status: <VerifiedBadge verified={false} labels={{ verified: t("ui.verified"), unverified: t("ui.unverified") }} />, since: "Apr 2026" },
           ]}
         />

@@ -168,7 +168,7 @@ export default async function StyleGuide() {
           <p className="mt-4 max-w-measure text-md">{t("styleguide.sampleBody")}</p>
         </div>
         <dl className="mt-6 grid gap-4 md:grid-cols-3">
-          <Font name="Display · Fira Sans Condensed 800" cls="font-display font-extrabold italic text-2xl uppercase" sample="Aisha Musa" hausa={HAUSA} />
+          <Font name="Display · Fira Sans Condensed 800" cls="font-display font-extrabold italic text-2xl uppercase" sample="Ahmed Musa" hausa={HAUSA} />
           <Font name="Body · Andika 400 / 700" cls="font-body text-md" sample="Registration is free and takes two minutes." hausa={HAUSA} />
           <Font name="IDs and codes · Geist Mono" cls="font-mono text-lg scoreboard-digits" sample="0 O · 1 I · 5 S · 8 B" hausa="KA-NG · 2026 · 000123" />
         </dl>

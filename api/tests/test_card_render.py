@@ -15,7 +15,7 @@ from kafriada.contexts.identity import card
 
 SUBJECT = card.CardSubject(
     kuid="KA-NG-JG-BKD-2026-000123",
-    full_name="Aisha Musa",
+    full_name="Ahmed Musa",
     sport="Football",
     playing_position="Central midfielder",
     lga_name="Birnin Kudu",
