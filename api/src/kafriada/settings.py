@@ -157,7 +157,9 @@ class Settings(BaseSettings):
     # -- Money ------------------------------------------------------------
     # Prices in kobo. Never naira, never a float. 250_000 kobo = 2,500 naira.
     price_athlete_verification_kobo: int = Field(default=250_000, ge=1)
-    price_club_verification_kobo: int = Field(default=1_500_000, ge=1)
+    # Club stage two: 5,000 naira during the pilot, 15,000 after it (GDOC 5.10). Set
+    # PRICE_CLUB_VERIFICATION_KOBO=1500000 when the pilot ends.
+    price_club_verification_kobo: int = Field(default=500_000, ge=1)
 
     # -- Assisted payment (CRD-04) ----------------------------------------
     # What one coordinator may pay on behalf of others in a day, by count and
@@ -253,6 +255,17 @@ class Settings(BaseSettings):
     # -- One-time codes ---------------------------------------------------
     # Six digits is only safe because of these three numbers. See contexts/access/otp.py.
     otp_minutes_valid: int = Field(default=10, ge=2, le=60)
+
+    # Run the background jobs (outbox, reconciliation, sweeps) on a thread inside the
+    # API, for a host with no separate worker. Safe alongside `python -m kafriada.jobs`.
+    # Unset: on when deployed (staging, production), off locally and in CI.
+    run_jobs_in_process: bool | None = None
+
+    @property
+    def jobs_in_process(self) -> bool:
+        if self.run_jobs_in_process is not None:
+            return self.run_jobs_in_process
+        return self.environment is not Environment.LOCAL
     otp_resend_seconds: int = Field(default=60, ge=15, le=600)
     otp_sends_per_day: int = Field(default=5, ge=1, le=20)
     # A pilot stand-in for Twilio, which is not registered yet (see CLAUDE.md,

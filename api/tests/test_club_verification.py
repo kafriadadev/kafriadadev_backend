@@ -35,7 +35,7 @@ pytestmark = [
     ),
 ]
 
-CLUB_PRICE = 1_500_000
+CLUB_PRICE = 500_000
 
 
 @pytest.fixture(scope="module")

@@ -268,20 +268,33 @@ def main(argv: list[str] | None = None) -> int:
 
     signal.signal(signal.SIGINT, _stop)
     signal.signal(signal.SIGTERM, _stop)
+    run_forever(jobs, tick=args.tick, stopping=_stopping)
+    return 0
+
+
+def run_forever(jobs: list[Job], *, tick: float, stopping: threading.Event) -> None:
+    """Run each job when it is due until ``stopping`` is set.
+
+    Used by ``main`` and, with ``RUN_JOBS_IN_PROCESS``, by the API on a background
+    thread, for a host with no separate worker. Both may run at once: the locks above
+    make a second runner harmless.
+    """
     log.info("jobs_started", jobs=[j.name for j in jobs])
     frequent: dict[str, float] = {}  # unrecorded jobs keep their pace in memory
-    while not _stopping.is_set():
+    while not stopping.is_set():
         for job in jobs:
-            if _stopping.is_set():
+            if stopping.is_set():
                 break
             if not job.record:
                 if time.monotonic() - frequent.get(job.name, -1e9) < job.every:
                     continue
                 frequent[job.name] = time.monotonic()
-            run_job(job)
-        _stopping.wait(args.tick)
+            try:
+                run_job(job)
+            except Exception:  # the loop must outlive any one pass
+                log.exception("job_pass_failed", job=job.name)
+        stopping.wait(tick)
     log.info("jobs_stopped")
-    return 0
 
 
 if __name__ == "__main__":

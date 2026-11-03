@@ -35,7 +35,7 @@ from kafriada.contexts.payments.rules import (
 from kafriada.settings import Settings
 
 ATHLETE_PRICE = 250_000  # 2,500 naira
-CLUB_PRICE = 1_500_000  # 15,000 naira
+CLUB_PRICE = 500_000  # 5,000 naira, the pilot price
 
 
 def _settings(**overrides: object) -> Settings:

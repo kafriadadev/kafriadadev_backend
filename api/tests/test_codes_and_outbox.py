@@ -419,6 +419,22 @@ def test_a_permanent_failure_gives_up_at_once_and_keeps_the_row() -> None:
     assert row == {"attempts": 1, "failed": True, "last_error": "invalid number"}
 
 
+def test_a_code_that_expired_in_the_queue_is_dropped_not_sent() -> None:
+    """A backlog of dead codes must not spend the provider's daily quota."""
+    user_id, phone = make_user("Outbox Stale")
+    message_id = _queue_one(user_id, phone)
+    sql("UPDATE ops.outbox SET created_at = now() - interval '11 minutes' WHERE id = :id",
+        id=message_id)
+
+    recorder = Recorder()
+    _drain_until(message_id, recorder)
+    assert all(to != phone for to, _ in recorder.sent)
+    (row,) = sql("SELECT processed_at, failed_at, last_error FROM ops.outbox WHERE id = :id",
+                 id=message_id)
+    assert row["processed_at"] is None and row["failed_at"] is not None
+    assert row["last_error"] == "code expired before it was sent"
+
+
 def _drain_until(message_id: int, sender: Recorder) -> int:
     """Drain until our message has been dealt with.
 

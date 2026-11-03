@@ -48,6 +48,11 @@ EMAIL_REQUESTED = "email.requested"
 NOTIFICATION_REQUESTED = "notification.requested"
 
 MAX_ATTEMPTS = 5
+
+# One-time codes, by the purpose they are queued with (see contexts/access/otp.py).
+# A code that could not be sent before it expired is dropped, not sent: it would
+# not work, and a backlog of them would spend the email provider's daily quota.
+CODE_PURPOSES = frozenset({"phone_verification", "password_reset", "email_verification"})
 # Seconds before each retry. A one-time code is worth nothing in an hour, so the
 # first retries are quick and the tail is short.
 BACKOFF_SECONDS = (30, 120, 600, 1_800)
@@ -197,7 +202,9 @@ def _send_one(post: Sender, email_post: EmailSender) -> str | None:
         row = session.execute(
             text(
                 """
-                SELECT id, event_type, payload, attempts
+                SELECT id, event_type, payload, attempts,
+                       created_at <= now() - CAST(:minutes AS integer) * interval '1 minute'
+                           AS code_expired
                   FROM ops.outbox
                  WHERE processed_at IS NULL
                    AND failed_at IS NULL
@@ -206,7 +213,8 @@ def _send_one(post: Sender, email_post: EmailSender) -> str | None:
                  FOR UPDATE SKIP LOCKED
                  LIMIT 1
                 """
-            )
+            ),
+            {"minutes": get_settings().otp_minutes_valid},
         ).mappings().one_or_none()
         if row is None:
             return None
@@ -218,6 +226,11 @@ def _send_one(post: Sender, email_post: EmailSender) -> str | None:
         if event_type not in (SMS_REQUESTED, EMAIL_REQUESTED, NOTIFICATION_REQUESTED):
             _mark_failed(session, row["id"], attempts, f"unknown event {event_type}")
             log.error("outbox_unknown_event", event_type=event_type)
+            return "failed"
+
+        if row["code_expired"] and payload.get("purpose") in CODE_PURPOSES:
+            _mark_failed(session, row["id"], attempts - 1, "code expired before it was sent")
+            log.warning("outbox_code_expired", purpose=payload.get("purpose"))
             return "failed"
 
         # Addressed to a person: find out how to reach them, now rather than when

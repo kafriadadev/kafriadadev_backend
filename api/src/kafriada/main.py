@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -92,7 +93,25 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         service=settings.service_name,
         environment=settings.environment.value,
     )
+    stopping = threading.Event()
+    runner: threading.Thread | None = None
+    if settings.jobs_in_process:
+        # A host without a separate worker (Render's free plan has none) still sends
+        # its codes and receipts. Imported here: the jobs pull in every context.
+        from kafriada import jobs
+
+        runner = threading.Thread(
+            target=jobs.run_forever,
+            args=(jobs.build_jobs(),),
+            kwargs={"tick": 5.0, "stopping": stopping},
+            name="kafriada-jobs",
+            daemon=True,
+        )
+        runner.start()
     yield
+    stopping.set()
+    if runner is not None:
+        runner.join(timeout=10)
     log.info("stopped")
 
 
