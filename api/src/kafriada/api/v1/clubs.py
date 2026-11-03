@@ -40,6 +40,8 @@ class ClubProfileIn(BaseModel):
     category: str | None = Field(default=None, max_length=10)
     age_groups: list[str] = Field(default_factory=list, max_length=5)
     levels: list[str] = Field(default_factory=list, max_length=4)
+    formation: str | None = Field(default=None, max_length=60)
+    trophies: str | None = Field(default=None, max_length=1000)
     year_founded: StrictInt
     ground_name: str = Field(max_length=200)
     ground_address: str = Field(max_length=300)
@@ -108,6 +110,8 @@ class DashboardResponse(BaseModel):
     contact_phone: str
     status: str
     verified: bool
+    stage: int
+    player_limit: int
     players: int
     verified_players: int
     invites_out: int
@@ -240,6 +244,7 @@ def _refuse(exc: service.Refused) -> HTTPException:
         "no_athlete": status.HTTP_404_NOT_FOUND,
         "duplicate": status.HTTP_409_CONFLICT,
         "not_approved": status.HTTP_409_CONFLICT,
+        "full": status.HTTP_409_CONFLICT,
     }
     return HTTPException(
         codes.get(exc.code, status.HTTP_422_UNPROCESSABLE_ENTITY),

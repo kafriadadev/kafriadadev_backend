@@ -159,6 +159,7 @@ def _install_routes(app: FastAPI) -> None:
     from kafriada.api.v1 import (
         admin,
         athletes,
+        club_stage3,
         club_verification,
         clubs,
         codes,
@@ -176,6 +177,7 @@ def _install_routes(app: FastAPI) -> None:
     app.include_router(verification.router, prefix="/v1")
     app.include_router(clubs.router, prefix="/v1")
     app.include_router(club_verification.router, prefix="/v1")
+    app.include_router(club_stage3.router, prefix="/v1")
     app.include_router(coordination.router, prefix="/v1")
 
 

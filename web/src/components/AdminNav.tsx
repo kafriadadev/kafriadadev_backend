@@ -17,6 +17,7 @@ const GROUPS = [
       { href: "/admin/users", label: "Users and roles", Icon: IconUsersGroup },
       { href: "/admin/clubs", label: "Clubs", Icon: IconShirtSport },
       { href: "/admin/club-verification", label: "Club reviews", Icon: IconShieldCheck },
+      { href: "/admin/club-stage-three", label: "Stage three reviews", Icon: IconShieldCheck },
     ],
   },
   {

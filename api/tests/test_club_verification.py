@@ -21,6 +21,7 @@ from kafriada.contexts.payments.provider import FakeProvider
 from kafriada.contexts.payments.settlement import settle_charge
 from kafriada.db.engine import money_transaction
 from kafriada.main import create_app
+from kafriada.settings import get_settings
 from tests._access_helpers import audit_actions, bearer, make_user, sql
 from tests._club_helpers import LGA as CLUB_LGA
 from tests._club_helpers import profile_body, registers_clubs
@@ -35,7 +36,8 @@ pytestmark = [
     ),
 ]
 
-CLUB_PRICE = 500_000
+# Configuration, not code: the pilot price is 5,000 naira (settings.py).
+CLUB_PRICE = get_settings().price_club_verification_kobo
 
 
 @pytest.fixture(scope="module")

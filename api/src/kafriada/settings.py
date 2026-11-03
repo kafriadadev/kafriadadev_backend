@@ -160,6 +160,8 @@ class Settings(BaseSettings):
     # Club stage two: 5,000 naira during the pilot, 15,000 after it (GDOC 5.10). Set
     # PRICE_CLUB_VERIFICATION_KOBO=1500000 when the pilot ends.
     price_club_verification_kobo: int = Field(default=500_000, ge=1)
+    # Club stage three: 100,000 naira.
+    price_club_stage3_kobo: int = Field(default=10_000_000, ge=1)
 
     # -- Assisted payment (CRD-04) ----------------------------------------
     # What one coordinator may pay on behalf of others in a day, by count and

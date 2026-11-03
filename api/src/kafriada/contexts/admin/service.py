@@ -70,7 +70,7 @@ def overview() -> Overview:
                          WHERE u.anonymised_at IS NULL) AS registered,
                        (SELECT count(*) FROM identity.verification_requests WHERE payment_id IS NOT NULL) AS paid,
                        (SELECT count(*) FROM identity.organizations WHERE status <> 'unconfirmed') AS clubs,
-                       (SELECT count(*) FROM identity.organizations WHERE stage = 2) AS verified_clubs,
+                       (SELECT count(*) FROM identity.organizations WHERE stage >= 2) AS verified_clubs,
                        (SELECT count(*) FROM identity.club_verification_requests
                          WHERE status = 'under_review') AS clubs_waiting,
                        (SELECT count(*) FROM ops.locations WHERE kind = 'lga' AND is_live) AS live
@@ -281,7 +281,7 @@ def list_clubs(status: str = "", page: int = 1) -> ClubPage:
         clubs=tuple(
             ClubRow(
                 club_id=r["id"], name=r["name"], sport=r["sport"], lga_name=r["lga_name"],
-                status=r["status"], verified=r["stage"] == 2, representative=r["rep"],
+                status=r["status"], verified=r["stage"] >= 2, representative=r["rep"],
                 verification=r["verification"], created_at=r["created_at"],
             )
             for r in rows[:PAGE]

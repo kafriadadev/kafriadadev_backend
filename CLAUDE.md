@@ -645,6 +645,16 @@ Migrations: same with `DATABASE_URL_MIGRATE`, then `python -m alembic upgrade he
   Paystack webhook URL `https://<site>/webhooks/paystack`. `render.yaml` defines all three services.
   Code lives on `decobwebs/kafriadanet_backend` (remote `decobwebs`) as well as `origin`.
 
+- **Club stage three, codes sent on the deployed site — done 2026-11-03** (migration 0018).
+  The API runs `kafriada.jobs` on a thread when deployed (`RUN_JOBS_IN_PROCESS`, unset = on
+  outside local). Stage two ₦5,000 in the pilot; stage three ₦100,000
+  (`/clubs/[id]/stage-three`, `/admin/club-stage-three`); player limits 50/50/70. Media can
+  belong to a club (`media_files.org_id`). **Migrate locally as `kaf_migrate`**: tables made
+  by the admin role miss the default grants. Live site: `kafriadanet-frontend.vercel.app`
+  (Vercel builds `decobwebs/kafriadanet_frontend`, a copy of `web/`; push a sync commit
+  authored by decobwebs, or the Hobby plan blocks the deploy). Live API:
+  `kafriadanet-backend.onrender.com` (from `decobwebs/kafriadanet_backend`).
+
 ## Next tasks, in order
 1. ~~Fix phone→identity leak (privacy bug).~~ Done 2026-09-11.
 2. ~~Registration copy promised an SMS code that is never sent.~~ Done 2026-09-11,

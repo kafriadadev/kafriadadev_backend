@@ -34,6 +34,21 @@ from kafriada.outbox.service import queue_notification
 log = structlog.get_logger(__name__)
 
 ROSTER_LIMIT = 200
+# Players a club may hold, by stage (GDOC 5.10): 50 at stages one and two, 70 at three.
+PLAYER_LIMITS = {1: 50, 2: 50, 3: 70}
+
+
+def _players(session: Session, club_id: UUID, statuses: tuple[str, ...]) -> int:
+    return int(
+        session.execute(
+            text(
+                "SELECT count(*) FROM identity.roster_members rm "
+                "JOIN identity.teams t ON t.id = rm.team_id "
+                "WHERE t.org_id = :c AND rm.status = ANY(:s)"
+            ),
+            {"c": club_id, "s": list(statuses)},
+        ).scalar_one()
+    )
 
 
 class Refused(Exception):
@@ -71,7 +86,9 @@ class Dashboard:
     lga_name: str
     contact_phone: str
     status: str  # pending_review | approved | suspended
-    verified: bool  # stage 2: the paid badge
+    verified: bool  # stage 2 or 3: the paid badge
+    stage: int
+    player_limit: int
     players: int
     verified_players: int
     invites_out: int
@@ -224,7 +241,7 @@ def dashboard(club_id: UUID) -> Dashboard | None:
                        o.short_name, o.category, o.age_groups, o.levels, o.ground_name,
                        o.ground_address, o.town, o.club_email, o.cac_number, o.affiliation,
                        o.colours, o.website, o.rep_role, o.official2_name, o.official2_role,
-                       o.official2_phone
+                       o.official2_phone, o.formation, o.trophies, o.links
                   FROM identity.organizations o
                   JOIN ops.locations lga ON lga.id = o.lga_id
                  WHERE o.id = :club
@@ -273,13 +290,15 @@ def dashboard(club_id: UUID) -> Dashboard | None:
         lga_name=club["lga_name"],
         contact_phone=club["contact_phone"],
         status=club["status"],
-        verified=club["stage"] == 2,
+        verified=club["stage"] >= 2,
+        stage=club["stage"],
+        player_limit=PLAYER_LIMITS[club["stage"]],
         players=sum(1 for r in roster if r.state != "invited"),
         verified_players=sum(1 for r in roster if r.state == "verified"),
         invites_out=sum(1 for r in roster if r.state == "invited"),
         roster=roster,
         created_at=club["created_at"],
-        profile={c: club[c] for c in (*club_profile.COLUMNS, "rep_role")},
+        profile={c: club[c] for c in (*club_profile.COLUMNS, "rep_role", "links")},
     )
 
 
@@ -421,13 +440,20 @@ def invite_player(
     kuid = kuid_mod.normalise(kuid)
     with transaction() as session:
         club = session.execute(
-            text("SELECT name, status FROM identity.organizations WHERE id = :c FOR SHARE"),
+            text("SELECT name, status, stage FROM identity.organizations WHERE id = :c FOR UPDATE"),
             {"c": club_id},
         ).mappings().one_or_none()
         if club is None:
             raise Refused("No such club.", code="missing")
         if club["status"] != "approved":
             raise Refused("A club can invite players once it is approved.", code="not_approved")
+        limit = PLAYER_LIMITS[club["stage"]]
+        if _players(session, club_id, ("active", "invited")) >= limit:
+            raise Refused(
+                f"The club has {limit} players and invitations already, its limit at this stage.",
+                code="full",
+                field="kuid",
+            )
         athlete = session.execute(
             text(
                 "SELECT a.id, a.user_id FROM identity.athletes a JOIN ops.users u ON u.id = a.user_id "
@@ -544,7 +570,7 @@ class MyClubs:
 
 _MEMBERSHIP_SQL = """
     SELECT rm.id AS roster_id, o.id AS club_id, o.name AS club_name, o.sport,
-           lga.name AS lga_name, o.stage = 2 AS verified_club
+           lga.name AS lga_name, o.stage >= 2 AS verified_club
       FROM identity.roster_members rm
       JOIN identity.athletes a ON a.id = rm.athlete_id
       JOIN identity.teams t ON t.id = rm.team_id
@@ -612,6 +638,12 @@ def accept_invitation(
             raise Refused("We could not find that invitation.", code="missing")
         if inv["club_status"] != "approved":
             raise Refused("This club is not accepting players right now.", code="not_approved")
+        stage = session.execute(
+            text("SELECT stage FROM identity.organizations WHERE id = :c FOR UPDATE"),
+            {"c": inv["club_id"]},
+        ).scalar_one()
+        if _players(session, inv["club_id"], ("active",)) >= PLAYER_LIMITS[stage]:
+            raise Refused("This club is full right now.", code="full")
         left = session.execute(
             text(
                 """

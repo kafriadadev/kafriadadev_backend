@@ -35,6 +35,7 @@ import structlog
 from sqlalchemy import text
 
 from kafriada.contexts.audit.service import Actor, record
+from kafriada.contexts.clubs import stage3 as club_stage3
 from kafriada.contexts.clubs import verification as club_verification
 from kafriada.contexts.ledger.entries import plan_settlement
 from kafriada.contexts.payments.rules import (
@@ -158,6 +159,7 @@ def settle_charge(
                 moved = (
                     verification.mark_paid(session, payment_id) is not None
                     or club_verification.mark_paid(session, payment_id) is not None
+                    or club_stage3.mark_paid(session, payment_id) is not None
                 )
                 action = "payment.settled"
                 result = Settlement(Outcome.SETTLED, payment_id, verification_moved=moved)
@@ -229,7 +231,7 @@ def _send_receipt(session, row, paid_kobo: int) -> None:  # type: ignore[no-unty
             tell = athlete_user
 
     amount = _naira(paid_kobo)
-    if row.purpose == "stage2_org":
+    if row.purpose in ("stage2_org", "stage3_org"):
         sms = f"KAFRIADA: we received your payment of {amount}. Your club is now with an administrator to review."
         email = (
             f"We received your payment of {amount}.\n\n"

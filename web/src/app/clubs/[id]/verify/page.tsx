@@ -90,7 +90,9 @@ export default async function VerifyClubPage({ params, searchParams }: { params:
       </div>
 
       {v.verified ? (
-        <Notice signal="done" title={t("verified")}><p>{t("verifiedText")}</p></Notice>
+        <Notice signal="done" title={t("verified")} action={<Button href={`${base}/stage-three`} variant="secondary">{t("toStage3")}</Button>}>
+          <p>{t("verifiedText")}</p>
+        </Notice>
       ) : v.club_status !== "approved" ? (
         <Notice signal="var" title={t("waiting")}><p>{t("waitingText")}</p></Notice>
       ) : v.state === "under_review" ? (

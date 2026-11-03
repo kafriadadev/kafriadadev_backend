@@ -80,10 +80,11 @@ def _payload(**data: object) -> dict[str, object]:
 # ---------------------------------------------------------------------------
 class TestPrices:
 
-    def test_the_two_prices_are_the_ones_in_the_specification(self) -> None:
+    def test_the_prices_are_the_ones_in_the_specification(self) -> None:
         settings = _settings()
         assert expected_amount_kobo(Purpose.STAGE2_ATHLETE, settings) == ATHLETE_PRICE
         assert expected_amount_kobo(Purpose.STAGE2_ORG, settings) == CLUB_PRICE
+        assert expected_amount_kobo(Purpose.STAGE3_ORG, settings) == 10_000_000  # 100,000 naira
 
     def test_a_price_change_is_configuration_not_code(self) -> None:
         settings = _settings(price_athlete_verification_kobo=300_000)

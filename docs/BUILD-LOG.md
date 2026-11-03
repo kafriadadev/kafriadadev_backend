@@ -30,6 +30,54 @@ was checked live and what the result was. Say plainly when something is
 
 ---
 
+## 2026-11-03 — Club stage three; codes sent on the deployed site; club-owned files
+**Commit(s):** `827ea6b` and the commit that adds this entry, on branch `redesign`.
+
+**Built:**
+- **Codes and receipts are sent on the deployed site** (`827ea6b`). Nothing sent them
+  before: the outbox is drained by `kafriada.jobs`, and the host runs no background worker.
+  Deployed environments now run the same scheduler on a thread inside the API
+  (`RUN_JOBS_IN_PROCESS`; unset means on in staging and production, off locally and in
+  CI). A second runner is harmless because every job is locked. A one-time code still
+  queued after it expired is marked failed instead of sent, so a backlog cannot spend
+  Resend's 100-a-day quota.
+- **Speed:** the website's server functions run in Frankfurt (`web/vercel.json`), next to
+  the API; they ran in Washington. Warm page loads measured 1.4 s; the 8–14 s loads are
+  cold starts.
+- **Club stage two costs ₦5,000 in the pilot** (`PRICE_CLUB_VERIFICATION_KOBO`; set
+  1500000 after the pilot). Stage two also takes team formation and trophies.
+- **Club stage three** (migration 0018): ₦100,000 (`PRICE_CLUB_STAGE3_KOBO`). A stage-two
+  club adds 1–5 links and 1–6 photos (re-encoded, no EXIF), pays, and a super administrator
+  approves or rejects with a reason at `/admin/club-stage-three`; a rejection goes back
+  without a second payment. Approval sets `organizations.stage = 3`. Own tables
+  (`club_stage3_requests`, append-only `club_stage3_decisions`) so stage two's flow is
+  untouched. `/clubs/[id]/stage-three`. Routes under `/v1/clubs/{id}/stage-three` and
+  `/v1/admin/club-stage-three`.
+- **Player limits** by stage: 50 at stages one and two, 70 at three, checked on invite
+  (players plus open invitations) and on accept. The dashboard shows the stage and limit.
+- **Bug fixed: stage two was unreachable for self-registered clubs.** A media file had to
+  belong to an athlete, and a representative who signed the club up has no athlete
+  account, so the document upload answered "Only a registered athlete can administer a
+  club." A file can now belong to a club (`media_files.org_id`, exactly one owner by
+  CHECK). Earlier club documents keep their athlete owner.
+
+**Verified:** local PostgreSQL, migrated as `kaf_migrate` (as the admin role the new tables
+miss the default grants: migrate as `kaf_migrate`). 0018 applies, reverses and re-applies;
+`check_migration_safety` clean. `test_club_stage3.py` (10, one mutation proved red),
+`test_jobs_in_process.py`, a new expired-code test, and the club, payment, media,
+verification, admin, integrity, route-manifest and permission-matrix suites.
+`e2e-club.mjs` and the new `e2e-club-stage3.mjs` with JavaScript off (links, photo,
+hand-off to payment). `check:render` on the club dashboard, edit, verify and stage-three
+pages and the admin review page. Live: the website serves from `fra1`.
+
+**Not done / open:** apply 0018 to Supabase **before** this API deploys. Not checked live:
+that emails now arrive (needs a real registration). Stage three's other GDOC benefits are
+not built: the subdomain website (₦50,000), the public club media and news pages, the
+sponsorship percentages. Withdrawing a stage-three approval has no route; withdrawing stage
+two sets the club back to stage 1. No public club page shows the links or photos yet.
+
+---
+
 ## 2026-10-19 — Club sign-up: stage-two details moved out, two levels, every LGA listed
 **Commit(s):** see the commit that adds this entry, on branch `redesign`.
 

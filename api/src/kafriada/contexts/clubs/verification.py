@@ -112,7 +112,7 @@ def overview(club_id: UUID) -> Overview | None:
         club_id=row["id"],
         club_name=row["name"],
         club_status=row["status"],
-        verified=row["stage"] == 2,
+        verified=row["stage"] >= 2,
         state=row["request_status"] or "none",
         document=row["document"],
         price_kobo=expected_amount_kobo(Purpose.STAGE2_ORG, get_settings()),
@@ -120,12 +120,6 @@ def overview(club_id: UUID) -> Overview | None:
         reason=reason,
         details_complete=row["details_complete"],
     )
-
-
-def _admin_athlete_id(session: Session, user_id: UUID) -> UUID | None:
-    return session.execute(
-        text("SELECT id FROM identity.athletes WHERE user_id = :u"), {"u": user_id}
-    ).scalar_one_or_none()
 
 
 def begin_upload(
@@ -136,12 +130,16 @@ def begin_upload(
     *,
     store: ObjectStore | None = None,
 ) -> media.Slot:
-    """Open a slot for the club's registration document or LGA letter."""
+    """Open a slot for the club's registration document or LGA letter.
+
+    The file belongs to the club, not to whoever uploaded it: a representative who
+    signed the club up has no athlete account. The route has proved the caller
+    administers the club.
+    """
     with transaction() as session:
         club = session.execute(
             text("SELECT status, stage FROM identity.organizations WHERE id = :c"), {"c": club_id}
         ).mappings().one_or_none()
-        athlete_id = _admin_athlete_id(session, user_id)
         current = session.execute(
             text(
                 "SELECT status FROM identity.club_verification_requests "
@@ -151,14 +149,12 @@ def begin_upload(
         ).scalar_one_or_none()
     if club is None:
         raise NotFound()
-    if athlete_id is None:
-        raise Refused("Only a registered athlete can administer a club.", code="no_athlete")
     if club["status"] != "approved":
         raise Refused("A club must be approved before it can be verified.", code="not_approved")
     if current is not None and current not in ("draft", "rejected"):
         raise Refused(_NOT_EDITABLE[current], code="not_editable")
 
-    slot = media.open_slot(athlete_id, "club_document", content_type, size_bytes, store=store)
+    slot = media.open_slot(club_id, "club_document", content_type, size_bytes, store=store)
 
     for _ in range(2):  # a concurrent first upload may create the draft under us
         try:
@@ -196,23 +192,27 @@ def begin_upload(
 
 
 def owned_media(user_id: UUID, club_id: UUID, media_id: UUID) -> UUID:
-    """The uploader's athlete id, if this file is the caller's and belongs to this club's request."""
+    """The file's owner id, if it is this club's document.
+
+    Files uploaded before migration 0018 are owned by the uploader's athlete record.
+    """
     with transaction() as session:
-        athlete_id = session.execute(
+        owner_id = session.execute(
             text(
                 """
-                SELECT m.athlete_id
+                SELECT coalesce(m.org_id, m.athlete_id)
                   FROM identity.media_files m
-                  JOIN identity.athletes a ON a.id = m.athlete_id
                   JOIN identity.club_verification_requests v ON v.document_media_id = m.id
-                 WHERE m.id = :m AND a.user_id = :u AND v.org_id = :c AND m.kind = 'club_document'
+                 WHERE m.id = :m AND v.org_id = :c AND m.kind = 'club_document'
+                   AND (m.org_id = :c OR m.athlete_id IN
+                        (SELECT id FROM identity.athletes WHERE user_id = :u))
                 """
             ),
             {"m": media_id, "u": user_id, "c": club_id},
         ).scalar_one_or_none()
-    if athlete_id is None:
+    if owner_id is None:
         raise NotFound()
-    return athlete_id  # type: ignore[no-any-return]
+    return owner_id  # type: ignore[no-any-return]
 
 
 def resubmit(club_id: UUID, user_id: UUID) -> None:

@@ -3,8 +3,8 @@
 Public sign-up, a coordinator registering a club, and a club editing its details all
 validate through :func:`clean`, so a club is held to the same standard however it
 was created. Category, levels, age groups, registration number, colours and website
-are stage-two details: optional at sign-up, and the first three are required before
-the club pays for verification (:data:`STAGE2_REQUIRED`).
+are stage-two details, with team formation and trophies: optional at sign-up, and the
+first three are required before the club pays for verification (:data:`STAGE2_REQUIRED`).
 """
 
 from __future__ import annotations
@@ -53,6 +53,8 @@ class ClubProfile:
     category: str | None = None
     age_groups: tuple[str, ...] = ()
     levels: tuple[str, ...] = ()
+    formation: str | None = None
+    trophies: str | None = None
     cac_number: str | None = None
     affiliation: str | None = None
     colours: str | None = None
@@ -116,6 +118,8 @@ def clean(p: ClubProfile) -> dict[str, object]:
                                "Enter a second official's full name.", 120),
         "official2_role": p.official2_role,
         "official2_phone": official2_phone,
+        "formation": optional(p.formation, "formation", 40),
+        "trophies": optional(p.trophies, "trophies", 500),
         "cac_number": optional(p.cac_number, "cac_number", 40),
         "affiliation": optional(p.affiliation, "affiliation", 120),
         "colours": optional(p.colours, "colours", 60),
@@ -126,5 +130,6 @@ def clean(p: ClubProfile) -> dict[str, object]:
 COLUMNS = (
     "short_name", "type", "category", "age_groups", "levels", "year_founded", "ground_name",
     "ground_address", "town", "club_email", "official2_name", "official2_role",
-    "official2_phone", "cac_number", "affiliation", "colours", "website",
+    "official2_phone", "cac_number", "affiliation", "colours", "website", "formation",
+    "trophies",
 )

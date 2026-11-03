@@ -32,11 +32,13 @@ from kafriada.settings import get_settings
 
 log = structlog.get_logger(__name__)
 
-KINDS = ("photo", "document", "club_document")
+KINDS = ("photo", "document", "club_document", "club_photo")
+# Owned by a club rather than an athlete: the owner id is the club's.
+CLUB_KINDS = frozenset({"club_document", "club_photo"})
 ALLOWED_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 
 # A face at a size a profile shows; a document at a size a person can still read.
-_LONGEST_SIDE = {"photo": 900, "document": 1800, "club_document": 1800}
+_LONGEST_SIDE = {"photo": 900, "document": 1800, "club_document": 1800, "club_photo": 1600}
 # Refuse to decode anything that would expand past this many pixels: a small file
 # can declare an enormous canvas, and decoding it is how a server runs out of memory.
 Image.MAX_IMAGE_PIXELS = 40_000_000
@@ -64,18 +66,21 @@ class Slot:
     upload_url: str | None
 
 
-def original_key(athlete_id: UUID, media_id: UUID) -> str:
-    return f"verification/{athlete_id}/{media_id}/original"
+def original_key(owner_id: UUID, media_id: UUID) -> str:
+    return f"verification/{owner_id}/{media_id}/original"
 
 
-def derivative_key(athlete_id: UUID, media_id: UUID) -> str:
-    return f"verification/{athlete_id}/{media_id}/derivative.jpg"
+def derivative_key(owner_id: UUID, media_id: UUID) -> str:
+    return f"verification/{owner_id}/{media_id}/derivative.jpg"
 
 
 def open_slot(
-    athlete_id: UUID, kind: str, content_type: str, size_bytes: int, *, store: ObjectStore | None = None
+    owner_id: UUID, kind: str, content_type: str, size_bytes: int, *, store: ObjectStore | None = None
 ) -> Slot:
-    """Record that a file is about to arrive, and say where to send it."""
+    """Record that a file is about to arrive, and say where to send it.
+
+    ``owner_id`` is an athlete's id, or a club's for :data:`CLUB_KINDS`.
+    """
     settings = get_settings()
     store = store or build_store(settings)
     if store.name == "none":
@@ -96,18 +101,20 @@ def open_slot(
         media_id: UUID = session.execute(
             text("SELECT gen_random_uuid()")
         ).scalar_one()
-        key = original_key(athlete_id, media_id)
+        key = original_key(owner_id, media_id)
+        club = kind in CLUB_KINDS
         session.execute(
             text(
                 """
                 INSERT INTO identity.media_files
-                    (id, athlete_id, kind, original_key, declared_type, declared_bytes)
-                VALUES (:id, :athlete, :kind, :key, :type, :bytes)
+                    (id, athlete_id, org_id, kind, original_key, declared_type, declared_bytes)
+                VALUES (:id, :athlete, :org, :kind, :key, :type, :bytes)
                 """
             ),
             {
                 "id": media_id,
-                "athlete": athlete_id,
+                "athlete": None if club else owner_id,
+                "org": owner_id if club else None,
                 "kind": kind,
                 "key": key,
                 "type": content_type.lower(),
@@ -124,23 +131,23 @@ def open_slot(
     return Slot(media_id=media_id, upload_url=url)
 
 
-def _pending_row(athlete_id: UUID, media_id: UUID):  # type: ignore[no-untyped-def]
+def _pending_row(owner_id: UUID, media_id: UUID):  # type: ignore[no-untyped-def]
     with transaction() as session:
         return session.execute(
             text(
                 "SELECT id, status, original_key, declared_bytes FROM identity.media_files "
-                "WHERE id = :id AND athlete_id = :athlete"
+                "WHERE id = :id AND (athlete_id = :owner OR org_id = :owner)"
             ),
-            {"id": media_id, "athlete": athlete_id},
+            {"id": media_id, "owner": owner_id},
         ).one_or_none()
 
 
 def relay_upload(
-    athlete_id: UUID, media_id: UUID, data: bytes, *, store: ObjectStore | None = None
+    owner_id: UUID, media_id: UUID, data: bytes, *, store: ObjectStore | None = None
 ) -> None:
     """The fallback for a browser with no JavaScript: the bytes pass through us once."""
     store = store or build_store()
-    row = _pending_row(athlete_id, media_id)
+    row = _pending_row(owner_id, media_id)
     if row is None or row.status != "pending":
         raise MediaRefused("We could not find that upload.", code="missing")
     if not 0 < len(data) <= get_settings().media_max_bytes:
@@ -155,12 +162,12 @@ def relay_upload(
 
 
 def confirm_upload(
-    athlete_id: UUID, media_id: UUID, *, store: ObjectStore | None = None
+    owner_id: UUID, media_id: UUID, *, store: ObjectStore | None = None
 ) -> None:
     """Mark a file ``uploaded`` — but only if the object is really there."""
     settings = get_settings()
     store = store or build_store(settings)
-    row = _pending_row(athlete_id, media_id)
+    row = _pending_row(owner_id, media_id)
     if row is None or row.status != "pending":
         raise MediaRefused("We could not find that upload.", code="missing")
     try:
@@ -227,8 +234,8 @@ def process_one(media_id: UUID, *, store: ObjectStore | None = None) -> str:
     with transaction() as session:
         row = session.execute(
             text(
-                "SELECT id, athlete_id, kind, status, original_key FROM identity.media_files "
-                "WHERE id = :id"
+                "SELECT id, coalesce(athlete_id, org_id) AS owner_id, kind, status, original_key "
+                "FROM identity.media_files WHERE id = :id"
             ),
             {"id": media_id},
         ).one_or_none()
@@ -256,7 +263,7 @@ def process_one(media_id: UUID, *, store: ObjectStore | None = None) -> str:
         log.warning("media_unreadable", media_id=str(media_id), reason=str(exc))
         return "unreadable"
 
-    key = derivative_key(row.athlete_id, media_id)
+    key = derivative_key(row.owner_id, media_id)
     try:
         store.put(key, derivative)
     except StoreError as exc:

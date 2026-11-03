@@ -58,12 +58,15 @@ _OUR_REFERENCE = re.compile(
 class Purpose(StrEnum):
     STAGE2_ATHLETE = "stage2_athlete"
     STAGE2_ORG = "stage2_org"
+    STAGE3_ORG = "stage3_org"
 
 
 def expected_amount_kobo(purpose: Purpose, settings: Settings) -> int:
     """The price, from configuration — never from the payment itself."""
     if purpose is Purpose.STAGE2_ATHLETE:
         return settings.price_athlete_verification_kobo
+    if purpose is Purpose.STAGE3_ORG:
+        return settings.price_club_stage3_kobo
     return settings.price_club_verification_kobo
 
 

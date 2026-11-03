@@ -647,6 +647,9 @@
     "officialRole": "Role",
     "officialPhone": "Phone",
     "sporting": "Sporting details",
+    "formation": "Team formation",
+    "trophies": "Trophies",
+    "trophiesHint": "Competitions the club has won, with the year.",
     "sportingHint": "Needed before stage-two verification. Category, level and age groups are required then.",
     "choose": "Choose"
   },
@@ -773,7 +776,10 @@
       "website": "Website",
       "rep": "Representative's role",
       "second": "Second official"
-    }
+    },
+    "stage": "Verified · stage {stage}",
+    "limit": "Up to {limit} players at this stage.",
+    "toStage3": "Go to stage three"
   },
   "invite": {
     "eyebrow": "Club",
@@ -855,7 +861,8 @@
     "needsCheck": "Your payment needs a check by our team",
     "needsCheckText": "Do not pay again. We will contact you on the phone number you registered with.",
     "failed": "The payment was not completed",
-    "failedText": "If money left your account, it shows here as confirmed once Paystack tells us. Otherwise you can try again below."
+    "failedText": "If money left your account, it shows here as confirmed once Paystack tells us. Otherwise you can try again below.",
+    "toStage3": "Go to stage three"
   },
   "coordNav": {
     "label": "Coordinator",
@@ -1071,5 +1078,63 @@
     "error": "That did not work",
     "forbidden": "You do not coordinate this LGA.",
     "badDates": "Choose an end date on or after the start date, no more than a year apart."
+  },
+  "clubStage3": {
+    "title": "Stage three",
+    "eyebrow": "{name}",
+    "back": "Back to the club",
+    "noAccess": "Only the club's administrators can open this page.",
+    "error": "That did not work",
+    "linksSaved": "Links saved",
+    "photoSaved": "Photo added",
+    "confirmed": "Payment received",
+    "confirmedText": "Your request is now with an administrator to review.",
+    "failed": "The payment did not go through",
+    "failedText": "Nothing was charged. You can try again.",
+    "checking": "Checking your payment",
+    "checkingText": "This usually takes a minute. Refresh this page to see the result.",
+    "done": "Your club is at stage three",
+    "doneText": "The club can now hold up to 70 players.",
+    "needStage2": "Stage two comes first",
+    "needStage2Text": "A club must be verified at stage two before it can apply for stage three.",
+    "toStage2": "Go to stage two",
+    "review": "With an administrator",
+    "reviewText": "We will tell you by email or text when it is decided.",
+    "pitch": "What stage three gives the club",
+    "gets": [
+      "Room for up to 70 players, up from 50.",
+      "The club's website and social media links on its record.",
+      "A gallery of club photos."
+    ],
+    "price": "one payment for stage three",
+    "rejected": "Not approved this time",
+    "noSecondFee": "Fix what is described above and send it back. There is no second fee.",
+    "links": "Website and social media",
+    "linksHint": "At least one: the club's website or a social media page. Up to five.",
+    "link": "Link {n}",
+    "optional": "optional",
+    "saveLinks": "Save links",
+    "saving": "Saving…",
+    "photos": "Club photos",
+    "photosHint": "At least one photo of the club: the team, the ground or a match. Up to {max}.",
+    "photoAlt": "A club photo",
+    "file": {
+      "ready": "Ready",
+      "uploaded": "Processing",
+      "pending": "Uploading",
+      "unreadable": "Could not be read"
+    },
+    "remove": "Remove",
+    "removing": "Removing…",
+    "addPhoto": "Add a photo",
+    "upload": "Upload photo",
+    "uploading": "Uploading…",
+    "resubmit": "Send back for review",
+    "resubmitting": "Sending…",
+    "paid": "Paid",
+    "pay": "Pay {price}",
+    "paying": "Opening the payment page…",
+    "leave": "You will leave KAFRIADA NET to pay. We never see your card details.",
+    "needBoth": "Add at least one link and one photo first."
   }
 }

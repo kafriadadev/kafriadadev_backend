@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 from kafriada.clock import today_in_nigeria
 from kafriada.contexts.access.service import Principal
 from kafriada.contexts.audit.service import Actor, record
+from kafriada.contexts.clubs import stage3 as club_stage3
 from kafriada.contexts.clubs import verification as club_verification
 from kafriada.contexts.identity import service as identity
 from kafriada.contexts.payments.provider import ProviderError, build_provider
@@ -203,10 +204,11 @@ def start_club_payment(
     principal: Principal,
     club_id: UUID,
     *,
+    stage: int = 2,
     request_id: str | None = None,
     ip_address: str | None = None,
 ) -> Started:
-    """Start the checkout for a club's verification badge (CLB-04).
+    """Start the checkout for a club's stage two (CLB-04) or stage three.
 
     The same path as an athlete's, with a different price and a different beneficiary:
     the payment names the club (``org_id``) and the price is ours, never the caller's.
@@ -214,7 +216,7 @@ def start_club_payment(
     """
     settings = get_settings()
     user_id = principal.user_id
-    purpose = Purpose.STAGE2_ORG
+    purpose = Purpose.STAGE3_ORG if stage == 3 else Purpose.STAGE2_ORG
 
     provider = build_provider(settings)
     if provider.name == "none":
@@ -231,8 +233,12 @@ def start_club_payment(
         raise Refused("No such club.", code="no_club")
     if club["status"] != "approved":
         raise Refused("A club must be approved before it can be verified.", code="not_approved")
-    if club["stage"] == 2:
+    if stage == 2 and club["stage"] >= 2:
         raise Refused("This club is already verified.", code="already_paid")
+    if stage == 3 and club["stage"] < 2:
+        raise Refused("Complete stage-two verification first.", code="not_stage_two")
+    if stage == 3 and club["stage"] == 3:
+        raise Refused("This club is already at stage three.", code="already_paid")
 
     amount = expected_amount_kobo(purpose, settings)
     reference = new_reference()
@@ -240,7 +246,7 @@ def start_club_payment(
 
     with money_transaction(reason="start club payment") as session:
         for status, message, code in (
-            (PaymentStatus.SUCCESS, "This club has already paid for verification.", "already_paid"),
+            (PaymentStatus.SUCCESS, "This club has already paid for this stage.", "already_paid"),
             (
                 PaymentStatus.FROZEN,
                 "An earlier payment is being checked by our team. Please wait for us to "
@@ -251,17 +257,23 @@ def start_club_payment(
             if session.execute(
                 text(
                     "SELECT EXISTS (SELECT 1 FROM money.payments "
-                    "WHERE org_id = :c AND status = :s)"
+                    "WHERE org_id = :c AND purpose = :p AND status = :s)"
                 ),
-                {"c": club_id, "s": status.value},
+                {"c": club_id, "p": purpose.value, "s": status.value},
             ).scalar_one():
                 raise Refused(message, code=code)
-        if not club_verification.details_complete(session, club_id):
+        if stage == 3:
+            if not club_stage3.ready_for_payment(session, club_id):
+                raise Refused(
+                    "Add at least one link and one photo first. We will bring you back here to pay.",
+                    code="no_submission",
+                )
+        elif not club_verification.details_complete(session, club_id):
             raise Refused(
                 "Add the club's category, level and age groups first.",
                 code="no_details",
             )
-        if not club_verification.ready_for_payment(session, club_id):
+        elif not club_verification.ready_for_payment(session, club_id):
             raise Refused(
                 "Add your club's registration document or LGA letter first. "
                 "We will bring you back here to pay.",
@@ -302,7 +314,10 @@ def start_club_payment(
             reference=reference,
             amount_kobo=amount,
             email=email or f"{user_id.hex}@{settings.payment_placeholder_email_domain}",
-            callback_url=f"{settings.public_base_url.rstrip('/')}/clubs/{club_id}/verify",
+            callback_url=(
+                f"{settings.public_base_url.rstrip('/')}/clubs/{club_id}/"
+                f"{'stage-three' if stage == 3 else 'verify'}"
+            ),
         )
     except ProviderError as exc:
         _mark_failed(payment_id, reference, exc, request_id)

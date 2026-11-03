@@ -27,6 +27,8 @@ export type ClubProfile = {
   category: string | null;
   age_groups: string[];
   levels: string[];
+  formation: string | null;
+  trophies: string | null;
   year_founded: number;
   ground_name: string;
   ground_address: string;
@@ -46,6 +48,7 @@ export const CLUB_TEXT_FIELDS = [
   "name", "short_name", "type", "sport", "category", "year_founded", "lga_id",
   "ground_name", "ground_address", "town", "contact_phone", "club_email", "cac_number",
   "affiliation", "colours", "website", "official2_name", "official2_role", "official2_phone",
+  "formation", "trophies",
 ] as const;
 
 /** Read the club fields from a form. `year` is NaN when it is not a whole number. */
@@ -58,6 +61,8 @@ export function readClub(formData: FormData) {
     category: text("category") || null,
     age_groups: formData.getAll("age_groups").map(String),
     levels: formData.getAll("levels").map(String),
+    formation: text("formation") || null,
+    trophies: text("trophies") || null,
     year_founded: Number.isInteger(year) && text("year_founded") ? year : Number.NaN,
     ground_name: text("ground_name"),
     ground_address: text("ground_address"),

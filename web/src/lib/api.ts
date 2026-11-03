@@ -462,6 +462,10 @@ export type ClubDashboard = {
   contact_phone: string;
   status: "unconfirmed" | "pending_review" | "approved" | "suspended";
   verified: boolean;
+  /** 1, 2 or 3 (GDOC 5.10). */
+  stage: number;
+  /** Players the club may hold at its stage. */
+  player_limit: number;
   players: number;
   verified_players: number;
   invites_out: number;
@@ -676,6 +680,88 @@ export function resubmitClubVerification(
 ): Promise<void> {
   return call<void>(`/v1/clubs/${encodeURIComponent(clubId)}/verification/resubmit`, {
     method: "POST",
+    token,
+    meta,
+  });
+}
+
+export type ClubStage3 = {
+  club_id: string;
+  club_name: string;
+  stage: number;
+  state: "none" | "draft" | "under_review" | "approved" | "rejected";
+  links: string[];
+  photos: { media_id: string; status: "pending" | "uploaded" | "ready" | "unreadable" }[];
+  price_kobo: number;
+  paid: boolean;
+  reason: string | null;
+};
+
+const stage3 = (clubId: string) => `/v1/clubs/${encodeURIComponent(clubId)}/stage-three`;
+
+/** Where a club's stage three stands. */
+export function getClubStage3(token: string, clubId: string): Promise<ClubStage3> {
+  return call<ClubStage3>(stage3(clubId), { token });
+}
+
+export function saveClubLinks(token: string, clubId: string, links: string[], meta: ClientMeta): Promise<void> {
+  return call<void>(`${stage3(clubId)}/links`, { method: "PUT", body: JSON.stringify({ links }), token, meta });
+}
+
+/** Open a slot for a club photo, send the bytes through the API, confirm. */
+export async function uploadClubPhoto(
+  token: string,
+  clubId: string,
+  file: { type: string; size: number; bytes: ArrayBuffer },
+  meta: ClientMeta,
+): Promise<void> {
+  const base = `${stage3(clubId)}/photos`;
+  const slot = await call<{ media_id: string }>(base, {
+    method: "POST",
+    body: JSON.stringify({ content_type: file.type, size_bytes: file.size }),
+    token,
+    meta,
+  });
+  await call<void>(`${base}/${slot.media_id}/content`, {
+    method: "PUT",
+    body: file.bytes,
+    headers: { "content-type": "application/octet-stream" },
+    token,
+    meta,
+  });
+  await call<void>(`${base}/${slot.media_id}/confirm`, { method: "POST", token, meta });
+}
+
+export function removeClubPhoto(token: string, clubId: string, mediaId: string, meta: ClientMeta): Promise<void> {
+  return call<void>(`${stage3(clubId)}/photos/${encodeURIComponent(mediaId)}`, { method: "DELETE", token, meta });
+}
+
+export function startClubStage3Payment(token: string, clubId: string, meta: ClientMeta): Promise<StartedPayment> {
+  return call<StartedPayment>(`${stage3(clubId)}/payment`, { method: "POST", token, meta });
+}
+
+export function resubmitClubStage3(token: string, clubId: string, meta: ClientMeta): Promise<void> {
+  return call<void>(`${stage3(clubId)}/resubmit`, { method: "POST", token, meta });
+}
+
+export function getClubStage3Queue(token: string): Promise<ClubVerificationWaiting[]> {
+  return call<ClubVerificationWaiting[]>("/v1/admin/club-stage-three/queue", { token });
+}
+
+export function getClubStage3Review(token: string, clubId: string): Promise<ClubStage3> {
+  return call<ClubStage3>(`/v1/admin/club-stage-three/${encodeURIComponent(clubId)}`, { token });
+}
+
+export function decideClubStage3(
+  token: string,
+  clubId: string,
+  decision: "approve" | "reject",
+  reason: string,
+  meta: ClientMeta,
+): Promise<void> {
+  return call<void>(`/v1/admin/club-stage-three/${encodeURIComponent(clubId)}/${decision}`, {
+    method: "POST",
+    body: decision === "reject" ? JSON.stringify({ reason }) : undefined,
     token,
     meta,
   });

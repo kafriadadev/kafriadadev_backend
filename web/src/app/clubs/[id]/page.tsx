@@ -99,7 +99,13 @@ export default async function ClubPage({ params, searchParams }: { params: Promi
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-card border border-line p-4">
         {club.verified ? (
-          <Pill tone="good" icon={<IconShieldCheck size={16} aria-hidden="true" />}>{t("verified")}</Pill>
+          <>
+            <div>
+              <Pill tone="good" icon={<IconShieldCheck size={16} aria-hidden="true" />}>{t("stage", { stage: club.stage })}</Pill>
+              <p className="mt-1 text-xs text-muted">{t("limit", { limit: club.player_limit })}</p>
+            </div>
+            {club.stage === 2 ? <Button href={`${base}/stage-three`} variant="secondary">{t("toStage3")}</Button> : null}
+          </>
         ) : (
           <>
             <div>

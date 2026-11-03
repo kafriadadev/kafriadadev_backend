@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
 import { IconMail, IconMapPin, IconPhone, IconRedCard, IconShirtSport } from "@/components/icons";
-import { Field, Fieldset, Input, PhoneInput, Select } from "@/components/ui/Field";
+import { Field, Fieldset, Input, PhoneInput, Select, Textarea } from "@/components/ui/Field";
 import type { Lga } from "@/lib/api";
 import { AGE_GROUPS, CATEGORIES, CLUB_LEVELS, CLUB_TYPES, OFFICIAL_ROLES } from "@/lib/clubProfile";
 import { PILOT_SPORT } from "@/lib/profile";
@@ -159,6 +159,12 @@ export async function ClubFields({
           </Field>
           <Choices name="levels" legend={t("levels")} hint={t("levelsHint")} options={CLUB_LEVELS} chosen={chosenLevels} error={err("levels")} />
           <Choices name="age_groups" legend={t("ageGroups")} hint={t("ageGroupsHint")} options={AGE_GROUPS} chosen={chosenGroups} error={err("age_groups")} />
+          <Field name="formation" label={t("formation")} optional optionalLabel={optional} error={err("formation")}>
+            {(a) => <Input {...a} maxLength={40} placeholder="4-4-2" defaultValue={v("formation")} />}
+          </Field>
+          <Field name="trophies" label={t("trophies")} hint={t("trophiesHint")} optional optionalLabel={optional} error={err("trophies")}>
+            {(a) => <Textarea {...a} rows={3} maxLength={500} defaultValue={v("trophies")} />}
+          </Field>
           <div className="grid gap-5 sm:grid-cols-2">
             <Field name="cac_number" label={t("cac")} optional optionalLabel={optional} error={err("cac_number")}>
               {(a) => <Input {...a} defaultValue={v("cac_number")} />}
